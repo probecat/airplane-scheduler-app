@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Source artboard is 512 units; it fills the 72dp visible area of the 108dp layer. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="768"
+    android:viewportHeight="768">
+    <group
+        android:translateX="128"
+        android:translateY="128">
+        <path
+            android:fillColor="#E0B21F"
+            android:pathData="M158,174 H354 A94,94 0 0 1 354,362 H158 A94,94 0 0 1 158,174 Z" />
+        <path
+            android:fillColor="#1F2340"
+            android:pathData="M158,158 H354 A94,94 0 0 1 354,346 H158 A94,94 0 0 1 158,158 Z" />
+        <path
+            android:pathData="M116,240 a66,66 0 0 1 94,0 M136,263 a38,38 0 0 1 54,0"
+            android:strokeColor="#6B72A8"
+            android:strokeLineCap="round"
+            android:strokeWidth="13" />
+        <path
+            android:fillColor="#6B72A8"
+            android:pathData="M153,290 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 Z" />
+        <path
+            android:pathData="M112,304 L214,208"
+            android:strokeColor="#1F2340"
+            android:strokeLineCap="round"
+            android:strokeWidth="30" />
+        <path
+            android:pathData="M112,304 L214,208"
+            android:strokeColor="#FF5A3C"
+            android:strokeLineCap="round"
+            android:strokeWidth="13" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M276,252 a78,78 0 1 0 156,0 a78,78 0 1 0 -156,0 Z" />
+        <group
+            android:rotation="45"
+            android:scaleX="1.05"
+            android:scaleY="1.05"
+            android:translateX="354"
+            android:translateY="252">
+            <group
+                android:translateX="-50"
+                android:translateY="-50">
+                <path
+                    android:fillColor="#FF5A3C"
+                    android:pathData="M50,6 C54,6 56,14 56,22 L56,40 L92,62 L92,70 L56,58 L56,78 L68,88 L68,94 L50,89 L32,94 L32,88 L44,78 L44,58 L8,70 L8,62 L44,40 L44,22 C44,14 46,6 50,6 Z" />
+            </group>
+        </group>
+    </group>
+</vector>

@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: $/.github/workflows/ci.yml
+    with:
+      skip-debug-apk: true
+
+  build:
+    runs-on: ubuntu-latest
+    environment: release
+    outputs:
+      tag: ${{ steps.check.outputs.tag }}
+      notes: ${{ steps.check.outputs.notes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the version and the F-Droid listing
+        id: check
+        run: scripts/check-release.sh >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - name: Lint and build signed APK
+        env:
+          RELEASE_KEYSTORE: "${{ runner.temp }}/release.p12"
+          RELEASE_KEYSTORE_BASE64: "${{ secrets.RELEASE_KEYSTORE_BASE64 }}"
+          RELEASE_KEYSTORE_PASSWORD: "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}"
+        run: |
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RELEASE_KEYSTORE"
+          ./gradlew lintRelease assembleRelease
+      - name: Verify signed APK
+        run: |
+          apksigner=$(printf "%s\n" "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signed
+          path: app/build/outputs/apk/release/app-release.apk
+
+  # F-Droid publishes the signed APK only if its own build matches it apart from the signature.
+  fdroid:
+    needs: build
+    uses: $/.github/workflows/fdroid.yml
+    with:
+      signed-artifact: signed
+
+  release:
+    needs: [ci, build, fdroid]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Creates the tag and the GitHub release.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signed
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          TAG: "${{ needs.build.outputs.tag }}"
+          NOTES: "${{ needs.build.outputs.notes }}"
+        run: |
+          # A fixed name, so the README's button can link to releases/latest/download.
+          mv app-release.apk airplane-scheduler.apk
+          gh release create "$TAG" airplane-scheduler.apk --target "$GITHUB_SHA" --notes-file "$NOTES" \
+            --title "Airplane Scheduler $TAG"
