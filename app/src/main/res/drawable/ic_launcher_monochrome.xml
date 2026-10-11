@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon silhouette of ic_launcher_foreground: shape alone, cut-outs instead of colors. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="768"
+    android:viewportHeight="768">
+    <group
+        android:translateX="128"
+        android:translateY="128">
+        <path
+            android:pathData="M158,158 H354 A94,94 0 0 1 354,346 H158 A94,94 0 0 1 158,158 Z"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="13" />
+        <group>
+            <!-- Leaves a gap on both sides of the slash. -->
+            <clip-path android:pathData="M-116.74,498.69 L320.18,87.47 L114.57,-130.99 L-322.35,280.23 Z M-96.18,520.53 L340.74,109.31 L546.35,327.77 L109.43,738.99 Z" />
+            <path
+                android:pathData="M116,240 a66,66 0 0 1 94,0 M136,263 a38,38 0 0 1 54,0"
+                android:strokeColor="#FFFFFF"
+                android:strokeLineCap="round"
+                android:strokeWidth="13" />
+            <path
+                android:fillColor="#FFFFFF"
+                android:pathData="M153,290 a10,10 0 1 0 20,0 a10,10 0 1 0 -20,0 Z" />
+        </group>
+        <path
+            android:pathData="M112,304 L214,208"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="13" />
+        <group
+            android:rotation="45"
+            android:scaleX="1.05"
+            android:scaleY="1.05"
+            android:translateX="354"
+            android:translateY="252">
+            <group
+                android:translateX="-50"
+                android:translateY="-50">
+                <!-- The knob, with the plane punched out of it. -->
+                <path
+                    android:fillColor="#FFFFFF"
+                    android:fillType="evenOdd"
+                    android:pathData="M-24.2857,50 a74.2857,74.2857 0 1 0 148.5714,0 a74.2857,74.2857 0 1 0 -148.5714,0 Z M50,6 C54,6 56,14 56,22 L56,40 L92,62 L92,70 L56,58 L56,78 L68,88 L68,94 L50,89 L32,94 L32,88 L44,78 L44,58 L8,70 L8,62 L44,40 L44,22 C44,14 46,6 50,6 Z" />
+            </group>
+        </group>
+    </group>
+</vector>

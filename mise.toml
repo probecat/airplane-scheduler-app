@@ -1,0 +1,31 @@
+[tools]
+java = "temurin-17"
+android-sdk = "23.0"
+ktlint = "1.8.0"
+
+[tasks.setup]
+description = "Accept SDK licenses, install SDK packages (build-tools are fetched by Gradle), and use the repository's Git hooks"
+run = [
+  "yes | sdkmanager --licenses > /dev/null",
+  "sdkmanager 'platform-tools' 'platforms;android-37.0'",
+  "git config core.hooksPath .githooks",
+]
+
+[tasks.ktlint]
+description = "Check Kotlin style"
+run = "ktlint"
+
+[tasks.format]
+description = "Fix Kotlin style"
+run = "ktlint --format"
+
+[tasks.check]
+description = "Check style, test, and lint, as CI does"
+run = ["ktlint", "./gradlew testDebugUnitTest lintDebug"]
+
+[tasks.dev]
+description = "Build, install on the USB device, and launch the debug app"
+run = [
+  "./gradlew installDebug",
+  "adb shell am start -n io.github.probecat.airplanescheduler.debug/io.github.probecat.airplanescheduler.ui.MainActivity",
+]

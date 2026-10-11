@@ -1,0 +1,81 @@
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+android {
+    namespace 'io.github.probecat.airplanescheduler'
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
+
+    defaultConfig {
+        applicationId 'io.github.probecat.airplanescheduler'
+        minSdk 33
+        targetSdk 37
+        versionCode 1
+        versionName '1.0'
+        manifestPlaceholders = [appLabel: 'Airplane Scheduler']
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        // Installs beside the signed release instead of clashing with its signature.
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            manifestPlaceholders = [appLabel: 'Airplane Scheduler (debug)']
+        }
+    }
+
+    def releaseKeystore = System.getenv('RELEASE_KEYSTORE')
+    if (releaseKeystore) {
+        signingConfigs {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv('RELEASE_KEYSTORE_PASSWORD')
+                keyAlias 'release'
+                keyPassword System.getenv('RELEASE_KEYSTORE_PASSWORD')
+                storeType 'PKCS12'
+            }
+        }
+        buildTypes.release.signingConfig signingConfigs.release
+    }
+
+    // F-Droid rejects the dependency list that AGP encrypts with Google's key.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    buildFeatures {
+        aidl true
+        buildConfig true
+        compose true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.compose.material3
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.lifecycle.runtime.compose
+    implementation libs.androidx.core.ktx
+    implementation libs.kotlinx.serialization.json
+    implementation libs.shizuku.api
+    implementation libs.shizuku.provider
+    testImplementation libs.junit
+}
