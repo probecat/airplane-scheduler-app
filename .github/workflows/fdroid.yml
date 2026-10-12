@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # Follows the image F-Droid builds with. The job has no secrets, and its APK is only compared, never shipped.
+    # F-Droid's build image. Only compare the APK, not shipped.
     container: registry.gitlab.com/fdroid/fdroidserver:buildserver # zizmor: ignore[unpinned-images]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

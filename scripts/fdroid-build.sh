@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Writes the F-Droid recipe for the source's HEAD, lints it, and builds it as F-Droid does. Runs inside
-# registry.gitlab.com/fdroid/fdroidserver:buildserver and copies the recipe, ready for fdroiddata, and the unsigned APK
-# to the output directory. Given a signed APK, checks it against the build as F-Droid checks the APK in Binaries.
+# Lints and builds HEAD as F-Droid does.
 # shellcheck disable=SC1091
 . /etc/profile
 set -euo pipefail
@@ -22,7 +20,7 @@ mkdir -p "$out" "$work/fdroiddata/metadata"
 cd "$work/fdroiddata"
 
 printf 'sdk_path: %s\n' "$ANDROID_HOME" > config.yml
-# Lint checks categories against fdroiddata's list. Naming them here skips loading each one's icon.
+# Listing categories by name skips loading their icons.
 curl -fsSL https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml |
     python3 -c 'import sys, yaml; print(yaml.safe_dump({"categories": list(yaml.safe_load(sys.stdin))}))' >> config.yml
 chmod 600 config.yml
@@ -65,8 +63,8 @@ fdroid lint "$appid"
 fdroid rewritemeta "$appid"
 cp "$recipe" "$out/"
 
-# Builds from the local checkout, without Binaries, which point to a release that may not exist yet. Edits the copy
-# from before rewritemeta, which wraps Binaries onto a second line.
+# Builds from the local checkout without Binaries, whose release may not exist yet. rewritemeta wraps Binaries, so
+# edit the earlier copy.
 sed -e "s|^Repo: .*|Repo: file://$src|" -e '/^Binaries: /d' "$work/recipe.yml" > "$recipe"
 fdroid fetch_repo "$appid:$code"
 fdroid build --test --no-tarball "$appid:$code"

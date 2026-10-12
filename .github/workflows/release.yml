@@ -1,7 +1,8 @@
 name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -11,14 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ci:
-    uses: $/.github/workflows/ci.yml
-    with:
-      skip-debug-apk: true
-
-  build:
+  check:
     runs-on: ubuntu-latest
-    environment: release
     outputs:
       tag: ${{ steps.check.outputs.tag }}
       notes: ${{ steps.check.outputs.notes }}
@@ -27,14 +22,28 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check the version and the F-Droid listing
+      - name: Check the tag, the version, and the F-Droid listing
         id: check
-        run: scripts/check-release.sh >> "$GITHUB_OUTPUT"
+        run: scripts/check-release.sh "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+
+  ci:
+    needs: check
+    uses: $/.github/workflows/ci.yml
+    with:
+      skip-debug-apk: true
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: 17
-          cache: gradle
       - name: Lint and build signed APK
         env:
           RELEASE_KEYSTORE: "${{ runner.temp }}/release.p12"
@@ -52,7 +61,6 @@ jobs:
           name: signed
           path: app/build/outputs/apk/release/app-release.apk
 
-  # F-Droid publishes the signed APK only if its own build matches it apart from the signature.
   fdroid:
     needs: build
     uses: $/.github/workflows/fdroid.yml
@@ -60,10 +68,10 @@ jobs:
       signed-artifact: signed
 
   release:
-    needs: [ci, build, fdroid]
+    needs: [check, ci, build, fdroid]
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Creates the tag and the GitHub release.
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -74,10 +82,10 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: "${{ github.token }}"
-          TAG: "${{ needs.build.outputs.tag }}"
-          NOTES: "${{ needs.build.outputs.notes }}"
+          TAG: "${{ needs.check.outputs.tag }}"
+          NOTES: "${{ needs.check.outputs.notes }}"
         run: |
-          # A fixed name, so the README's button can link to releases/latest/download.
+          # Fixed name for the README's releases/latest/download link.
           mv app-release.apk airplane-scheduler.apk
-          gh release create "$TAG" airplane-scheduler.apk --target "$GITHUB_SHA" --notes-file "$NOTES" \
+          gh release create "$TAG" airplane-scheduler.apk --verify-tag --notes-file "$NOTES" \
             --title "Airplane Scheduler $TAG"

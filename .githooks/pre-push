@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+zero=0000000000000000000000000000000000000000
+status=0
+
+# Runs the release check on a commit, with the tag when pushing one.
+check() {
+    local tmp
+    tmp=$(mktemp -d)
+    git worktree add -q --detach "$tmp/src" "$1"
+    "$tmp/src/scripts/check-release.sh" "${@:2}" > /dev/null || status=1
+    git worktree remove --force "$tmp/src"
+    rm -rf "$tmp"
+}
+
+while read -r _ local_sha remote_ref remote_sha; do
+    [[ $local_sha != "$zero" ]] || continue
+    case $remote_ref in
+        refs/tags/v*)
+            check "$(git rev-parse "$local_sha^{commit}")" "${remote_ref#refs/tags/}"
+            ;;
+        refs/heads/main)
+            [[ $remote_sha != "$zero" ]] || continue
+            git cat-file -e "$remote_sha^{commit}" 2> /dev/null || continue
+            diff=$(git diff -U0 "$remote_sha" "$local_sha" -- app/build.gradle)
+            ! grep -qE '^[+-] *version(Name|Code) ' <<< "$diff" || check "$local_sha"
+            ;;
+    esac
+done
+
+(( ! status )) || { echo "Push blocked: the release check failed." >&2; exit 1; }

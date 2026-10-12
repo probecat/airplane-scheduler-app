@@ -3,8 +3,7 @@ set -euo pipefail
 
 git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.kts?$|^\.editorconfig$' || exit 0
 
-# Check the staged tree, not the working tree. The tools come from the repository's mise environment, since mise
-# doesn't trust the copy of mise.toml.
+# Checks the staged tree. mise doesn't trust the temporary copy, so its environment comes from the repository.
 eval "$(mise env -s bash)"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
