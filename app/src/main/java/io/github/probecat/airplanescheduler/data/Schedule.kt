@@ -25,6 +25,8 @@ data class Schedule(
     val enabled: Boolean = true,
     val disableWifi: Boolean = true,
     val enableWifi: Boolean = true,
+    // Start dates of windows left out by skipping them or ending them early.
+    val skipped: Set<SerializableDate> = emptySet(),
 ) {
     val once: Boolean get() = days.isEmpty()
 
@@ -32,6 +34,10 @@ data class Schedule(
         val EVERY_DAY: Set<DayOfWeek> = DayOfWeek.entries.toSet()
     }
 }
+
+private typealias SerializableDate =
+    @Serializable(with = DateSerializer::class)
+    LocalDate
 
 private object DateSerializer : KSerializer<LocalDate> {
     override val descriptor = PrimitiveSerialDescriptor("LocalDate", PrimitiveKind.STRING)
