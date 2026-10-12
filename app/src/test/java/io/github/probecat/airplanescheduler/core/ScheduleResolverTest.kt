@@ -314,4 +314,38 @@ class ScheduleResolverTest {
         assertNull(ScheduleResolver.window(listOf(empty, zero), friday(23, 30)))
         assertNull(ScheduleResolver.conflict(zero, listOf(night)))
     }
+
+    @Test
+    fun skippingLeavesOutTheNextWindowOnly() {
+        val skipped = ScheduleResolver.skip(night, friday(12))
+        assertEquals(setOf(friday(0).toLocalDate()), skipped.skipped)
+        assertFalse(ScheduleResolver.isActive(skipped, friday(23, 30)))
+        assertTrue(ScheduleResolver.isActive(skipped, friday(23, 30).plusDays(1)))
+        assertEquals(friday(23).plusDays(1), ScheduleResolver.nextWindow(skipped, friday(12)))
+        val zone = ZoneId.of("UTC")
+        assertEquals(friday(23).plusDays(1).atZone(zone), ScheduleResolver.nextStart(skipped, friday(12).atZone(zone)))
+    }
+
+    @Test
+    fun endingEarlySkipsTheRunningWindowUntilItWouldHaveEnded() {
+        val ended = ScheduleResolver.skip(night, friday(3))
+        assertEquals(setOf(thursdayNight.toLocalDate()), ended.skipped)
+        assertNull(ScheduleResolver.window(listOf(ended), friday(3)))
+        assertEquals(1, ScheduleResolver.pendingSkips(ended, friday(6, 59)).size)
+        assertTrue(ScheduleResolver.pendingSkips(ended, friday(7)).isEmpty())
+        assertTrue(ScheduleResolver.isActive(ended, friday(23)))
+    }
+
+    @Test
+    fun unskippingRestoresOnlyPendingWindows() {
+        val old = thursdayNight.toLocalDate().minusDays(3)
+        val skipped = ScheduleResolver.skip(night.copy(skipped = setOf(old)), friday(12))
+        assertEquals(setOf(old), ScheduleResolver.unskip(skipped, friday(12)).skipped)
+    }
+
+    @Test
+    fun oldSkipsAreDroppedWhenSkippingAgain() {
+        val stale = night.copy(skipped = setOf(friday(0).toLocalDate().minusDays(30)))
+        assertEquals(setOf(friday(0).toLocalDate()), ScheduleResolver.skip(stale, friday(12)).skipped)
+    }
 }

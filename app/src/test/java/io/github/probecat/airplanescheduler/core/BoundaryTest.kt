@@ -156,4 +156,28 @@ class BoundaryTest {
             Boundary.atEdit(listOf(night), listOf(night.copy(start = at(22))), friday(23, 30), null),
         )
     }
+
+    @Test
+    fun endingEarlyEndsTheRunningWindow() {
+        val started = Started(thursdayNight, both)
+        val ended = ScheduleResolver.skip(night, friday(3))
+        assertEquals(Step.End(both), Boundary.atEdit(listOf(night), listOf(ended), friday(3), started))
+    }
+
+    @Test
+    fun skippingTheNextOfTwoTouchingWindowsEndsAtTheFirstEnd() {
+        val started = Started(thursdayNight, both)
+        val skipped = listOf(night, ScheduleResolver.skip(morning, friday(3)))
+        assertEquals(Step.None, Boundary.atEdit(listOf(night, morning), skipped, friday(3), started))
+        assertEquals(Step.End(both), Boundary.atAlarm(skipped, friday(7), started))
+    }
+
+    @Test
+    fun undoingAnEarlyEndStartsTheWindowAgain() {
+        val ended = ScheduleResolver.skip(night, friday(3))
+        assertEquals(
+            Step.Start(Window(thursdayNight, inFirst = true, disableWifi = true)),
+            Boundary.atEdit(listOf(ended), listOf(ScheduleResolver.unskip(ended, friday(3))), friday(3), null),
+        )
+    }
 }

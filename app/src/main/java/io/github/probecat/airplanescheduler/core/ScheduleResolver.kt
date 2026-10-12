@@ -10,6 +10,7 @@ import java.time.ZonedDateTime
 // and ends the next day when its end is before its start.
 object ScheduleResolver {
     private const val WEEK = 7 * ScheduleTime.DAY
+    private const val SKIP_KEPT_DAYS = 10L
 
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
     // [now] is still in its first window, and [disableWifi] is that first window's option.
@@ -32,6 +33,30 @@ object ScheduleResolver {
 
     fun hasEnded(schedule: Schedule, now: LocalDateTime): Boolean =
         schedule.once && schedule.date != null && !windowEnd(schedule, schedule.date).isAfter(now)
+
+    // The start of the window that is running, or else of the next one.
+    fun nextWindow(schedule: Schedule, now: LocalDateTime): LocalDateTime? {
+        if (!isValid(schedule)) return null
+        return windowStart(schedule, now) ?: (0L..7L).firstNotNullOfOrNull { offset ->
+            val date = now.toLocalDate().plusDays(offset)
+            date.atTime(schedule.start / 60, schedule.start % 60).takeIf { it.isAfter(now) && startsOn(schedule, date) }
+        }
+    }
+
+    // Skipped windows that haven't ended.
+    fun pendingSkips(schedule: Schedule, now: LocalDateTime): Set<LocalDate> =
+        schedule.skipped.filterTo(mutableSetOf()) { windowEnd(schedule, it).isAfter(now) }
+
+    // Leaves out the window that is running, or else the next one. Skips stay while [lastEnd] can
+    // still look back at their windows.
+    fun skip(schedule: Schedule, now: LocalDateTime): Schedule {
+        val date = nextWindow(schedule, now)?.toLocalDate() ?: return schedule
+        val kept = schedule.skipped.filter { it.isAfter(now.toLocalDate().minusDays(SKIP_KEPT_DAYS)) }
+        return schedule.copy(skipped = kept.toSet() + date)
+    }
+
+    fun unskip(schedule: Schedule, now: LocalDateTime): Schedule =
+        schedule.copy(skipped = schedule.skipped - pendingSkips(schedule, now))
 
     fun expire(schedules: List<Schedule>, now: LocalDateTime): List<Schedule> =
         schedules.map { if (it.enabled && hasEnded(it, now)) it.copy(enabled = false) else it }
@@ -111,7 +136,7 @@ object ScheduleResolver {
     private fun live(schedules: List<Schedule>) = schedules.filter { it.enabled && isValid(it) }
 
     private fun startsOn(schedule: Schedule, date: LocalDate): Boolean =
-        if (schedule.once) date == schedule.date else date.dayOfWeek in schedule.days
+        date !in schedule.skipped && if (schedule.once) date == schedule.date else date.dayOfWeek in schedule.days
 
     private fun weekdays(schedule: Schedule): Set<DayOfWeek> =
         if (schedule.once) setOf(schedule.date!!.dayOfWeek) else schedule.days
