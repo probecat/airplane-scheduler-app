@@ -79,8 +79,23 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return ScheduleResolver.conflict(ScheduleResolver.dated(schedule, now), others)
     }
 
-    // Returns the overlapping schedule instead of switching on.
-    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? = save(schedule.copy(enabled = enabled))
+    // Returns the overlapping schedule instead of switching on. Switching on drops pending skips.
+    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? {
+        val base = if (enabled) ScheduleResolver.unskip(schedule, Mock.now()) else schedule
+        return save(base.copy(enabled = enabled))
+    }
+
+    // Skips the next window, or ends the running one early. A schedule that runs once is switched off
+    // instead, since that is its only window.
+    fun skip(schedule: Schedule) {
+        if (schedule.once) setEnabled(schedule, false) else save(ScheduleResolver.skip(schedule, Mock.now()))
+    }
+
+    // Undoes [skip], which starts the window again if it's still running.
+    fun unskip(id: Long): Schedule? {
+        val schedule = app.schedules.get(id) ?: return null
+        return if (schedule.once) setEnabled(schedule, true) else save(ScheduleResolver.unskip(schedule, Mock.now()))
+    }
 
     fun save(edited: Schedule): Schedule? {
         val schedule = ScheduleResolver.dated(edited, Mock.now())
