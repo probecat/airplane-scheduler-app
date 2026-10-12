@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -383,10 +384,6 @@ private fun ScheduleCard(
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
     val weight by animateIntAsState(if (on) 450 else 200)
-    // An em space between days and name.
-    val summary = listOf(format.repeats(schedule, today), schedule.name)
-        .filter { it.isNotBlank() }
-        .joinToString("\u2003")
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -395,12 +392,13 @@ private fun ScheduleCard(
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.heightIn(min = 48.dp), verticalArrangement = Arrangement.Center) {
-                Text(
-                    summary,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // Like Clock, a name that doesn't fit beside the days moves to a line of its own.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
+                    if (schedule.name.isNotBlank()) {
+                        Text(schedule.name, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
                 if (endsIn != null) EndsIn(format.duration(endsIn))
             }
             Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
