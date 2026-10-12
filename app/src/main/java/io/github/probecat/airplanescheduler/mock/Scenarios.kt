@@ -34,6 +34,8 @@ class Scenario(
     val notifications: Boolean = true,
     val remindShizuku: Boolean = false,
     val hideShizukuReady: Boolean = true,
+    // The app couldn't turn airplane mode on at the running window's start.
+    val missedStart: Boolean = false,
     val schedules: (today: LocalDate) -> List<Schedule> = { emptyList() },
     // Unsaved sheet edits, by schedule id.
     val drafts: Map<Long, (Schedule) -> Schedule> = emptyMap(),
@@ -60,7 +62,10 @@ class Scenario(
         app.settings.update { it.copy(remindShizuku = remindShizuku, hideShizukuReady = hideShizukuReady) }
         // As if the app had started the window that is running.
         app.settings.started = ScheduleResolver.window(schedules, now)?.let {
-            Boundary.Started(it.start, Changes(airplane = true, wifi = it.disableWifi))
+            Boundary.Started(
+                it.start,
+                if (missedStart) Changes.NONE else Changes(airplane = true, wifi = it.disableWifi),
+            )
         }
         viewModel.clearDrafts()
         for ((id, edit) in drafts) {
@@ -196,6 +201,14 @@ val scenarios = listOf(
         schedules = { today ->
             skips(today).map { if (it.id == 2L) it.copy(skipped = setOf(today)) else it }
         },
+    ),
+    Scenario(
+        id = "missed-start",
+        title = "Missed start",
+        minute = at(21),
+        shizuku = ShizukuState.OFFLINE,
+        missedStart = true,
+        schedules = ::skips,
     ),
     Scenario(
         id = "overlaps",

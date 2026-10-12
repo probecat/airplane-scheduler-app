@@ -24,6 +24,10 @@ class SettingsRepository(private val context: Context) {
 
     val current: Settings get() = state.value
 
+    private val startedState = MutableStateFlow(readStarted())
+
+    val startedWindow: StateFlow<Boundary.Started?> = startedState.asStateFlow()
+
     fun update(transform: (Settings) -> Settings) {
         val settings = transform(state.value)
         state.value = settings
@@ -39,13 +43,13 @@ class SettingsRepository(private val context: Context) {
     fun useStore(mock: Boolean) {
         prefs = context.getSharedPreferences(if (mock) "mock_$PREFS" else PREFS, Context.MODE_PRIVATE)
         state.value = read()
+        startedState.value = readStarted()
     }
 
     var started: Boundary.Started?
-        get() = prefs.getString("startedWindow", null)?.let { window ->
-            Boundary.Started(LocalDateTime.parse(window), Changes.of(prefs.getInt("startedChanges", 0)))
-        }
+        get() = startedState.value
         set(value) {
+            startedState.value = value
             prefs.edit {
                 if (value == null) {
                     remove("startedWindow")
@@ -56,6 +60,10 @@ class SettingsRepository(private val context: Context) {
                 }
             }
         }
+
+    private fun readStarted() = prefs.getString("startedWindow", null)?.let { window ->
+        Boundary.Started(LocalDateTime.parse(window), Changes.of(prefs.getInt("startedChanges", 0)))
+    }
 
     private fun read() = Settings(
         theme = prefs.getString("theme", null)

@@ -2,6 +2,10 @@ package io.github.probecat.airplanescheduler.system
 
 import android.app.Application
 import android.content.Context
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
 import io.github.probecat.airplanescheduler.mock.Mock
@@ -19,6 +23,9 @@ class App : Application() {
     private val shizukuState = MutableStateFlow(ShizukuStatus.current())
     val shizuku: StateFlow<ShizukuState> = shizukuState.asStateFlow()
 
+    private val airplaneState = MutableStateFlow(false)
+    val airplane: StateFlow<Boolean> = airplaneState.asStateFlow()
+
     override fun onCreate() {
         super.onCreate()
         schedules = ScheduleRepository(this)
@@ -30,6 +37,16 @@ class App : Application() {
         Shizuku.addBinderReceivedListenerSticky(::refreshShizuku)
         Shizuku.addBinderDeadListener(::refreshShizuku)
         Shizuku.addRequestPermissionResultListener { _, _ -> refreshShizuku() }
+        airplaneState.value = AirplaneController.airplaneOn(this)
+        contentResolver.registerContentObserver(
+            Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
+            false,
+            object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    airplaneState.value = AirplaneController.airplaneOn(this@App)
+                }
+            },
+        )
     }
 
     fun refreshShizuku() {

@@ -180,4 +180,14 @@ class BoundaryTest {
             Boundary.atEdit(listOf(ended), listOf(ScheduleResolver.unskip(ended, friday(3))), friday(3), null),
         )
     }
+
+    @Test
+    fun aStartThatDidNotTurnOnAirplaneModeIsMissed() {
+        val window = Window(thursdayNight, inFirst = true, disableWifi = true)
+        assertEquals(window, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = false))
+        assertEquals(window, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, Changes.NONE), false))
+        assertEquals(null, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, both), false))
+        assertEquals(null, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = true))
+        assertEquals(null, Boundary.missed(listOf(night), friday(12), started = null, airplaneOn = false))
+    }
 }

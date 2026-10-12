@@ -3,6 +3,7 @@ package io.github.probecat.airplanescheduler.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.probecat.airplanescheduler.core.Boundary
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
@@ -46,6 +47,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         },
         Mock.config,
     ) { _, _ -> Mock.now() }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Mock.now())
+
+    // The running window's schedule when the app missed its start.
+    val missed: StateFlow<Long?> = combine(schedules, now, app.settings.startedWindow, app.airplane, ::missed)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun refreshShizuku() = app.refreshShizuku()
 
@@ -131,6 +136,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun resetSettings() = updateSettings { Settings() }
 
     private fun commit(schedules: List<Schedule>) = ScheduleUpdater.update(app, schedules)
+
+    // Mock data reads airplane mode as off, so only the started window decides.
+    private fun missed(schedules: List<Schedule>, now: LocalDateTime, started: Boundary.Started?, airplane: Boolean) =
+        Boundary.missed(schedules, now, started, airplane && !Mock.active)
+            ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
 
     private fun sorted(schedules: List<Schedule>) = schedules.sortedWith(compareBy({ it.start }, { it.end }, { it.id }))
 

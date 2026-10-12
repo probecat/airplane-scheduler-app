@@ -58,6 +58,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -103,6 +104,7 @@ fun SchedulesScreen(
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
+    val missed by viewModel.missed.collectAsStateWithLifecycle()
     val format = rememberFormat()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -225,11 +227,13 @@ fun SchedulesScreen(
                 }
                 items(schedules, key = { it.id }) { schedule ->
                     val isActive = schedule.id == active?.id
+                    val isMissed = isActive && schedule.id == missed
                     val action = cardAction(schedule, isActive, now)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
+                            missed = shizuku.takeIf { isMissed },
                             skipped = if (action == CardAction.UNDO) skippedNote(schedule, now, format) else null,
                             action = action,
                             today = now.toLocalDate(),
@@ -410,6 +414,8 @@ private fun ScheduleCard(
     schedule: Schedule,
     // Minutes until it ends, while it's active.
     endsIn: Int?,
+    // Why airplane mode is off while it's active.
+    missed: ShizukuState?,
     skipped: String?,
     action: CardAction?,
     today: LocalDate,
@@ -446,6 +452,7 @@ private fun ScheduleCard(
                         }
                     }
                     when {
+                        missed != null -> Missed(missed)
                         endsIn != null -> EndsIn(format.duration(endsIn))
                         skipped != null -> Status(skipped, R.drawable.ic_skip_next)
                     }
@@ -485,8 +492,22 @@ private fun EndsIn(duration: String) =
     Status("Ends in $duration", R.drawable.ic_airplanemode_active, "Active now, ends in $duration")
 
 @Composable
-private fun Status(text: String, icon: Int, description: String = text) {
-    val color = MaterialTheme.colorScheme.primary
+private fun Missed(shizuku: ShizukuState) {
+    val (text, icon) = when (shizuku) {
+        ShizukuState.READY -> "Missed the start" to R.drawable.ic_error
+        ShizukuState.OFFLINE -> "Missed, Shizuku is unavailable" to R.drawable.ic_error
+        ShizukuState.PERMISSION_NEEDED -> "Missed, Shizuku access needed" to R.drawable.ic_lock
+    }
+    Status(text, icon, "Active now, but airplane mode is off. $text", MaterialTheme.colorScheme.error)
+}
+
+@Composable
+private fun Status(
+    text: String,
+    icon: Int,
+    description: String = text,
+    color: Color = MaterialTheme.colorScheme.primary,
+) {
     Row(
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,

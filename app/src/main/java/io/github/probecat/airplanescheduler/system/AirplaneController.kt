@@ -52,7 +52,7 @@ object AirplaneController {
     }
 
     // Any app can read both states; only changing them needs Shizuku.
-    private fun airplaneOn(context: Context): Boolean =
+    fun airplaneOn(context: Context): Boolean =
         Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
     private fun wifiOn(context: Context): Boolean = context.getSystemService(WifiManager::class.java).isWifiEnabled
