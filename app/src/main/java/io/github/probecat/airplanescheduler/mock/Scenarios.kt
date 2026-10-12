@@ -73,6 +73,8 @@ private fun at(hour: Int, minute: Int = 0) = hour * 60 + minute
 
 private val NIGHTS = setOf(SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY)
 
+private val WEEKDAYS = setOf(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY)
+
 private fun everyday(today: LocalDate) = listOf(
     Schedule(id = 1, name = "Sleep", start = at(22, 30), end = at(6, 30), days = NIGHTS),
     Schedule(id = 2, name = "Weekend", start = at(23, 30), end = at(9), days = setOf(FRIDAY, SATURDAY)),
@@ -87,6 +89,20 @@ private fun everyday(today: LocalDate) = listOf(
         enableWifi = false,
     ),
     Schedule(id = 4, start = at(13), end = at(14), days = setOf(SATURDAY, SUNDAY), enabled = false),
+)
+
+// At 21:00 on a Wednesday: one running, one starting soon, one skipped and one far off.
+private fun skips(today: LocalDate) = listOf(
+    Schedule(id = 1, name = "Reading", start = at(20), end = at(21, 30)),
+    Schedule(
+        id = 2,
+        name = "Sleep, with the phone charging in another room",
+        start = at(22, 30),
+        end = at(6, 30),
+        days = NIGHTS,
+    ),
+    Schedule(id = 3, name = "Gym", start = at(7, 45), end = at(9), days = WEEKDAYS, skipped = setOf(today.plusDays(1))),
+    Schedule(id = 4, name = "Flight", start = at(13), end = at(15, 45), days = emptySet(), date = today.plusDays(1)),
 )
 
 private val NAMES = listOf("Gym", "", "Focus", "Reading", "", "Meeting", "Lunch")
@@ -165,6 +181,20 @@ val scenarios = listOf(
                     enabled = false,
                 ),
             )
+        },
+    ),
+    Scenario(
+        id = "skip",
+        title = "Skip once and end early",
+        minute = at(21),
+        schedules = ::skips,
+    ),
+    Scenario(
+        id = "ended-early",
+        title = "Ended early",
+        minute = at(23, 15),
+        schedules = { today ->
+            skips(today).map { if (it.id == 2L) it.copy(skipped = setOf(today)) else it }
         },
     ),
     Scenario(

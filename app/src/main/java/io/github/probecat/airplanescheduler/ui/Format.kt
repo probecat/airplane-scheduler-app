@@ -80,6 +80,14 @@ class Format(val is24Hour: Boolean, val locale: Locale) {
         }
     }
 
+    // A weekday only within the coming week, since a week ahead would read as today.
+    fun upcomingDay(date: LocalDate, today: LocalDate): String = when {
+        date == today -> "today"
+        date == today.plusDays(1) -> "tomorrow"
+        date.isBefore(today.plusDays(7)) -> dayName(date.dayOfWeek)
+        else -> date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
+    }
+
     private fun short(day: DayOfWeek): String = day.getDisplayName(TextStyle.SHORT, locale)
 
     fun dayName(day: DayOfWeek): String = day.getDisplayName(TextStyle.FULL, locale)

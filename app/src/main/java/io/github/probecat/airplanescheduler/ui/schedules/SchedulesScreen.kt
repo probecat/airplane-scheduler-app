@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -23,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -110,7 +112,7 @@ fun SchedulesScreen(
     val active = ScheduleResolver.activeSchedule(schedules, now)
 
     // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
-    fun showStart(id: Long) {
+    fun showStart(id: Long, onUndo: (() -> Unit)? = null) {
         val schedule = viewModel.schedules.value.find { it.id == id }?.takeIf { it.enabled } ?: return
         val message = if (ScheduleResolver.isActive(schedule, now)) {
             minutesLeft(schedule, now)?.let { "Airplane mode is on for ${format.duration(it)}" }
@@ -120,7 +122,12 @@ fun SchedulesScreen(
         } ?: return
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(message)
+            if (onUndo == null) {
+                snackbar.showSnackbar(message)
+            } else {
+                val result = snackbar.showSnackbar(message, "Undo", duration = SnackbarDuration.Long)
+                if (result == SnackbarResult.ActionPerformed) onUndo()
+            }
         }
     }
 
@@ -128,6 +135,26 @@ fun SchedulesScreen(
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar("This schedule overlaps ${format.label(conflict, now.toLocalDate())}.")
+        }
+    }
+
+    // Undoable only from the card, not from the snackbar that undid a skip.
+    fun unskip(id: Long, undoable: Boolean = false) {
+        val conflict = viewModel.unskip(id)
+        when {
+            conflict != null -> showConflict(conflict)
+            undoable -> showStart(id) { viewModel.schedules.value.find { it.id == id }?.let(viewModel::skip) }
+            else -> showStart(id)
+        }
+    }
+
+    fun skip(schedule: Schedule, ending: Boolean) {
+        viewModel.skip(schedule)
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            val message = if (ending) "Schedule ended early" else "Schedule skipped"
+            val result = snackbar.showSnackbar(message, "Undo", duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) unskip(schedule.id)
         }
     }
 
@@ -197,13 +224,24 @@ fun SchedulesScreen(
                     item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f)) }
                 }
                 items(schedules, key = { it.id }) { schedule ->
+                    val isActive = schedule.id == active?.id
+                    val action = cardAction(schedule, isActive, now)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
-                            endsIn = if (schedule.id == active?.id) minutesLeft(schedule, now) else null,
+                            endsIn = if (isActive) minutesLeft(schedule, now) else null,
+                            skipped = if (action == CardAction.UNDO) skippedNote(schedule, now, format) else null,
+                            action = action,
                             today = now.toLocalDate(),
                             format = format,
                             onClick = { editing = schedule },
+                            onAction = {
+                                when (action) {
+                                    CardAction.SKIP, CardAction.END -> skip(schedule, ending = action == CardAction.END)
+                                    CardAction.UNDO -> unskip(schedule.id, undoable = true)
+                                    null -> {}
+                                }
+                            },
                             onToggle = { enabled ->
                                 val conflict = viewModel.setEnabled(schedule, enabled)
                                 if (conflict != null) showConflict(conflict) else showStart(schedule.id)
@@ -372,9 +410,12 @@ private fun ScheduleCard(
     schedule: Schedule,
     // Minutes until it ends, while it's active.
     endsIn: Int?,
+    skipped: String?,
+    action: CardAction?,
     today: LocalDate,
     format: Format,
     onClick: () -> Unit,
+    onAction: () -> Unit,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -391,15 +432,28 @@ private fun ScheduleCard(
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Column(Modifier.heightIn(min = 48.dp), verticalArrangement = Arrangement.Center) {
-                // Like Clock, a name that doesn't fit beside the days moves to a line of its own.
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
-                    if (schedule.name.isNotBlank()) {
-                        Text(schedule.name, style = MaterialTheme.typography.bodyLarge)
+            Row(Modifier.heightIn(min = 48.dp)) {
+                Column(
+                    Modifier.weight(1f).then(
+                        if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
+                    ),
+                ) {
+                    // Like Clock, a name that doesn't fit beside the days moves to a line of its own.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
+                        if (schedule.name.isNotBlank()) {
+                            Text(schedule.name, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                    when {
+                        endsIn != null -> EndsIn(format.duration(endsIn))
+                        skipped != null -> Status(skipped, R.drawable.ic_skip_next)
                     }
                 }
-                if (endsIn != null) EndsIn(format.duration(endsIn))
+                if (action != null) {
+                    Spacer(Modifier.width(8.dp))
+                    ActionButton(action.label, onAction, Modifier.alignByBaseline())
+                }
             }
             Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -427,21 +481,64 @@ private fun ScheduleCard(
 private val TIME_SIZE = 36.sp
 
 @Composable
-private fun EndsIn(duration: String) {
+private fun EndsIn(duration: String) =
+    Status("Ends in $duration", R.drawable.ic_airplanemode_active, "Active now, ends in $duration")
+
+@Composable
+private fun Status(text: String, icon: Int, description: String = text) {
     val color = MaterialTheme.colorScheme.primary
     Row(
-        modifier = Modifier.clearAndSetSemantics { contentDescription = "Active now, ends in $duration" },
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            painterResource(R.drawable.ic_airplanemode_active),
+            painterResource(icon),
             contentDescription = null,
             tint = color,
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(8.dp))
-        Text("Ends in $duration", style = MaterialTheme.typography.labelLarge, color = color)
+        Text(text, style = MaterialTheme.typography.labelLarge, color = color)
     }
+}
+
+// Like Clock's Dismiss. Shifted by its padding so the label lines up with the switch.
+@Composable
+private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(
+        onClick,
+        modifier.offset(x = 12.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+private enum class CardAction(val label: String) {
+    SKIP("Skip once"),
+    END("End early"),
+    UNDO("Undo"),
+}
+
+// Skipping is offered only for a start that is close.
+private val SKIP_AHEAD = Duration.ofHours(2)
+
+private fun cardAction(schedule: Schedule, isActive: Boolean, now: LocalDateTime): CardAction? = when {
+    !schedule.enabled -> null
+    isActive -> CardAction.END
+    ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
+    ScheduleResolver.nextWindow(schedule, now)?.let { Duration.between(now, it) <= SKIP_AHEAD } == true ->
+        CardAction.SKIP
+    else -> null
+}
+
+private fun skippedNote(schedule: Schedule, now: LocalDateTime, format: Format): String? {
+    val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null
+    val started = !skipped.atTime(schedule.start / 60, schedule.start % 60).isAfter(now)
+    val what = if (started) "Ended early" else "Skipped"
+    val next = ScheduleResolver.nextWindow(schedule, now) ?: return what
+    return "$what, resumes ${format.upcomingDay(next.toLocalDate(), now.toLocalDate())}"
 }
 
 private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =
