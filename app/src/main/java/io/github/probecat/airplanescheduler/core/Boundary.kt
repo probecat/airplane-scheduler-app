@@ -35,6 +35,19 @@ object Boundary {
         return Step.End(ConnectivityPlan.end(started.changes, ended.enableWifi))
     }
 
+    // The running window when airplane mode is off and the app didn't turn it on, such as when Shizuku
+    // wasn't ready at the start.
+    fun missed(
+        schedules: List<Schedule>,
+        now: LocalDateTime,
+        started: Started?,
+        airplaneOn: Boolean,
+    ): ScheduleResolver.Window? {
+        if (airplaneOn) return null
+        val window = ScheduleResolver.window(schedules, now) ?: return null
+        return window.takeIf { started?.window != it.start || !started.changes.airplane }
+    }
+
     // A window that the edit switches on starts at once, and one that it switches off ends at once.
     fun atEdit(old: List<Schedule>, new: List<Schedule>, now: LocalDateTime, started: Started?): Step {
         val before = ScheduleResolver.window(old, now)
