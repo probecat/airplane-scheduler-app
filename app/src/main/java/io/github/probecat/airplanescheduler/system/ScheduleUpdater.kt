@@ -2,6 +2,7 @@ package io.github.probecat.airplanescheduler.system
 
 import android.content.Context
 import io.github.probecat.airplanescheduler.core.Boundary
+import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.mock.Mock
@@ -18,6 +19,33 @@ object ScheduleUpdater {
         app.schedules.replaceAll(schedules)
         AlarmScheduler.scheduleAll(app)
         AirplaneController.run(app, step) {}
+    }
+
+    // Starts the running window that the app missed and reports whether airplane mode came on.
+    fun catchUp(context: Context, done: (Boolean) -> Unit) {
+        val app = App.from(context)
+        val window = ScheduleResolver.window(app.schedules.all, Mock.now()) ?: return done(false)
+        if (Mock.active) {
+            val ready = ShizukuStatus.current() == ShizukuState.READY
+            if (ready) app.settings.started = Boundary.Started(window.start, Changes(true, window.disableWifi))
+            done(ready)
+            return
+        }
+        AirplaneController.run(app, Boundary.Step.Start(window)) {
+            done(AirplaneController.airplaneOn(app))
+        }
+    }
+
+    // Undoes [catchUp], which leaves the window missed again.
+    fun undoCatchUp(context: Context) {
+        val app = App.from(context)
+        val window = ScheduleResolver.window(app.schedules.all, Mock.now()) ?: return
+        val started = app.settings.started?.takeIf { it.window == window.start } ?: return
+        if (Mock.active) {
+            app.settings.started = null
+            return
+        }
+        AirplaneController.run(app, Boundary.Step.End(started.changes)) {}
     }
 
     // Only safe once nothing needs the end of a schedule that ran once, since a switched-off
