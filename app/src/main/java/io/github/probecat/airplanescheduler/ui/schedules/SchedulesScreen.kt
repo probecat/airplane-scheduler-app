@@ -160,6 +160,19 @@ fun SchedulesScreen(
         }
     }
 
+    fun catchUp(id: Long) {
+        viewModel.catchUp { on ->
+            if (on) {
+                showStart(id, viewModel::undoCatchUp)
+            } else {
+                scope.launch {
+                    snackbar.currentSnackbarData?.dismiss()
+                    snackbar.showSnackbar("Couldn't turn on airplane mode")
+                }
+            }
+        }
+    }
+
     fun delete(schedule: Schedule) {
         viewModel.delete(schedule)
         scope.launch {
@@ -228,7 +241,7 @@ fun SchedulesScreen(
                 items(schedules, key = { it.id }) { schedule ->
                     val isActive = schedule.id == active?.id
                     val isMissed = isActive && schedule.id == missed
-                    val action = cardAction(schedule, isActive, now)
+                    val action = cardAction(schedule, isActive, isMissed && shizuku == ShizukuState.READY, now)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
@@ -243,6 +256,7 @@ fun SchedulesScreen(
                                 when (action) {
                                     CardAction.SKIP, CardAction.END -> skip(schedule, ending = action == CardAction.END)
                                     CardAction.UNDO -> unskip(schedule.id, undoable = true)
+                                    CardAction.TURN_ON -> catchUp(schedule.id)
                                     null -> {}
                                 }
                             },
@@ -540,19 +554,22 @@ private enum class CardAction(val label: String) {
     SKIP("Skip once"),
     END("End early"),
     UNDO("Undo"),
+    TURN_ON("Turn on"),
 }
 
 // Skipping is offered only for a start that is close.
 private val SKIP_AHEAD = Duration.ofHours(2)
 
-private fun cardAction(schedule: Schedule, isActive: Boolean, now: LocalDateTime): CardAction? = when {
-    !schedule.enabled -> null
-    isActive -> CardAction.END
-    ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
-    ScheduleResolver.nextWindow(schedule, now)?.let { Duration.between(now, it) <= SKIP_AHEAD } == true ->
-        CardAction.SKIP
-    else -> null
-}
+private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolean, now: LocalDateTime): CardAction? =
+    when {
+        !schedule.enabled -> null
+        canCatchUp -> CardAction.TURN_ON
+        isActive -> CardAction.END
+        ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
+        ScheduleResolver.nextWindow(schedule, now)?.let { Duration.between(now, it) <= SKIP_AHEAD } == true ->
+            CardAction.SKIP
+        else -> null
+    }
 
 private fun skippedNote(schedule: Schedule, now: LocalDateTime, format: Format): String? {
     val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null

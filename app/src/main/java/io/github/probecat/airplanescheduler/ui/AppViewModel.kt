@@ -54,6 +54,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshShizuku() = app.refreshShizuku()
 
+    fun catchUp(done: (Boolean) -> Unit) = ScheduleUpdater.catchUp(app, done)
+
+    fun undoCatchUp() = ScheduleUpdater.undoCatchUp(app)
+
     fun requestShizuku(): Boolean = ShizukuStatus.request()
 
     fun newSchedule(): Schedule = Schedule(
