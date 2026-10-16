@@ -1,2 +1,2 @@
-• Shortern Skip and End button copies on schedule cards.
-• Do not offer Undo when the card already has a way back.
+• Shorter Skip and End buttons on schedule cards.
+• The Undo prompt no longer appears when the card already has a way back.
