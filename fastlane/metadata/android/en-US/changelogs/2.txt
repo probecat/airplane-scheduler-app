@@ -1,0 +1,3 @@
+• New: skip a schedule once, or end a running one early.
+• New: see when a schedule missed its start, and turn it on with a tap.
+• Long schedule names now wrap instead of being cut off.
