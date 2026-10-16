@@ -1,10 +1,14 @@
 # Airplane Scheduler
 
+<div align="center">
+
 [![CI][ci-image]][ci-url] [![Release][release-image]][release-url] [![License][license-image]][license-url]
 
 Turn airplane mode on and off on a schedule.
 
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Schedules in light theme" width="250">
+
+</div>
 
 ## Install
 
