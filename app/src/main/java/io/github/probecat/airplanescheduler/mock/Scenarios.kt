@@ -190,13 +190,13 @@ val scenarios = listOf(
     ),
     Scenario(
         id = "skip",
-        title = "Skip once and end early",
+        title = "Skip and end",
         minute = at(21),
         schedules = ::skips,
     ),
     Scenario(
-        id = "ended-early",
-        title = "Ended early",
+        id = "ended",
+        title = "Ended",
         minute = at(23, 15),
         schedules = { today ->
             skips(today).map { if (it.id == 2L) it.copy(skipped = setOf(today)) else it }
