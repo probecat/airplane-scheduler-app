@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Checks the version against origin's latest release, and the F-Droid listing. Given a tag, also checks it's releasable.
+# Checks the version against origin's latest release, and the F-Droid listing.
 set -euo pipefail
 export LC_ALL=C.UTF-8
 cd "$(dirname "$0")/.."
 
-tag=${1:-}
 name=$(sed -n "s/^ *versionName '\(.*\)'$/\1/p" app/build.gradle)
 code=$(sed -n 's/^ *versionCode \([0-9]*\)$/\1/p' app/build.gradle)
 listing=fastlane/metadata/android/en-US
@@ -31,13 +30,7 @@ check_length() {
 [[ $name =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\.[1-9][0-9]*)?$ ]] ||
     { echo "versionName $name isn't X.Y or X.Y.Z, with Z above 0" >&2; exit 1; }
 
-if [[ -n $tag ]]; then
-    [[ $tag == "v$name" ]] || fail "$tag doesn't match versionName $name"
-    git fetch --quiet --no-tags origin main
-    git merge-base --is-ancestor HEAD FETCH_HEAD || fail "$tag isn't on main"
-fi
-
-tags=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's|.*refs/tags/v||' | grep -vxF "${tag#v}" || true)
+tags=$(git ls-remote --tags --refs origin 'refs/tags/v*' | sed 's|.*refs/tags/v||')
 latest=$(grep -E '^[0-9]+(\.[0-9]+)*$' <<< "$tags" | sort -V | tail -1 || true)
 release=true
 if [[ -n $latest ]]; then
@@ -46,7 +39,6 @@ if [[ -n $latest ]]; then
     latest_code=$(git show "$latest_commit:app/build.gradle" | sed -n 's/^ *versionCode \([0-9]*\)$/\1/p')
     if [[ $name == "$latest" ]]; then
         release=false
-        [[ -z $tag ]] || fail "v$name is already released"
         (( code == latest_code )) || fail "versionCode $code differs from v$latest's $latest_code. Bump versionName too."
     else
         [[ $(printf '%s\n' "$latest" "$name" | sort -V | tail -1) == "$name" ]] ||

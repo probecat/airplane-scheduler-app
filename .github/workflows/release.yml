@@ -1,8 +1,11 @@
 name: Release
 
+# Releases when main gets a new version. The tag is created with the release.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [app/build.gradle]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,8 +16,10 @@ concurrency:
 
 jobs:
   check:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
+      release: ${{ steps.check.outputs.release }}
       tag: ${{ steps.check.outputs.tag }}
       notes: ${{ steps.check.outputs.notes }}
     steps:
@@ -22,18 +27,13 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check the tag, the version, and the F-Droid listing
+      - name: Check the version and the F-Droid listing
         id: check
-        run: scripts/check-release.sh "$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
-
-  ci:
-    needs: check
-    uses: $/.github/workflows/ci.yml
-    with:
-      skip-debug-apk: true
+        run: scripts/check-release.sh >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
+    if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: release
     steps:
@@ -68,7 +68,7 @@ jobs:
       signed-artifact: signed
 
   release:
-    needs: [check, ci, build, fdroid]
+    needs: [check, build, fdroid]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: signed
-      - name: Publish GitHub release
+      - name: Tag and publish GitHub release
         env:
           GH_TOKEN: "${{ github.token }}"
           TAG: "${{ needs.check.outputs.tag }}"
@@ -87,5 +87,5 @@ jobs:
         run: |
           # Fixed name for the README's releases/latest/download link.
           mv app-release.apk airplane-scheduler.apk
-          gh release create "$TAG" airplane-scheduler.apk --verify-tag --notes-file "$NOTES" \
-            --title "Airplane Scheduler $TAG"
+          gh release create "$TAG" airplane-scheduler.apk --target "$GITHUB_SHA" \
+            --notes-file "$NOTES" --generate-notes --title "Airplane Scheduler $TAG"
