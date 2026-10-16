@@ -14,6 +14,7 @@ See [Releases][release-url] for signed builds (same as F-Droid's).
 
 - Any number of schedules, one-off or repeating on any days of the week.
 - Supports overnight time ranges automatically.
+- Skip or end a schedule early.
 - Optionally turns off Wi-Fi at the start and back on at the end.
 - Undoes only what it changed: airplane mode or Wi-Fi that you set yourself stays as you left it.
 - An optional reminder an hour before a schedule starts if Shizuku isn't ready.
