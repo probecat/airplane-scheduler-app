@@ -36,18 +36,6 @@ object ScheduleUpdater {
         }
     }
 
-    // Undoes [catchUp], which leaves the window missed again.
-    fun undoCatchUp(context: Context) {
-        val app = App.from(context)
-        val window = ScheduleResolver.window(app.schedules.all, Mock.now()) ?: return
-        val started = app.settings.started?.takeIf { it.window == window.start } ?: return
-        if (Mock.active) {
-            app.settings.started = null
-            return
-        }
-        AirplaneController.run(app, Boundary.Step.End(started.changes)) {}
-    }
-
     // Only safe once nothing needs the end of a schedule that ran once, since a switched-off
     // schedule doesn't end.
     fun expire(context: Context, now: LocalDateTime) {

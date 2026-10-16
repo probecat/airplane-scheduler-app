@@ -114,7 +114,7 @@ fun SchedulesScreen(
     val active = ScheduleResolver.activeSchedule(schedules, now)
 
     // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
-    fun showStart(id: Long, onUndo: (() -> Unit)? = null) {
+    fun showStart(id: Long) {
         val schedule = viewModel.schedules.value.find { it.id == id }?.takeIf { it.enabled } ?: return
         val message = if (ScheduleResolver.isActive(schedule, now)) {
             minutesLeft(schedule, now)?.let { "Airplane mode is on for ${format.duration(it)}" }
@@ -124,12 +124,7 @@ fun SchedulesScreen(
         } ?: return
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            if (onUndo == null) {
-                snackbar.showSnackbar(message)
-            } else {
-                val result = snackbar.showSnackbar(message, "Undo", duration = SnackbarDuration.Long)
-                if (result == SnackbarResult.ActionPerformed) onUndo()
-            }
+            snackbar.showSnackbar(message)
         }
     }
 
@@ -140,30 +135,23 @@ fun SchedulesScreen(
         }
     }
 
-    // Undoable only from the card, not from the snackbar that undid a skip.
-    fun unskip(id: Long, undoable: Boolean = false) {
+    fun unskip(id: Long) {
         val conflict = viewModel.unskip(id)
-        when {
-            conflict != null -> showConflict(conflict)
-            undoable -> showStart(id) { viewModel.schedules.value.find { it.id == id }?.let(viewModel::skip) }
-            else -> showStart(id)
-        }
+        if (conflict != null) showConflict(conflict) else showStart(id)
     }
 
     fun skip(schedule: Schedule, ending: Boolean) {
         viewModel.skip(schedule)
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            val message = if (ending) "Schedule ended early" else "Schedule skipped"
-            val result = snackbar.showSnackbar(message, "Undo", duration = SnackbarDuration.Long)
-            if (result == SnackbarResult.ActionPerformed) unskip(schedule.id)
+            snackbar.showSnackbar(if (ending) "Schedule ended early" else "Schedule skipped")
         }
     }
 
     fun catchUp(id: Long) {
         viewModel.catchUp { on ->
             if (on) {
-                showStart(id, viewModel::undoCatchUp)
+                showStart(id)
             } else {
                 scope.launch {
                     snackbar.currentSnackbarData?.dismiss()
@@ -255,7 +243,7 @@ fun SchedulesScreen(
                             onAction = {
                                 when (action) {
                                     CardAction.SKIP, CardAction.END -> skip(schedule, ending = action == CardAction.END)
-                                    CardAction.UNDO -> unskip(schedule.id, undoable = true)
+                                    CardAction.UNDO -> unskip(schedule.id)
                                     CardAction.TURN_ON -> catchUp(schedule.id)
                                     null -> {}
                                 }
@@ -551,8 +539,8 @@ private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier 
 }
 
 private enum class CardAction(val label: String) {
-    SKIP("Skip once"),
-    END("End early"),
+    SKIP("Skip"),
+    END("End"),
     UNDO("Undo"),
     TURN_ON("Turn on"),
 }
