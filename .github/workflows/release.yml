@@ -21,6 +21,7 @@ jobs:
     outputs:
       release: ${{ steps.check.outputs.release }}
       tag: ${{ steps.check.outputs.tag }}
+      previous: ${{ steps.check.outputs.previous }}
       notes: ${{ steps.check.outputs.notes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,8 +85,14 @@ jobs:
           GH_TOKEN: "${{ github.token }}"
           TAG: "${{ needs.check.outputs.tag }}"
           NOTES: "${{ needs.check.outputs.notes }}"
+          PREVIOUS: "${{ needs.check.outputs.previous }}"
         run: |
           # Fixed name for the README's releases/latest/download link.
           mv app-release.apk airplane-scheduler.apk
+          {
+            cat "$NOTES"
+            [[ -z $PREVIOUS ]] || printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$PREVIOUS" "$TAG"
+          } > "$RUNNER_TEMP/notes.md"
           gh release create "$TAG" airplane-scheduler.apk --target "$GITHUB_SHA" \
-            --notes-file "$NOTES" --title "Airplane Scheduler $TAG"
+            --notes-file "$RUNNER_TEMP/notes.md" --title "Airplane Scheduler $TAG"

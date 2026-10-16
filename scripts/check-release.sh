@@ -58,4 +58,5 @@ check_length "$notes" 500
 (( ! failed )) || exit 1
 echo "release=$release"
 echo "tag=v$name"
+echo "previous=${latest:+v$latest}"
 echo "notes=$notes"
