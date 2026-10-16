@@ -2,28 +2,35 @@
 
 [![CI][ci-image]][ci-url] [![Release][release-image]][release-url] [![License][license-image]][license-url]
 
-Turns airplane mode on and off on a schedule, so your phone goes quiet at night without you having to remember.
-
-<a href="https://f-droid.org/packages/io.github.probecat.airplanescheduler/"><img src="https://f-droid.org/badge/get-it-on.png" alt="Get it on F-Droid" height="80"></a>
+Turn airplane mode on and off on a schedule.
 
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Schedules in light theme" width="250">
 
-See [Releases][release-url] for signed builds (same as F-Droid's).
+## Install
+
+<p>
+  <!-- Badge sourced from https://f-droid.org/badge/get-it-on.png -->
+  <a href="https://f-droid.org/packages/io.github.probecat.airplanescheduler/"><img src=".github/assets/get-it-on-fdroid.png" alt="Get it on F-Droid" height="80"></a>
+  <!-- Badge sourced from https://github.com/Kunzisoft/Github-badge -->
+  <a href="https://github.com/probecat/airplane-scheduler-app/releases/latest"><img src=".github/assets/get-it-on-github.png" alt="Get it on GitHub" height="80"></a>
+</p>
+
+F-Droid may lag behind new releases. See [Releases][release-url] for the latest build. Both use the same signing key, so you can switch between them without reinstalling.
 
 ## Features
 
 - Any number of schedules, one-off or repeating on any days of the week.
-- Supports overnight time ranges automatically.
-- Skip or end a schedule early.
+- Supports overnight time ranges.
+- Manually skip or end a schedule early.
 - Optionally turns off Wi-Fi at the start and back on at the end.
-- Undoes only what it changed: airplane mode or Wi-Fi that you set yourself stays as you left it.
-- An optional reminder an hour before a schedule starts if Shizuku isn't ready.
+- Undoes only what it changed on start. What you toggled stays as you left it.
+- Optional reminder an hour before a schedule starts if Shizuku isn't ready.
 - No internet access, ads or tracking.
 
 ## Requirements
 
 - Android 13 or later.
-- [Shizuku](https://shizuku.rikka.app/).
+- [Shizuku](https://github.com/RikkaApps/Shizuku).
 
 ## Building
 
