@@ -88,4 +88,4 @@ jobs:
           # Fixed name for the README's releases/latest/download link.
           mv app-release.apk airplane-scheduler.apk
           gh release create "$TAG" airplane-scheduler.apk --target "$GITHUB_SHA" \
-            --notes-file "$NOTES" --generate-notes --title "Airplane Scheduler $TAG"
+            --notes-file "$NOTES" --title "Airplane Scheduler $TAG"
