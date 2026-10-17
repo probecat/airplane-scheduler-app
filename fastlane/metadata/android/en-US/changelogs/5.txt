@@ -1,0 +1,1 @@
+• Fixed: a schedule could fail to switch after Shizuku was started following a restart.
