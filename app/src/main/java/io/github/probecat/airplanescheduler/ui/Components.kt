@@ -100,6 +100,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     text: String? = null,
     enabled: Boolean = true,
+    tint: Color? = null,
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
@@ -110,15 +111,19 @@ fun SettingRow(
         supportingContent = text?.let { { Text(it) } },
         leadingContent = icon?.let { { Icon(painterResource(it), contentDescription = null) } },
         trailingContent = trailing,
-        colors = if (enabled) {
-            ListItemDefaults.colors(containerColor = Color.Transparent)
-        } else {
-            ListItemDefaults.colors(
+        colors = when {
+            !enabled -> ListItemDefaults.colors(
                 containerColor = Color.Transparent,
                 headlineColor = disabled,
                 supportingColor = disabled,
                 leadingIconColor = disabled,
             )
+            tint != null -> ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                supportingColor = tint,
+                leadingIconColor = tint,
+            )
+            else -> ListItemDefaults.colors(containerColor = Color.Transparent)
         },
         modifier = modifier
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
