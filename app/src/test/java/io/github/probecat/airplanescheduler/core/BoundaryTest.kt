@@ -187,6 +187,9 @@ class BoundaryTest {
         assertEquals(window, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = false))
         assertEquals(window, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, Changes.NONE), false))
         assertEquals(null, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, both), false))
+        // Airplane mode was already on at the start, and someone turned it off since.
+        val already = Started(thursdayNight, Changes.NONE, already = Changes(airplane = true, wifi = false))
+        assertEquals(null, Boundary.missed(listOf(night), friday(3), already, false))
         assertEquals(null, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = true))
         assertEquals(null, Boundary.missed(listOf(night), friday(12), started = null, airplaneOn = false))
     }

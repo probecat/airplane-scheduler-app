@@ -31,14 +31,22 @@ object AirplaneController {
         when (step) {
             is Boundary.Step.Start -> {
                 val window = step.window
-                val wanted = ConnectivityPlan.start(airplaneOn(app), wifiOn(app), window.disableWifi)
-                // A start caught up by hand keeps what the missed one changed, so the end still undoes it.
-                val before = app.settings.started?.takeIf { it.window == window.start }?.changes ?: Changes.NONE
+                val airplane = airplaneOn(app)
+                val wifi = wifiOn(app)
+                val wanted = ConnectivityPlan.start(airplane, wifi, window.disableWifi)
+                // A start caught up by hand keeps what the missed one changed and found, so the end still
+                // undoes it.
+                val started = app.settings.started?.takeIf { it.window == window.start }
+                    ?: Boundary.Started(
+                        window.start,
+                        Changes.NONE,
+                        ConnectivityPlan.already(airplane, wifi, window.disableWifi),
+                    )
                 // Saved before Shizuku answers, so an alarm in the meantime doesn't start the window twice.
-                app.settings.started = Boundary.Started(window.start, before)
+                app.settings.started = started
                 set(app, true, wanted) { made ->
-                    val changes = Changes(before.airplane || made.airplane, before.wifi || made.wifi)
-                    app.settings.started = Boundary.Started(window.start, changes)
+                    val changes = Changes(started.changes.airplane || made.airplane, started.changes.wifi || made.wifi)
+                    app.settings.started = started.copy(changes = changes)
                     done()
                 }
             }
