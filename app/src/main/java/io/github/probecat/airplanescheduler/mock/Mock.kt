@@ -31,6 +31,8 @@ data class MockConfig(
     val shizuku: ShizukuState = ShizukuState.READY,
     val shizukuInstalled: Boolean = true,
     val notifications: Boolean = true,
+    // As below Android 12 with battery optimization on for the app, whatever the real version.
+    val batteryOptimized: Boolean = false,
     // Added to the real clock in whole minutes, so the mock clock keeps ticking on the minute.
     val clockOffset: Long = 0,
     // Null follows the system.

@@ -32,6 +32,7 @@ class Scenario(
     val shizuku: ShizukuState = ShizukuState.READY,
     val shizukuInstalled: Boolean = true,
     val notifications: Boolean = true,
+    val batteryOptimized: Boolean = false,
     val hideShizukuReady: Boolean = true,
     // The app couldn't turn airplane mode on at the running window's start.
     val missedStart: Boolean = false,
@@ -52,6 +53,7 @@ class Scenario(
                 shizuku = shizuku,
                 shizukuInstalled = shizukuInstalled,
                 notifications = notifications,
+                batteryOptimized = batteryOptimized,
                 clockOffset = Mock.offsetTo(now),
             )
         }
@@ -263,6 +265,12 @@ val scenarios = listOf(
         destination = Destination.SETTINGS,
         shizuku = ShizukuState.PERMISSION_NEEDED,
         notifications = false,
+        schedules = ::everyday,
+    ),
+    Scenario(
+        id = "battery-optimized",
+        title = "Battery optimization",
+        batteryOptimized = true,
         schedules = ::everyday,
     ),
 )

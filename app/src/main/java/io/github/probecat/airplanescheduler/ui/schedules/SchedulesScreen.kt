@@ -86,9 +86,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
+import io.github.probecat.airplanescheduler.mock.activeMock
 import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.batteryOptimizationOff
 import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
+import io.github.probecat.airplanescheduler.system.stopBatteryOptimization
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
@@ -97,6 +100,7 @@ import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
+import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
 import io.github.probecat.airplanescheduler.ui.theme.OnAddButton
 import java.time.Duration
 import java.time.LocalDate
@@ -133,8 +137,11 @@ fun SchedulesScreen(
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
+    val mock = activeMock()
+    var batteryOff by remember(mock) { mutableStateOf(batteryOptimizationOff(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         exactAlarms = exactAlarmsAllowed(context)
+        batteryOff = batteryOptimizationOff(context)
     }
     val requestNotifications = rememberNotificationRequest(fallback = false) {}
 
@@ -259,6 +266,17 @@ fun SchedulesScreen(
                             icon = R.drawable.ic_error,
                             error = true,
                             onClick = { context.startActivity(exactAlarmSettings(context)) },
+                            modifier = Modifier.animateItem().padding(bottom = 8.dp),
+                        )
+                    }
+                }
+                if (!batteryOff && schedules.any { it.enabled }) {
+                    item(key = "battery") {
+                        Strip(
+                            label = stringResource(R.string.strip_battery),
+                            icon = R.drawable.ic_warning,
+                            warning = true,
+                            onClick = { stopBatteryOptimization(context) },
                             modifier = Modifier.animateItem().padding(bottom = 8.dp),
                         )
                     }
@@ -433,17 +451,27 @@ private fun Strip(
     icon: Int,
     modifier: Modifier = Modifier,
     error: Boolean = false,
+    warning: Boolean = false,
     onClick: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
+    val warningColors = LocalWarningColors.current
     Surface(
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = if (error) colors.errorContainer else colors.surfaceContainer,
-        contentColor = if (error) colors.onErrorContainer else colors.onSurface,
+        color = when {
+            error -> colors.errorContainer
+            warning -> warningColors.container
+            else -> colors.surfaceContainer
+        },
+        contentColor = when {
+            error -> colors.onErrorContainer
+            warning -> warningColors.onContainer
+            else -> colors.onSurface
+        },
     ) {
         Row(
             modifier = Modifier.heightIn(min = 48.dp).padding(
@@ -455,7 +483,7 @@ private fun Strip(
             Icon(
                 painterResource(icon),
                 contentDescription = null,
-                tint = if (error) LocalContentColor.current else colors.primary,
+                tint = if (error || warning) LocalContentColor.current else colors.primary,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(12.dp))
