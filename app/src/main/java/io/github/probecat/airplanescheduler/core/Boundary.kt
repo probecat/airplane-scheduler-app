@@ -7,15 +7,20 @@ import java.time.LocalDateTime
 // What the app does when a window starts or ends. It undoes only what it changed itself, and it
 // skips a start or end that it missed instead of catching up later.
 object Boundary {
-    // The last window the app started, keyed by its chain's start: what it changed then, and what was
-    // already as the start wanted it.
-    data class Started(val window: LocalDateTime, val changes: Changes, val already: Changes = Changes.NONE)
+    // The last window the app started, keyed by its chain's start: what it changed then, what it
+    // meant to change, and what was already as the start wanted it.
+    data class Started(
+        val window: LocalDateTime,
+        val changes: Changes,
+        val wanted: Changes = changes,
+        val already: Changes = Changes.NONE,
+    )
 
     sealed interface Step {
         data class Start(val window: ScheduleResolver.Window) : Step
 
-        // Forgets the started window and undoes [changes], if any.
-        data class End(val changes: Changes) : Step
+        // [schedule] is null when the end was missed.
+        data class End(val changes: Changes, val schedule: Schedule?) : Step
 
         data class Move(val started: Started) : Step
 
@@ -31,8 +36,8 @@ object Boundary {
         if (started == null) return Step.None
         // A started window whose end was missed is forgotten, not undone.
         val ended = ScheduleResolver.lastEnded(schedules, now)
-        if (ended == null || ended.window != started.window) return Step.End(Changes.NONE)
-        return Step.End(ConnectivityPlan.end(started.changes, ended.enableWifi))
+        if (ended == null || ended.window != started.window) return Step.End(Changes.NONE, null)
+        return Step.End(ConnectivityPlan.end(started.changes, ended.schedule.enableWifi), ended.schedule)
     }
 
     // The running window when airplane mode is off and the app didn't turn it on, such as when Shizuku
@@ -59,8 +64,13 @@ object Boundary {
         return when {
             after == null -> {
                 val active = ScheduleResolver.activeSchedule(old, now)!!
-                val enableWifi = (new.find { it.id == active.id } ?: active).enableWifi
-                Step.End(running?.let { ConnectivityPlan.end(it.changes, enableWifi) } ?: Changes.NONE)
+                val schedule = new.find { it.id == active.id } ?: active
+                Step.End(
+                    running?.let {
+                        ConnectivityPlan.end(it.changes, schedule.enableWifi)
+                    } ?: Changes.NONE,
+                    schedule,
+                )
             }
             running != null && after.start != before.start -> Step.Move(running.copy(window = after.start))
             else -> Step.None

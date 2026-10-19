@@ -24,6 +24,14 @@ class ScheduleRepositoryTest {
     }
 
     @Test
+    fun delaysRoundTrip() {
+        val delayed = listOf(Schedule(id = 1, start = 0, end = 60, delayed = mapOf(LocalDate.of(2026, 10, 9) to 30)))
+        val json = ScheduleRepository.encode(delayed)
+        assertTrue(json, json.contains("\"delayed\":{\"2026-10-09\":30}"))
+        assertEquals(delayed, ScheduleRepository.decode(json))
+    }
+
+    @Test
     fun missingFieldsUseDefaults() {
         assertEquals(
             listOf(Schedule(id = 3, start = 60, end = 120)),

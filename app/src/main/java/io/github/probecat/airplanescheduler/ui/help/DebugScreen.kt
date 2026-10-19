@@ -26,7 +26,6 @@ import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.mock.Mock
-import io.github.probecat.airplanescheduler.system.AlarmScheduler
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
@@ -80,7 +79,7 @@ private fun details(
     val app = App.from(context)
     val zoned = Mock.zonedNow()
     val active = ScheduleResolver.activeSchedule(schedules, now)
-    val reminder = ScheduleResolver.nextReminder(schedules, zoned, AlarmScheduler.REMIND_BEFORE_MINUTES)
+    val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
     val started = app.settings.started
     return buildString {
         appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
@@ -100,14 +99,14 @@ private fun details(
             "Theme: ${context.getString(settings.theme.label)}, dynamic color " +
                 if (settings.dynamicColor) "on" else "off",
         )
-        appendLine(
-            "Shizuku reminder: " +
-                if (settings.remindShizuku) reminder?.let { "next ${moment.format(it)}" } ?: "on" else "off",
-        )
-        appendLine(
-            "Started window: " +
-                (started?.let { "${moment.format(it.window)}, changed ${changed(it.changes)}" } ?: "none"),
-        )
+        appendLine("Postpone and pause: ${settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "off"}")
+        appendLine("Next notice: ${notice?.let(moment::format) ?: "none"}")
+        appendLine("Started window: ${started?.let { moment.format(it.window) } ?: "none"}")
+        if (started != null) {
+            appendLine("  Changed: ${changed(started.changes)}")
+            appendLine("  Meant to change: ${changed(started.wanted)}")
+            appendLine("  Already switched: ${changed(started.already)}")
+        }
         appendLine("Active now: ${active?.let { "#${it.id}" } ?: "none"}")
         appendLine()
         append("Schedules: ${schedules.size}")
@@ -144,6 +143,8 @@ private fun scheduleDetails(schedule: Schedule, now: ZonedDateTime): String = bu
     )
     if (schedule.enabled) {
         appendLine()
+        for ((date, minutes) in schedule.delayed.toSortedMap()) appendLine("  Delayed: $date by $minutes min")
+        for (date in schedule.skipped.sorted()) appendLine("  Skipped: $date")
         appendLine("  Next start: ${ScheduleResolver.nextStart(schedule, now)?.let(moment::format) ?: "none"}")
         append("  Next end: ${ScheduleResolver.nextEnd(schedule, now)?.let(moment::format) ?: "none"}")
     }

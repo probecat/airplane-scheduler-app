@@ -52,6 +52,7 @@ private fun schedules(format: Format) = listOf(
     topic(R.string.help_wifi_q, R.string.help_wifi_a),
     topic(R.string.help_overnight_q, R.string.help_overnight_a, format.time(23 * 60), format.time(7 * 60)),
     topic(R.string.help_once_q, R.string.help_once_a),
+    topic(R.string.help_postpone_q, R.string.help_postpone_a),
     topic(R.string.help_change_active_q, R.string.help_change_active_a),
 )
 

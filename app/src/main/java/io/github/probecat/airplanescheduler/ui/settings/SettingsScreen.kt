@@ -1,12 +1,5 @@
 package io.github.probecat.airplanescheduler.ui.settings
 
-import android.Manifest
-import android.content.Context
-import android.content.Intent
-import android.provider.Settings
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,12 +36,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.BuildConfig
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.data.ThemeMode
-import io.github.probecat.airplanescheduler.mock.Mock
-import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
+import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.LinkRow
 import io.github.probecat.airplanescheduler.ui.SOURCE_URL
 import io.github.probecat.airplanescheduler.ui.SectionHeader
@@ -56,38 +48,26 @@ import io.github.probecat.airplanescheduler.ui.SettingRow
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.SwitchRow
+import io.github.probecat.airplanescheduler.ui.notificationSettings
+import io.github.probecat.airplanescheduler.ui.rememberFormat
+import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 
 @Composable
 fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val format = rememberFormat()
     var notifications by remember { mutableStateOf(notificationsAllowed(context)) }
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
-    // Set while the app's notification settings are open for the reminder.
-    var allowingInSettings by rememberSaveable { mutableStateOf(false) }
+    var choosingPostpone by rememberSaveable { mutableStateOf(false) }
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val shizukuApp = ShizukuStatus.launchIntent(context)
     var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
     var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
-        if (allowingInSettings && notifications) viewModel.updateSettings { it.copy(remindShizuku = true) }
-        allowingInSettings = false
     }
-    val activity = LocalActivity.current
-    fun rationale() = activity?.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) == true
-    var rationaleBefore by rememberSaveable { mutableStateOf(false) }
-    val requestNotifications =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            notifications = notificationsAllowed(context)
-            if (granted) {
-                viewModel.updateSettings { it.copy(remindShizuku = true) }
-            } else if (!rationaleBefore && !rationale()) {
-                // Android showed no dialog, as it does after repeated denials, so only the settings can allow it.
-                allowingInSettings = true
-                context.startActivity(notificationSettings(context))
-            }
-        }
+    val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
 
     Subpage(stringResource(R.string.settings), onBack, actions = { SettingsMenu(onReset = { resetting = true }) }) {
         SectionHeader(stringResource(R.string.settings_appearance))
@@ -103,28 +83,13 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             checked = settings.dynamicColor,
         ) { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } }
 
-        SectionHeader(stringResource(R.string.settings_reminders))
-        // The reminder can't work without notifications, so it shows as off until they're allowed, and
-        // switching it on asks for them.
-        SwitchRow(
-            icon = R.drawable.ic_notifications_active,
-            title = stringResource(R.string.settings_remind_shizuku),
-            checked = settings.remindShizuku && notifications,
-        ) { on ->
-            when {
-                !on || notifications -> viewModel.updateSettings { it.copy(remindShizuku = on) }
-                // Android's dialog can't be mocked, so mock data acts as if notifications were allowed.
-                Mock.active -> {
-                    Mock.update(App.from(context)) { it.copy(notifications = true) }
-                    notifications = true
-                    viewModel.updateSettings { it.copy(remindShizuku = true) }
-                }
-                else -> {
-                    rationaleBefore = rationale()
-                    requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        }
+        SectionHeader(stringResource(R.string.settings_schedules))
+        SettingRow(
+            icon = R.drawable.ic_snooze,
+            title = stringResource(R.string.settings_postpone),
+            text = postponeLabel(settings.postponeMinutes, format),
+            onClick = { choosingPostpone = true },
+        )
 
         SectionHeader(stringResource(R.string.settings_permissions))
         SettingRow(
@@ -171,8 +136,12 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             title = stringResource(R.string.settings_notifications),
             text = stringResource(if (notifications) R.string.status_allowed else R.string.status_not_allowed),
             trailing = {
-                TextButton(onClick = { context.startActivity(notificationSettings(context)) }) {
-                    Text(stringResource(if (notifications) R.string.action_manage else R.string.action_allow))
+                if (notifications) {
+                    TextButton(onClick = { context.startActivity(notificationSettings(context)) }) {
+                        Text(stringResource(R.string.action_manage))
+                    }
+                } else {
+                    TextButton(onClick = requestNotifications) { Text(stringResource(R.string.action_allow)) }
                 }
             },
         )
@@ -208,8 +177,23 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
         )
     }
 
+    if (choosingPostpone) {
+        Choices(
+            title = stringResource(R.string.settings_postpone),
+            options = POSTPONE_MINUTES.map { it to postponeLabel(it, format) },
+            selected = settings.postponeMinutes,
+            onSelect = { minutes ->
+                viewModel.updateSettings { it.copy(postponeMinutes = minutes) }
+                choosingPostpone = false
+            },
+            onDismiss = { choosingPostpone = false },
+        )
+    }
+
     if (choosingTheme) {
-        ThemeDialog(
+        Choices(
+            title = stringResource(R.string.settings_theme),
+            options = ThemeMode.entries.map { it to stringResource(it.label) },
             selected = settings.theme,
             onSelect = { theme ->
                 viewModel.updateSettings { it.copy(theme = theme) }
@@ -242,24 +226,36 @@ private fun SettingsMenu(onReset: () -> Unit) {
     }
 }
 
+private val POSTPONE_MINUTES = listOf(0, 15, 30, 45, 60)
+
 @Composable
-private fun ThemeDialog(selected: ThemeMode, onSelect: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
+private fun postponeLabel(minutes: Int, format: Format) =
+    if (minutes == 0) stringResource(R.string.settings_postpone_off) else format.duration(minutes)
+
+@Composable
+private fun <T> Choices(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_theme)) },
+        title = { Text(title) },
         text = {
             Column(Modifier.selectableGroup()) {
-                ThemeMode.entries.forEach { theme ->
+                options.forEach { (value, label) ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .selectable(selected = theme == selected, role = Role.RadioButton) { onSelect(theme) }
+                            .selectable(selected = value == selected, role = Role.RadioButton) { onSelect(value) }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected = theme == selected, onClick = null)
+                        RadioButton(selected = value == selected, onClick = null)
                         Text(
-                            stringResource(theme.label),
+                            label,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(start = 16.dp),
                         )
@@ -270,6 +266,3 @@ private fun ThemeDialog(selected: ThemeMode, onSelect: (ThemeMode) -> Unit, onDi
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
-
-private fun notificationSettings(context: Context) =
-    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)

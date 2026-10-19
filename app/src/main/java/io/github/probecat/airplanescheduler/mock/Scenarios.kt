@@ -32,7 +32,6 @@ class Scenario(
     val shizuku: ShizukuState = ShizukuState.READY,
     val shizukuInstalled: Boolean = true,
     val notifications: Boolean = true,
-    val remindShizuku: Boolean = false,
     val hideShizukuReady: Boolean = true,
     // The app couldn't turn airplane mode on at the running window's start.
     val missedStart: Boolean = false,
@@ -58,13 +57,11 @@ class Scenario(
         }
         val schedules = schedules(now.toLocalDate())
         app.schedules.replaceAll(schedules)
-        app.settings.update { it.copy(remindShizuku = remindShizuku, hideShizukuReady = hideShizukuReady) }
+        app.settings.update { it.copy(hideShizukuReady = hideShizukuReady) }
         // As if the app had started the window that is running.
         app.settings.started = ScheduleResolver.window(schedules, now)?.let {
-            Boundary.Started(
-                it.start,
-                if (missedStart) Changes.NONE else Changes(airplane = true, wifi = it.disableWifi),
-            )
+            val wanted = Changes(airplane = true, wifi = it.disableWifi)
+            Boundary.Started(it.start, if (missedStart) Changes.NONE else wanted, wanted)
         }
         viewModel.clearDrafts()
         for ((id, edit) in drafts) {
@@ -95,9 +92,9 @@ private fun everyday(today: LocalDate) = listOf(
     Schedule(id = 4, start = at(13), end = at(14), days = setOf(SATURDAY, SUNDAY), enabled = false),
 )
 
-// At 21:00 on a Wednesday: one running, one starting soon, one skipped and one far off.
+// At 21:45 on a Wednesday: one running, one starting soon, one skipped and one far off.
 private fun skips(today: LocalDate) = listOf(
-    Schedule(id = 1, name = "Reading", start = at(20), end = at(21, 30)),
+    Schedule(id = 1, name = "Reading", start = at(20), end = at(22)),
     Schedule(
         id = 2,
         name = "Sleep, with the phone charging in another room",
@@ -190,7 +187,7 @@ val scenarios = listOf(
     Scenario(
         id = "skip",
         title = "Skip and end",
-        minute = at(21),
+        minute = at(21, 45),
         schedules = ::skips,
     ),
     Scenario(
@@ -202,9 +199,25 @@ val scenarios = listOf(
         },
     ),
     Scenario(
+        id = "postponed",
+        title = "Postponed",
+        minute = at(22, 15),
+        schedules = { today ->
+            skips(today).map { if (it.id == 2L) it.copy(delayed = mapOf(today to 30)) else it }
+        },
+    ),
+    Scenario(
+        id = "paused",
+        title = "Paused",
+        minute = at(23, 15),
+        schedules = { today ->
+            skips(today).map { if (it.id == 2L) it.copy(delayed = mapOf(today to 75)) else it }
+        },
+    ),
+    Scenario(
         id = "missed-start",
         title = "Missed start",
-        minute = at(21),
+        minute = at(21, 45),
         shizuku = ShizukuState.OFFLINE,
         missedStart = true,
         schedules = ::skips,
@@ -250,7 +263,6 @@ val scenarios = listOf(
         destination = Destination.SETTINGS,
         shizuku = ShizukuState.PERMISSION_NEEDED,
         notifications = false,
-        remindShizuku = true,
         schedules = ::everyday,
     ),
 )

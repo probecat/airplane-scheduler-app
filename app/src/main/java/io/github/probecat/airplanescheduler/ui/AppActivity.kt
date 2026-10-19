@@ -24,7 +24,7 @@ abstract class AppActivity : ComponentActivity() {
         setContent(mockCompositionContext()) {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             SystemBars(isDark(settings.theme))
-            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshShizuku() }
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
             AppTheme(settings.theme, settings.dynamicColor) {
                 MockDisplay(content)
             }

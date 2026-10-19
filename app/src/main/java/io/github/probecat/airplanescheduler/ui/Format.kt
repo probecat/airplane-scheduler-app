@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui
 
+import android.content.Context
 import android.content.res.Resources
 import android.text.format.DateFormat
 import androidx.annotation.PluralsRes
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.em
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
+import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.mock.activeMock
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -53,6 +55,8 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun time(minute: Int): String = time(minute, markerSize = TextUnit.Unspecified).text
 
+    fun time(time: LocalDateTime): String = time(time.hour * 60 + time.minute)
+
     fun time(minute: Int, markerSize: TextUnit): AnnotatedString {
         val time = LocalTime.of(minute / 60, minute % 60)
         return buildAnnotatedString {
@@ -62,6 +66,8 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
             }
         }
     }
+
+    fun title(schedule: Schedule): String = schedule.name.ifBlank { window(schedule) }
 
     fun window(schedule: Schedule): String = "${time(schedule.start)} – ${time(schedule.end)}"
 
@@ -108,12 +114,14 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     // "Skipped, resumes tomorrow" for the window that started on [date].
     fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
-        val started = !date.atTime(schedule.start / 60, schedule.start % 60).isAfter(now)
+        val started = !ScheduleResolver.plannedStart(schedule, date).isAfter(now)
         val next = ScheduleResolver.nextWindow(schedule, now)
             ?: return strings.get(if (started) R.string.ended_early else R.string.skipped)
         val day = upcomingDay(next.toLocalDate(), now.toLocalDate())
         return strings.get(if (started) R.string.ended_early_resumes else R.string.skipped_resumes, day)
     }
+
+    fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))
 
     private fun short(day: DayOfWeek): String = day.getDisplayName(TextStyle.SHORT, locale)
 
@@ -158,6 +166,14 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         private const val NBSP = '\u00A0'
     }
 }
+
+// For text outside Compose, such as notifications.
+fun format(context: Context): Format = Format(
+    (if (Mock.active) Mock.config.value.is24Hour else null) ?: DateFormat.is24HourFormat(context),
+    (if (Mock.active) Mock.config.value.locale?.let(Locale::forLanguageTag) else null)
+        ?: context.resources.configuration.locales[0],
+    ResourceStrings(context.resources),
+)
 
 @Composable
 fun rememberFormat(): Format {
