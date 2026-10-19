@@ -27,6 +27,8 @@ data class Schedule(
     val enableWifi: Boolean = true,
     // Start dates of windows left out by skipping them or ending them early.
     val skipped: Set<SerializableDate> = emptySet(),
+    // Minutes that postponing or pausing moved a window's start, by its start date. Its end stays.
+    val delayed: Map<SerializableDate, Int> = emptyMap(),
 ) {
     val once: Boolean get() = days.isEmpty()
 

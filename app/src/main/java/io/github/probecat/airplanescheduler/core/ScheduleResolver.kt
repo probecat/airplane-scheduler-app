@@ -2,9 +2,11 @@ package io.github.probecat.airplanescheduler.core
 
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 
 // Works in wall-clock time. A window starts on one of its days, or on its date when it runs once,
 // and ends the next day when its end is before its start.
@@ -12,12 +14,18 @@ object ScheduleResolver {
     private const val WEEK = 7 * ScheduleTime.DAY
     private const val SKIP_KEPT_DAYS = 10L
 
+    // How close a start is before it can be skipped or postponed, and its notification shows.
+    const val AHEAD_MINUTES = 60L
+
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
     // [now] is still in its first window, and [disableWifi] is that first window's option.
     data class Window(val start: LocalDateTime, val inFirst: Boolean, val disableWifi: Boolean)
 
-    // The chain that ended most recently: where it began, and its last window's Wi-Fi option.
-    data class Ended(val window: LocalDateTime, val enableWifi: Boolean)
+    // The chain that ended most recently: where it began, and its last window's schedule.
+    data class Ended(val window: LocalDateTime, val schedule: Schedule)
+
+    // A postponed window that hasn't started yet. [due] once its planned start has passed, as after a pause.
+    data class Delay(val date: LocalDate, val start: LocalDateTime, val due: Boolean)
 
     fun isValid(schedule: Schedule): Boolean =
         schedule.start != schedule.end && (!schedule.once || schedule.date != null)
@@ -34,28 +42,78 @@ object ScheduleResolver {
     fun hasEnded(schedule: Schedule, now: LocalDateTime): Boolean =
         schedule.once && schedule.date != null && !windowEnd(schedule, schedule.date).isAfter(now)
 
-    // The start of the window that is running, or else of the next one.
-    fun nextWindow(schedule: Schedule, now: LocalDateTime): LocalDateTime? {
+    // The start date of the window that is running, or else of the next one.
+    fun nextDate(schedule: Schedule, now: LocalDateTime): LocalDate? {
         if (!isValid(schedule)) return null
-        return windowStart(schedule, now) ?: (0L..7L).firstNotNullOfOrNull { offset ->
-            val date = now.toLocalDate().plusDays(offset)
-            date.atTime(schedule.start / 60, schedule.start % 60).takeIf { it.isAfter(now) && startsOn(schedule, date) }
+        return runningDate(schedule, now) ?: (-1L..7L).map { now.toLocalDate().plusDays(it) }
+            .firstOrNull { startsOn(schedule, it) && startOf(schedule, it).isAfter(now) }
+    }
+
+    fun nextWindow(schedule: Schedule, now: LocalDateTime): LocalDateTime? =
+        nextDate(schedule, now)?.let { startOf(schedule, it) }
+
+    fun plannedStart(schedule: Schedule, date: LocalDate): LocalDateTime =
+        date.atTime(schedule.start / 60, schedule.start % 60)
+
+    fun startOf(schedule: Schedule, date: LocalDate): LocalDateTime =
+        plannedStart(schedule, date).plusMinutes(schedule.delayed[date]?.toLong() ?: 0)
+
+    fun windowEnd(schedule: Schedule, date: LocalDate): LocalDateTime =
+        plannedStart(schedule, date).plusMinutes(ScheduleTime.duration(schedule.start, schedule.end).toLong())
+
+    // The window that starts where the one that started on [date] ends, so airplane mode stays on between them.
+    fun following(schedule: Schedule, date: LocalDate, schedules: List<Schedule>): Schedule? {
+        val end = windowEnd(schedule, date)
+        return live(schedules).firstOrNull {
+            it.id != schedule.id && startsOn(it, end.toLocalDate()) && startOf(it, end.toLocalDate()) == end
+        }
+    }
+
+    fun preceding(schedule: Schedule, date: LocalDate, schedules: List<Schedule>): Schedule? {
+        val start = startOf(schedule, date)
+        return live(schedules).firstOrNull {
+            val from = startDate(it, start.toLocalDate())
+            it.id != schedule.id && startsOn(it, from) && windowEnd(it, from) == start
         }
     }
 
     fun pendingSkips(schedule: Schedule, now: LocalDateTime): Set<LocalDate> =
         schedule.skipped.filterTo(mutableSetOf()) { windowEnd(schedule, it).isAfter(now) }
 
+    fun delay(schedule: Schedule, now: LocalDateTime): Delay? {
+        val date = nextDate(schedule, now)?.takeIf { it in schedule.delayed } ?: return null
+        val start = startOf(schedule, date).takeIf { it.isAfter(now) } ?: return null
+        return Delay(date, start, due = !plannedStart(schedule, date).isAfter(now))
+    }
+
     // Leaves out the window that is running, or else the next one. Skips stay while [lastEnd] can
     // still look back at their windows.
     fun skip(schedule: Schedule, now: LocalDateTime): Schedule {
-        val date = nextWindow(schedule, now)?.toLocalDate() ?: return schedule
-        val kept = schedule.skipped.filter { it.isAfter(now.toLocalDate().minusDays(SKIP_KEPT_DAYS)) }
-        return schedule.copy(skipped = kept.toSet() + date)
+        val date = nextDate(schedule, now) ?: return schedule
+        return schedule.copy(skipped = recent(schedule.skipped, now) + date, delayed = recent(schedule.delayed, now))
     }
 
-    fun unskip(schedule: Schedule, now: LocalDateTime): Schedule =
-        schedule.copy(skipped = schedule.skipped - pendingSkips(schedule, now))
+    // Moves the start of the next window [minutes] later, or pauses the running one until then. A window
+    // that this leaves nothing of is skipped instead.
+    fun postpone(schedule: Schedule, now: LocalDateTime, minutes: Int): Schedule {
+        val date = nextDate(schedule, now) ?: return schedule
+        val start = postponedStart(schedule, date, now, minutes)
+        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now)
+        val delay = Duration.between(plannedStart(schedule, date), start).toMinutes().toInt()
+        return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
+    }
+
+    // Where [postpone] would start the window, or null when it would skip it.
+    fun postponedTo(schedule: Schedule, now: LocalDateTime, minutes: Int): LocalDateTime? {
+        val date = nextDate(schedule, now) ?: return null
+        return postponedStart(schedule, date, now, minutes).takeIf { it.isBefore(windowEnd(schedule, date)) }
+    }
+
+    // Undoes [skip] and [postpone] for windows that haven't ended.
+    fun unskip(schedule: Schedule, now: LocalDateTime): Schedule = schedule.copy(
+        skipped = schedule.skipped - pendingSkips(schedule, now),
+        delayed = schedule.delayed.filterKeys { !windowEnd(schedule, it).isAfter(now) },
+    )
 
     fun expire(schedules: List<Schedule>, now: LocalDateTime): List<Schedule> =
         schedules.map { if (it.enabled && hasEnded(it, now)) it.copy(enabled = false) else it }
@@ -78,7 +136,7 @@ object ScheduleResolver {
         val live = live(schedules)
         val (last, end) = lastEnd(live, now) ?: return null
         val chain = window(live, end.minusMinutes(1)) ?: return null
-        return Ended(chain.start, last.enableWifi)
+        return Ended(chain.start, last)
     }
 
     fun conflict(candidate: Schedule, schedules: List<Schedule>): Schedule? {
@@ -107,18 +165,19 @@ object ScheduleResolver {
 
     fun nextStart(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? {
         if (!isValid(schedule)) return null
-        return (0L..7L).firstNotNullOfOrNull { offset ->
-            val trigger = ScheduleTime.at(now.plusDays(offset), schedule.start)
-            trigger.takeIf { it.isAfter(now) && startsOn(schedule, now.toLocalDate().plusDays(offset)) }
+        return (-1L..7L).firstNotNullOfOrNull { offset ->
+            val date = now.toLocalDate().plusDays(offset)
+            val trigger = ScheduleTime.at(startOf(schedule, date), now.zone)
+            trigger.takeIf { it.isAfter(now) && startsOn(schedule, date) }
         }
     }
 
     fun nextEnd(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? {
         if (!isValid(schedule)) return null
-        return (0L..8L).firstNotNullOfOrNull { offset ->
-            val trigger = ScheduleTime.at(now.plusDays(offset), schedule.end)
-            val started = startDate(schedule, now.toLocalDate().plusDays(offset))
-            trigger.takeIf { it.isAfter(now) && startsOn(schedule, started) }
+        return (-1L..7L).firstNotNullOfOrNull { offset ->
+            val date = now.toLocalDate().plusDays(offset)
+            val trigger = ScheduleTime.at(windowEnd(schedule, date), now.zone)
+            trigger.takeIf { it.isAfter(now) && startsOn(schedule, date) }
         }
     }
 
@@ -129,7 +188,7 @@ object ScheduleResolver {
         live(schedules).flatMap { listOfNotNull(nextStart(it, now), nextEnd(it, now)) }.minOrNull()
 
     // [minutes] before the next start that is still at least that far away.
-    fun nextReminder(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
+    fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
         nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes)
 
     private fun live(schedules: List<Schedule>) = schedules.filter { it.enabled && isValid(it) }
@@ -140,21 +199,29 @@ object ScheduleResolver {
     private fun weekdays(schedule: Schedule): Set<DayOfWeek> =
         if (schedule.once) setOf(schedule.date!!.dayOfWeek) else schedule.days
 
-    private fun windowEnd(schedule: Schedule, date: LocalDate): LocalDateTime =
-        date.atTime(schedule.start / 60, schedule.start % 60)
-            .plusMinutes(ScheduleTime.duration(schedule.start, schedule.end).toLong())
-
     private fun startDate(schedule: Schedule, endDate: LocalDate): LocalDate =
         if (schedule.start < schedule.end) endDate else endDate.minusDays(1)
 
-    private fun windowStart(schedule: Schedule, now: LocalDateTime): LocalDateTime? {
+    // A window is shorter than a day, so the one covering [now] started today or yesterday.
+    private fun runningDate(schedule: Schedule, now: LocalDateTime): LocalDate? {
         if (!isValid(schedule)) return null
-        val minute = now.hour * 60 + now.minute
-        if (!ScheduleTime.isActive(schedule.start, schedule.end, minute)) return null
-        val today = now.toLocalDate()
-        val started = if (schedule.start < schedule.end || minute >= schedule.start) today else today.minusDays(1)
-        return if (startsOn(schedule, started)) started.atTime(schedule.start / 60, schedule.start % 60) else null
+        return listOf(now.toLocalDate(), now.toLocalDate().minusDays(1)).firstOrNull {
+            startsOn(schedule, it) && !startOf(schedule, it).isAfter(now) && windowEnd(schedule, it).isAfter(now)
+        }
     }
+
+    private fun windowStart(schedule: Schedule, now: LocalDateTime): LocalDateTime? =
+        runningDate(schedule, now)?.let { startOf(schedule, it) }
+
+    // Pausing counts from now, and postponing again from the postponed start.
+    private fun postponedStart(schedule: Schedule, date: LocalDate, now: LocalDateTime, minutes: Int) =
+        maxOf(startOf(schedule, date), now.truncatedTo(ChronoUnit.MINUTES)).plusMinutes(minutes.toLong())
+
+    private fun recent(dates: Set<LocalDate>, now: LocalDateTime): Set<LocalDate> =
+        dates.filterTo(mutableSetOf()) { it.isAfter(now.toLocalDate().minusDays(SKIP_KEPT_DAYS)) }
+
+    private fun <T> recent(delays: Map<LocalDate, T>, now: LocalDateTime): Map<LocalDate, T> =
+        delays.filterKeys { it.isAfter(now.toLocalDate().minusDays(SKIP_KEPT_DAYS)) }
 
     private fun firstOfChain(
         active: Schedule,
@@ -172,7 +239,7 @@ object ScheduleResolver {
             } ?: return current to start
             seen += previous.id
             current = previous
-            start = startDate(previous, boundary.toLocalDate()).atTime(previous.start / 60, previous.start % 60)
+            start = startOf(previous, startDate(previous, boundary.toLocalDate()))
         }
     }
 

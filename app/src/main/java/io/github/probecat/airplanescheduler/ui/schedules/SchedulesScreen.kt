@@ -3,6 +3,7 @@ package io.github.probecat.airplanescheduler.ui.schedules
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,6 +36,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -51,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,12 +64,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -83,6 +90,7 @@ import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.rememberFormat
+import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
 import io.github.probecat.airplanescheduler.ui.theme.OnAddButton
 import java.time.Duration
@@ -115,7 +123,10 @@ fun SchedulesScreen(
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
     var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    // The schedule whose Skip or End asks whether to postpone instead.
+    var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
+    val requestNotifications = rememberNotificationRequest(fallback = false) {}
 
     // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
     fun showStart(id: Long) {
@@ -152,6 +163,16 @@ fun SchedulesScreen(
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar(
                 resources.getString(if (ending) R.string.schedules_ended_early else R.string.schedules_skipped),
+            )
+        }
+    }
+
+    fun postpone(schedule: Schedule, pausing: Boolean) {
+        viewModel.postpone(schedule)
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            snackbar.showSnackbar(
+                resources.getString(if (pausing) R.string.schedules_paused else R.string.schedules_postponed),
             )
         }
     }
@@ -247,15 +268,24 @@ fun SchedulesScreen(
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
                             missed = shizuku.takeIf { isMissed },
-                            skipped = if (action == CardAction.UNDO) skippedNote(schedule, now, format) else null,
+                            note = if (action == CardAction.UNDO || action == CardAction.RESUME) {
+                                note(schedule, now, format)
+                            } else {
+                                null
+                            },
                             action = action,
                             today = now.toLocalDate(),
                             format = format,
                             onClick = { editing = schedule },
                             onAction = {
                                 when (action) {
-                                    CardAction.SKIP, CardAction.END -> skip(schedule, ending = action == CardAction.END)
-                                    CardAction.UNDO -> unskip(schedule.id)
+                                    CardAction.SKIP, CardAction.END ->
+                                        if (postponedTo(schedule, now, settings.postponeMinutes) != null) {
+                                            choosing = schedule.id
+                                        } else {
+                                            skip(schedule, ending = action == CardAction.END)
+                                        }
+                                    CardAction.UNDO, CardAction.RESUME -> unskip(schedule.id)
                                     CardAction.TURN_ON -> catchUp(schedule.id)
                                     null -> {}
                                 }
@@ -281,9 +311,42 @@ fun SchedulesScreen(
             onDismiss = { editing = null },
             onEdit = { viewModel.keepDraft(schedule, it) },
             onSave = { edited ->
-                (viewModel.save(edited) == null).also { saved -> if (saved) showStart(edited.id) }
+                val isNew = viewModel.isNew(edited)
+                (viewModel.save(edited) == null).also { saved ->
+                    if (saved) showStart(edited.id)
+                    if (saved && isNew && viewModel.asksNotifications()) requestNotifications()
+                }
             },
             onDelete = ::delete,
+        )
+    }
+
+    choosing?.let { id ->
+        val schedule = schedules.find { it.id == id }
+        val to = schedule?.let { postponedTo(it, now, settings.postponeMinutes) }
+        // Gone, or nothing left to postpone, since the dialog opened.
+        if (schedule == null || to == null) {
+            SideEffect { choosing = null }
+            return@let
+        }
+        val ending = schedule.id == active?.id
+        PostponeDialog(
+            schedule = schedule,
+            ending = ending,
+            minutes = settings.postponeMinutes,
+            to = to,
+            breaksAt = if (ending) null else breaksAt(schedule, schedules, now),
+            now = now,
+            format = format,
+            onPostpone = {
+                choosing = null
+                postpone(schedule, pausing = ending)
+            },
+            onSkip = {
+                choosing = null
+                skip(schedule, ending)
+            },
+            onDismiss = { choosing = null },
         )
     }
 
@@ -431,7 +494,8 @@ private fun ScheduleCard(
     endsIn: Int?,
     // Why airplane mode is off while it's active.
     missed: ShizukuState?,
-    skipped: String?,
+    // Why the next window won't run as planned.
+    note: Pair<String, Int>?,
     action: CardAction?,
     today: LocalDate,
     format: Format,
@@ -469,7 +533,7 @@ private fun ScheduleCard(
                     when {
                         missed != null -> Missed(missed)
                         endsIn != null -> EndsIn(format.duration(endsIn))
-                        skipped != null -> Status(skipped, R.drawable.ic_skip_next)
+                        note != null -> Status(note.first, note.second)
                     }
                 }
                 if (action != null) {
@@ -564,26 +628,98 @@ private enum class CardAction(@StringRes val label: Int) {
     SKIP(R.string.action_skip),
     END(R.string.action_end),
     UNDO(R.string.action_undo),
+    RESUME(R.string.action_resume),
     TURN_ON(R.string.action_turn_on),
 }
-
-// Skipping is offered only for a start that is close.
-private val SKIP_AHEAD = Duration.ofHours(2)
 
 private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolean, now: LocalDateTime): CardAction? =
     when {
         !schedule.enabled -> null
         canCatchUp -> CardAction.TURN_ON
         isActive -> CardAction.END
+        ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
+        ScheduleResolver.delay(schedule, now) != null -> CardAction.UNDO
         ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
-        ScheduleResolver.nextWindow(schedule, now)?.let { Duration.between(now, it) <= SKIP_AHEAD } == true ->
-            CardAction.SKIP
+        // Skipping is offered only for a start that is close.
+        ScheduleResolver.nextWindow(schedule, now)
+            ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
         else -> null
     }
 
-private fun skippedNote(schedule: Schedule, now: LocalDateTime, format: Format): String? {
+private fun note(schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? {
+    ScheduleResolver.delay(schedule, now)?.let { return format.delayed(it.start) to R.drawable.ic_snooze }
     val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null
-    return format.skipped(schedule, skipped, now)
+    return format.skipped(schedule, skipped, now) to R.drawable.ic_skip_next
+}
+
+// The start of the next window when it continues one that runs until then.
+private fun breaksAt(schedule: Schedule, schedules: List<Schedule>, now: LocalDateTime): LocalDateTime? {
+    val date = ScheduleResolver.nextDate(schedule, now) ?: return null
+    ScheduleResolver.preceding(schedule, date, schedules) ?: return null
+    return ScheduleResolver.startOf(schedule, date)
+}
+
+// Where Postpone or Pause would start the window, or null when they're off or would leave nothing of it.
+private fun postponedTo(schedule: Schedule, now: LocalDateTime, minutes: Int): LocalDateTime? =
+    if (minutes > 0) ScheduleResolver.postponedTo(schedule, now, minutes) else null
+
+@Composable
+private fun PostponeDialog(
+    schedule: Schedule,
+    ending: Boolean,
+    minutes: Int,
+    to: LocalDateTime,
+    // When airplane mode turns off instead, as the window continues another one.
+    breaksAt: LocalDateTime?,
+    now: LocalDateTime,
+    format: Format,
+    onPostpone: () -> Unit,
+    onSkip: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val next = if (schedule.once) null else ScheduleResolver.nextWindow(ScheduleResolver.skip(schedule, now), now)
+    val resumes = next?.let {
+        stringResource(R.string.postpone_resumes, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
+    } ?: stringResource(R.string.postpone_switches_off)
+    val breaks = breaksAt?.let { stringResource(R.string.postpone_breaks_at, format.time(it)) }
+    fun lines(text: String) = listOfNotNull(breaks, text).joinToString("\n")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(format.title(schedule)) },
+        text = {
+            Column {
+                DialogChoice(
+                    icon = R.drawable.ic_snooze,
+                    title = stringResource(if (ending) R.string.action_pause else R.string.action_postpone),
+                    text = lines(
+                        stringResource(
+                            if (ending) R.string.postpone_turns_back_on else R.string.starts_at,
+                            format.time(to),
+                        ),
+                    ),
+                    onClick = onPostpone,
+                )
+                DialogChoice(
+                    icon = R.drawable.ic_skip_next,
+                    title = stringResource(if (ending) R.string.action_end else R.string.action_skip),
+                    text = lines(resumes),
+                    onClick = onSkip,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
+}
+
+@Composable
+private fun DialogChoice(icon: Int, title: String, text: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(text) },
+        leadingContent = { Icon(painterResource(icon), contentDescription = null) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onClick),
+    )
 }
 
 private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =

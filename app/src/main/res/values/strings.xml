@@ -12,7 +12,10 @@
     <string name="action_manage">Manage</string>
     <string name="action_ok">OK</string>
     <string name="action_open">Open</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_postpone">Postpone</string>
     <string name="action_reset">Reset</string>
+    <string name="action_resume">Resume</string>
     <string name="action_save">Save</string>
     <string name="action_skip">Skip</string>
     <string name="action_turn_on">Turn on</string>
@@ -25,7 +28,12 @@
     <string name="status_not_allowed">Not allowed</string>
     <string name="status_not_installed">Not installed</string>
     <string name="status_not_running">Not running</string>
+    <string name="starts_at">Starts at %1$s</string>
     <string name="schedule_overlaps">Schedule overlaps %1$s.</string>
+    <!-- Joins two whole sentences. -->
+    <string name="sentences">%1$s %2$s</string>
+    <!-- Ends a phrase that is followed by more sentences. -->
+    <string name="sentence">%1$s.</string>
 
     <!-- Days, dates and durations -->
     <string name="days_every_day">Every day</string>
@@ -43,6 +51,7 @@
     <string name="skipped_resumes">Skipped, resumes %1$s</string>
     <string name="ended_early">Ended early</string>
     <string name="ended_early_resumes">Ended early, resumes %1$s</string>
+    <string name="postponed_to">Postponed until %1$s</string>
     <!-- No-break spaces keep a number and its unit together. -->
     <plurals name="duration_days">
         <item quantity="one">%d\u00A0d</item>
@@ -66,6 +75,8 @@
     <string name="schedules_set_for">Airplane mode set for %1$s from now</string>
     <string name="schedules_skipped">Schedule skipped</string>
     <string name="schedules_ended_early">Schedule ended early</string>
+    <string name="schedules_postponed">Schedule postponed</string>
+    <string name="schedules_paused">Schedule paused</string>
     <string name="schedules_turn_on_failed">Couldn\'t turn on airplane mode</string>
     <string name="schedules_deleted">Schedule deleted</string>
     <string name="strip_shizuku_ready">Shizuku is ready</string>
@@ -77,6 +88,10 @@
     <string name="card_missed_offline">Missed, Shizuku is unavailable</string>
     <string name="card_missed_permission">Missed, need Shizuku permission</string>
     <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
+    <string name="postpone_turns_back_on">Back on at %1$s</string>
+    <string name="postpone_resumes">Resumes %1$s</string>
+    <string name="postpone_switches_off">Switches the schedule off</string>
+    <string name="postpone_breaks_at">Airplane mode turns off at %1$s</string>
 
     <!-- Schedule sheet -->
     <string name="sheet_starts">Starts</string>
@@ -101,8 +116,9 @@
     <string name="theme_dark">Dark</string>
     <string name="theme_black">Black</string>
     <string name="settings_dynamic_color">Dynamic color</string>
-    <string name="settings_reminders">Reminders</string>
-    <string name="settings_remind_shizuku">Remind me if Shizuku is off</string>
+    <string name="settings_schedules">Schedules</string>
+    <string name="settings_postpone">Postpone and pause</string>
+    <string name="settings_postpone_off">Off</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_shizuku_ready">Ready</string>
@@ -139,12 +155,14 @@
     <string name="help_overnight_a">The day it starts. A Friday schedule from %1$s to %2$s ends on Saturday morning.</string>
     <string name="help_once_q">What does a schedule without days do?</string>
     <string name="help_once_a">It runs once at its next start time, then switches itself off. If you switch it on between its start and end, it starts right away.</string>
+    <string name="help_postpone_q">How do skip, postpone and pause work?</string>
+    <string name="help_postpone_a">In the hour before a schedule starts, you can skip it, or postpone it to start later and still end on time. While it runs, you can end it early, or pause it to turn airplane mode off for a while. You can change how long postpone and pause last, or turn them off, in Settings.</string>
     <string name="help_change_active_q">What happens if I change an active schedule?</string>
     <string name="help_change_active_a">Switching a schedule off or deleting it ends it right away, like a normal end. Switching on or adding a schedule that covers the current time starts it right away. Editing the times starts or ends it to match.</string>
     <string name="help_missed_q">Why didn\'t airplane mode turn on or off?</string>
-    <string name="help_missed_a">Shizuku wasn\'t running at that time. The app doesn\'t automatically catch up by design.</string>
+    <string name="help_missed_a">Shizuku wasn\'t running or the phone was off. The app doesn\'t automatically catch up by design, but it notifies you.</string>
     <string name="help_shizuku_stopped_q">Why did Shizuku stop?</string>
-    <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. Turn on “Remind me if Shizuku is off” in Settings to get a warning an hour before a schedule runs.</string>
+    <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. If you have notifications on, you\'ll get a warning an hour before a schedule runs.</string>
     <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
     <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
 
@@ -157,4 +175,39 @@
     <string name="shizuku_permission_text">Shizuku won\'t ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it.</string>
     <string name="shizuku_open">Open Shizuku</string>
     <string name="shizuku_get">Get Shizuku</string>
+
+    <!-- Notification channels -->
+    <string name="channel_schedules">Schedules</string>
+    <string name="channel_problems">Problems</string>
+
+    <!-- Notifications -->
+    <string name="notification_ended">%1$s ended</string>
+    <!-- Stands in for a schedule that was deleted. -->
+    <string name="notification_unknown_schedule">A schedule</string>
+    <string name="notification_continues_from">Continues from %1$s at %2$s</string>
+    <string name="notification_skip_breaks">Skipping turns airplane mode off when %1$s ends.</string>
+    <string name="notification_skip_or_postpone_breaks">Skipping or postponing turns airplane mode off when %1$s ends.</string>
+    <string name="notification_ends_at">Ends at %1$s</string>
+    <string name="notification_continues_as">Continues as %1$s at %2$s</string>
+    <string name="notification_retry">Retry</string>
+    <string name="notification_turn_off">Turn off</string>
+    <string name="notification_turn_on_wifi">Turn on Wi-Fi</string>
+    <string name="notification_failed_both">Couldn\'t turn off airplane mode or turn on Wi-Fi.</string>
+    <string name="notification_failed_airplane">Couldn\'t turn off airplane mode.</string>
+    <string name="notification_failed_wifi">Couldn\'t turn on Wi-Fi.</string>
+    <string name="notification_missed_start">Missed the start.</string>
+    <string name="notification_airplane_was_on">Airplane mode was already on.</string>
+    <string name="notification_airplane_turned_off">Airplane mode was turned off manually.</string>
+    <string name="notification_airplane_stays_on">Airplane mode was turned on manually.</string>
+    <string name="notification_airplane_off">Airplane mode turned off.</string>
+    <string name="notification_both_were_set">Airplane mode and Wi-Fi were already set, nothing to undo.</string>
+    <string name="notification_wifi_was_off">Wi-Fi was already off.</string>
+    <string name="notification_wifi_kept_off">Wi-Fi was left off.</string>
+    <string name="notification_wifi_back_on">Wi-Fi turned back on.</string>
+    <string name="notification_missed_end_both">Didn\'t turn off airplane mode or turn on Wi-Fi.</string>
+    <string name="notification_missed_end_airplane">Didn\'t turn off airplane mode.</string>
+    <string name="notification_missed_end_wifi">Didn\'t turn on Wi-Fi.</string>
+    <string name="notification_shizuku_missing">Shizuku isn\'t installed.</string>
+    <string name="notification_shizuku_offline">Shizuku isn\'t running.</string>
+    <string name="notification_shizuku_permission">Need Shizuku permission.</string>
 </resources>

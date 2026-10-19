@@ -17,6 +17,8 @@ object ConnectivityPlan {
 
         operator fun plus(other: Changes) = Changes(airplane || other.airplane, wifi || other.wifi)
 
+        operator fun minus(other: Changes) = Changes(airplane && !other.airplane, wifi && !other.wifi)
+
         companion object {
             val NONE = Changes(airplane = false, wifi = false)
 

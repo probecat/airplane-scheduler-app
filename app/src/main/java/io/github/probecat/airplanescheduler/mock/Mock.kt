@@ -10,6 +10,7 @@ import androidx.core.content.edit
 import io.github.probecat.airplanescheduler.BuildConfig
 import io.github.probecat.airplanescheduler.system.AlarmScheduler
 import io.github.probecat.airplanescheduler.system.App
+import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 import java.time.Duration
@@ -83,6 +84,7 @@ object Mock {
             app.settings.update { it.copy(hideShizukuReady = false) }
         }
         app.refreshShizuku()
+        if (before.enabled != after.enabled) Notifier.reset(app) else Notifier.refresh(app)
     }
 
     // Shizuku only runs when it's installed. Whichever of the two just changed decides the other.
@@ -98,6 +100,9 @@ object Mock {
     }
 
     fun now(): LocalDateTime = LocalDateTime.now().let { if (active) it.plusMinutes(state.value.clockOffset) else it }
+
+    // The real time when the mock clock reads [time].
+    fun real(time: LocalDateTime): LocalDateTime = if (active) time.minusMinutes(state.value.clockOffset) else time
 
     fun zonedNow(): ZonedDateTime =
         ZonedDateTime.now().let { if (active) it.plusMinutes(state.value.clockOffset) else it }

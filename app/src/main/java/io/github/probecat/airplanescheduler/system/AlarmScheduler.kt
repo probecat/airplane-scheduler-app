@@ -11,8 +11,7 @@ import java.time.ZonedDateTime
 
 object AlarmScheduler {
     const val CHANGE = "io.github.probecat.airplanescheduler.CHANGE"
-    const val REMIND = "io.github.probecat.airplanescheduler.REMIND"
-    const val REMIND_BEFORE_MINUTES = 60L
+    const val NOTICE = "io.github.probecat.airplanescheduler.NOTICE"
     private const val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     // Only the next alarm of each kind is set, recomputed in local time on every alarm so clock and
@@ -20,19 +19,13 @@ object AlarmScheduler {
     fun scheduleAll(context: Context) {
         if (Mock.active) {
             set(context, CHANGE, null)
-            set(context, REMIND, null)
+            set(context, NOTICE, null)
             return
         }
-        val app = App.from(context)
-        val schedules = app.schedules.all
+        val schedules = App.from(context).schedules.all
         val now = ZonedDateTime.now()
         set(context, CHANGE, ScheduleResolver.nextChange(schedules, now))
-        val reminder = if (app.settings.current.remindShizuku) {
-            ScheduleResolver.nextReminder(schedules, now, REMIND_BEFORE_MINUTES)
-        } else {
-            null
-        }
-        set(context, REMIND, reminder)
+        set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, ScheduleResolver.AHEAD_MINUTES))
     }
 
     // Setting the same intent again replaces its alarm; no time cancels it.

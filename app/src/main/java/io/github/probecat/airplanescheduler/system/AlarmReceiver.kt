@@ -11,13 +11,26 @@ class AlarmReceiver : BroadcastReceiver() {
         AlarmScheduler.scheduleAll(context)
         // An alarm set before mock data came on mustn't act on it.
         if (Mock.active) return
-        when (intent.action) {
-            AlarmScheduler.CHANGE -> AirplaneController.onAlarm(context, goAsync()::finish)
-            AlarmScheduler.REMIND -> ShizukuReminder.check(context, goAsync()::finish)
-            // A start or end missed before boot is skipped, so schedules that ran once are over.
-            Intent.ACTION_BOOT_COMPLETED -> ScheduleUpdater.expire(context, LocalDateTime.now())
-            // App updates and clock changes only reset the alarms. A start or end missed in the
-            // meantime is skipped.
+        val app = App.from(context)
+        val result = goAsync()
+        // Notices say whether Shizuku is ready, which a fresh process learns only after a moment.
+        AirplaneController.awaitBinder {
+            app.refreshShizuku()
+            val done = {
+                Notifier.refresh(app)
+                result.finish()
+            }
+            when (intent.action) {
+                AlarmScheduler.CHANGE -> AirplaneController.onAlarm(app, done)
+                AlarmScheduler.NOTICE -> done()
+                // Boot, app updates and clock changes reset the alarms and notices. A start or end missed
+                // in the meantime is skipped, so schedules that ran once are over.
+                else -> {
+                    AirplaneController.forgetMissedEnd(app)
+                    if (intent.action == Intent.ACTION_BOOT_COMPLETED) ScheduleUpdater.expire(app, LocalDateTime.now())
+                    done()
+                }
+            }
         }
     }
 }

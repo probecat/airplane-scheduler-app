@@ -30,6 +30,7 @@ class App : Application() {
         super.onCreate()
         schedules = ScheduleRepository(this)
         settings = SettingsRepository(this)
+        Notifier.createChannels(this)
         Mock.init(this)
         // Restores alarms that a force stop removed.
         AlarmScheduler.scheduleAll(this)
@@ -44,6 +45,7 @@ class App : Application() {
             object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean) {
                     airplaneState.value = AirplaneController.airplaneOn(this@App)
+                    Notifier.refresh(this@App)
                 }
             },
         )
@@ -51,10 +53,9 @@ class App : Application() {
 
     fun refreshShizuku() {
         val state = ShizukuStatus.current()
+        if (state == shizukuState.value) return
         shizukuState.value = state
-        if (state == ShizukuState.READY) {
-            ShizukuReminder.dismiss(this)
-        }
+        Notifier.refresh(this)
     }
 
     companion object {

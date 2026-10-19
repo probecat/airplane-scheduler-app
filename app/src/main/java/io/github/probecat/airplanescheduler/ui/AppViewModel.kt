@@ -8,11 +8,12 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.mock.Mock
-import io.github.probecat.airplanescheduler.system.AlarmScheduler
 import io.github.probecat.airplanescheduler.system.App
+import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
+import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import java.time.LocalDateTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -52,7 +53,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val missed: StateFlow<Long?> = combine(schedules, now, app.settings.startedWindow, app.airplane, ::missed)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun refreshShizuku() = app.refreshShizuku()
+    fun refresh() {
+        app.refreshShizuku()
+        Notifier.refresh(app)
+    }
 
     fun catchUp(done: (Boolean) -> Unit) = ScheduleUpdater.catchUp(app, done)
 
@@ -77,41 +81,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isNew(schedule: Schedule): Boolean = app.schedules.get(schedule.id) == null
 
-    // Only enabled schedules are checked, so a disabled one may overlap anything, and so may one
-    // that ran once and is over.
-    fun conflict(schedule: Schedule): Schedule? {
-        if (!schedule.enabled) return null
-        val now = Mock.now()
-        val others = app.schedules.all.filterNot { ScheduleResolver.hasEnded(it, now) }
-        return ScheduleResolver.conflict(ScheduleResolver.dated(schedule, now), others)
-    }
+    fun conflict(schedule: Schedule): Schedule? = ScheduleUpdater.conflict(app, schedule)
 
-    // Returns the overlapping schedule instead of switching on. Switching on drops pending skips.
-    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? {
-        val base = if (enabled) ScheduleResolver.unskip(schedule, Mock.now()) else schedule
-        return save(base.copy(enabled = enabled))
-    }
+    // Returns the overlapping schedule instead of switching on.
+    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
+        ScheduleUpdater.setEnabled(app, schedule, enabled).also { if (it == null) drafts.remove(schedule.id) }
 
-    // Skips the next window, or ends the running one early. A schedule that runs once is switched off
-    // instead, since that is its only window.
-    fun skip(schedule: Schedule) {
-        if (schedule.once) setEnabled(schedule, false) else save(ScheduleResolver.skip(schedule, Mock.now()))
-    }
+    fun skip(schedule: Schedule) = ScheduleUpdater.skip(app, schedule)
 
-    // Undoes [skip], which starts the window again if it's still running.
-    fun unskip(id: Long): Schedule? {
-        val schedule = app.schedules.get(id) ?: return null
-        return if (schedule.once) setEnabled(schedule, true) else save(ScheduleResolver.unskip(schedule, Mock.now()))
-    }
+    fun postpone(schedule: Schedule) = ScheduleUpdater.postpone(app, schedule, settings.value.postponeMinutes)
 
+    fun unskip(id: Long): Schedule? = ScheduleUpdater.unskip(app, id)
+
+    // The sheet doesn't edit whether a schedule is on, nor its skips and delays, which a notification may
+    // have changed while it was open.
     fun save(edited: Schedule): Schedule? {
-        val schedule = ScheduleResolver.dated(edited, Mock.now())
-        conflict(schedule)?.let { return it }
-        drafts.remove(schedule.id)
-        val all = app.schedules.all
-        val replaced = all.map { if (it.id == schedule.id) schedule else it }
-        commit(if (all.any { it.id == schedule.id }) replaced else all + schedule)
-        return null
+        val stored = app.schedules.get(edited.id)
+        val schedule = stored?.let { edited.copy(enabled = it.enabled, skipped = it.skipped, delayed = it.delayed) }
+            ?: edited
+        return ScheduleUpdater.save(app, schedule).also { if (it == null) drafts.remove(edited.id) }
+    }
+
+    // True once, when the first schedule is saved and notifications aren't allowed yet.
+    fun asksNotifications(): Boolean {
+        if (app.settings.current.askedNotifications) return false
+        updateSettings { it.copy(askedNotifications = true) }
+        return !notificationsAllowed(app)
     }
 
     fun delete(schedule: Schedule) {
@@ -130,9 +125,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSettings(transform: (Settings) -> Settings) {
         val before = app.settings.current
         app.settings.update(transform)
-        if (before.remindShizuku != app.settings.current.remindShizuku) {
-            AlarmScheduler.scheduleAll(app)
-        }
+        if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
     }
 
     fun resetSettings() = updateSettings { Settings() }

@@ -135,8 +135,8 @@ class ScheduleResolverTest {
         )
         // At the far end, Wi-Fi follows the last window.
         assertNull(ScheduleResolver.window(schedules, friday(9)))
-        assertEquals(Ended(thursdayNight, enableWifi = true), ScheduleResolver.lastEnded(schedules, friday(9)))
-        assertEquals(Ended(thursdayNight, enableWifi = true), ScheduleResolver.lastEnded(schedules, friday(22)))
+        assertEquals(Ended(thursdayNight, second), ScheduleResolver.lastEnded(schedules, friday(9)))
+        assertEquals(Ended(thursdayNight, second), ScheduleResolver.lastEnded(schedules, friday(22)))
     }
 
     @Test
@@ -165,9 +165,9 @@ class ScheduleResolverTest {
     @Test
     fun lastEndedIsTheMostRecentEnd() {
         val lunch = Schedule(id = 2, start = at(12), end = at(13), enableWifi = false)
-        val schedules = listOf(night.copy(enableWifi = true), lunch)
-        assertEquals(Ended(thursdayNight, enableWifi = true), ScheduleResolver.lastEnded(schedules, friday(10)))
-        assertEquals(Ended(friday(12), enableWifi = false), ScheduleResolver.lastEnded(schedules, friday(14)))
+        val schedules = listOf(night, lunch)
+        assertEquals(Ended(thursdayNight, night), ScheduleResolver.lastEnded(schedules, friday(10)))
+        assertEquals(Ended(friday(12), lunch), ScheduleResolver.lastEnded(schedules, friday(14)))
         assertNull(ScheduleResolver.lastEnded(emptyList(), friday(14)))
     }
 
@@ -216,13 +216,13 @@ class ScheduleResolverTest {
     }
 
     @Test
-    fun reminderComesAnHourBeforeTheNextStart() {
+    fun noticeComesAnHourBeforeTheNextStart() {
         val zone = ZoneId.of("Asia/Dhaka")
-        assertEquals(friday(22).atZone(zone), ScheduleResolver.nextReminder(listOf(night), friday(12).atZone(zone), 60))
-        // Within the last hour, the reminder moves to tomorrow's start.
+        assertEquals(friday(22).atZone(zone), ScheduleResolver.nextNotice(listOf(night), friday(12).atZone(zone), 60))
+        // Within the last hour, the notice moves to tomorrow's start.
         assertEquals(
             friday(22).plusDays(1).atZone(zone),
-            ScheduleResolver.nextReminder(listOf(night), friday(22, 30).atZone(zone), 60),
+            ScheduleResolver.nextNotice(listOf(night), friday(22, 30).atZone(zone), 60),
         )
     }
 
@@ -257,7 +257,7 @@ class ScheduleResolverTest {
         assertEquals(friday(7).plusDays(1), ScheduleResolver.nextEnd(once, friday(12).atZone(zone))!!.toLocalDateTime())
         assertNull(ScheduleResolver.nextStart(once, friday(23, 30).atZone(zone)))
         assertNull(ScheduleResolver.nextChange(listOf(once), friday(8).plusDays(1).atZone(zone)))
-        assertEquals(Ended(friday(23), true), ScheduleResolver.lastEnded(listOf(once), friday(8).plusDays(1)))
+        assertEquals(Ended(friday(23), once), ScheduleResolver.lastEnded(listOf(once), friday(8).plusDays(1)))
     }
 
     @Test
@@ -347,5 +347,94 @@ class ScheduleResolverTest {
     fun oldSkipsAreDroppedWhenSkippingAgain() {
         val stale = night.copy(skipped = setOf(friday(0).toLocalDate().minusDays(30)))
         assertEquals(setOf(friday(0).toLocalDate()), ScheduleResolver.skip(stale, friday(12)).skipped)
+    }
+
+    @Test
+    fun postponingMovesOnlyTheStart() {
+        val postponed = ScheduleResolver.postpone(night, friday(22, 30), 30)
+        val saturday = friday(0).toLocalDate().plusDays(1)
+        assertFalse(ScheduleResolver.isActive(postponed, friday(23, 29)))
+        assertEquals(
+            Window(friday(23, 30), inFirst = true, disableWifi = true),
+            ScheduleResolver.window(listOf(postponed), friday(23, 30)),
+        )
+        val zone = ZoneId.of("UTC")
+        assertEquals(friday(23, 30).atZone(zone), ScheduleResolver.nextStart(postponed, friday(22, 30).atZone(zone)))
+        assertEquals(
+            saturday.atTime(7, 0).atZone(zone),
+            ScheduleResolver.nextEnd(postponed, friday(22, 30).atZone(zone)),
+        )
+        assertEquals(
+            ScheduleResolver.Delay(friday(0).toLocalDate(), friday(23, 30), due = false),
+            ScheduleResolver.delay(postponed, friday(22, 45)),
+        )
+        // Postponing again counts from the postponed start.
+        assertEquals(friday(23, 30).plusMinutes(30), ScheduleResolver.postponedTo(postponed, friday(22, 45), 30))
+    }
+
+    @Test
+    fun pausingCountsFromNowAndKeepsTheEnd() {
+        val paused = ScheduleResolver.postpone(night, friday(23, 40), 30)
+        val resumes = friday(23, 40).plusMinutes(30)
+        assertNull(ScheduleResolver.window(listOf(paused), friday(23, 50)))
+        assertEquals(
+            ScheduleResolver.Delay(friday(0).toLocalDate(), resumes, due = true),
+            ScheduleResolver.delay(paused, friday(23, 50)),
+        )
+        // The window still belongs to Friday after midnight.
+        assertEquals(friday(0).toLocalDate(), ScheduleResolver.nextDate(paused, resumes.minusMinutes(1)))
+        assertEquals(
+            Window(resumes, inFirst = true, disableWifi = true),
+            ScheduleResolver.window(listOf(paused), resumes),
+        )
+        assertNull(ScheduleResolver.delay(paused, resumes))
+        val zone = ZoneId.of("UTC")
+        assertEquals(resumes.atZone(zone), ScheduleResolver.nextChange(listOf(paused), friday(23, 50).atZone(zone)))
+    }
+
+    @Test
+    fun postponingPastTheEndSkips() {
+        val saturdayMorning = friday(6, 45).plusDays(1)
+        assertNull(ScheduleResolver.postponedTo(night, saturdayMorning, 15))
+        assertEquals(
+            ScheduleResolver.skip(night, saturdayMorning),
+            ScheduleResolver.postpone(night, saturdayMorning, 15),
+        )
+    }
+
+    @Test
+    fun postponingTheSecondOfTouchingWindowsEndsTheFirstOnTime() {
+        val morning = Schedule(id = 2, start = at(7), end = at(9), disableWifi = false)
+        val postponed = ScheduleResolver.postpone(morning, friday(6, 30), 30)
+        val schedules = listOf(night, postponed)
+        assertNull(ScheduleResolver.window(schedules, friday(7)))
+        assertEquals(ScheduleResolver.Ended(thursdayNight, night), ScheduleResolver.lastEnded(schedules, friday(7)))
+        assertEquals(
+            Window(friday(7, 30), inFirst = true, disableWifi = false),
+            ScheduleResolver.window(schedules, friday(8)),
+        )
+        assertEquals(
+            ScheduleResolver.Ended(friday(7, 30), postponed),
+            ScheduleResolver.lastEnded(schedules, friday(9)),
+        )
+    }
+
+    @Test
+    fun unskippingDropsPendingDelaysToo() {
+        val paused = ScheduleResolver.postpone(night, friday(23, 40), 30)
+        val resumed = ScheduleResolver.unskip(paused, friday(23, 50))
+        assertTrue(resumed.delayed.isEmpty())
+        assertTrue(ScheduleResolver.isActive(resumed, friday(23, 50)))
+        // A delay whose window is over stays, so the end of that window can still be looked up.
+        assertEquals(paused.delayed, ScheduleResolver.unskip(paused, friday(8).plusDays(1)).delayed)
+    }
+
+    @Test
+    fun oldDelaysAreDroppedWhenPostponingAgain() {
+        val stale = night.copy(delayed = mapOf(friday(0).toLocalDate().minusDays(30) to 15))
+        assertEquals(
+            mapOf(friday(0).toLocalDate() to 15),
+            ScheduleResolver.postpone(stale, friday(22, 50), 15).delayed,
+        )
     }
 }

@@ -52,25 +52,29 @@ class BoundaryTest {
 
     @Test
     fun endUndoesTheStartsChanges() {
-        assertEquals(Step.End(both), Boundary.atAlarm(listOf(night), friday(7), Started(thursdayNight, both)))
+        assertEquals(Step.End(both, night), Boundary.atAlarm(listOf(night), friday(7), Started(thursdayNight, both)))
+        val keepsWifiOff = night.copy(enableWifi = false)
         assertEquals(
-            Step.End(Changes(airplane = true, wifi = false)),
-            Boundary.atAlarm(listOf(night.copy(enableWifi = false)), friday(7), Started(thursdayNight, both)),
+            Step.End(Changes(airplane = true, wifi = false), keepsWifiOff),
+            Boundary.atAlarm(listOf(keepsWifiOff), friday(7), Started(thursdayNight, both)),
         )
         val wifiOnly = Changes(airplane = false, wifi = true)
-        assertEquals(Step.End(wifiOnly), Boundary.atAlarm(listOf(night), friday(7), Started(thursdayNight, wifiOnly)))
+        assertEquals(
+            Step.End(wifiOnly, night),
+            Boundary.atAlarm(listOf(night), friday(7), Started(thursdayNight, wifiOnly)),
+        )
     }
 
     @Test
     fun endOfTouchingWindowsUsesTheLastWindowsWifiOption() {
         val schedules = listOf(night.copy(enableWifi = false), morning.copy(enableWifi = true))
-        assertEquals(Step.End(both), Boundary.atAlarm(schedules, friday(9), Started(thursdayNight, both)))
+        assertEquals(Step.End(both, schedules[1]), Boundary.atAlarm(schedules, friday(9), Started(thursdayNight, both)))
     }
 
     @Test
     fun aWindowWhoseEndWasMissedIsForgottenNotUndone() {
         val stale = Started(thursdayNight.minusDays(1), both)
-        assertEquals(Step.End(Changes.NONE), Boundary.atAlarm(listOf(night), friday(7), stale))
+        assertEquals(Step.End(Changes.NONE, null), Boundary.atAlarm(listOf(night), friday(7), stale))
     }
 
     @Test
@@ -89,11 +93,12 @@ class BoundaryTest {
     @Test
     fun switchingOffTheRunningWindowEndsIt() {
         // The edited schedule's Wi-Fi option wins over the saved one.
+        val off = night.copy(enabled = false, enableWifi = false)
         assertEquals(
-            Step.End(Changes(airplane = true, wifi = false)),
+            Step.End(Changes(airplane = true, wifi = false), off),
             Boundary.atEdit(
                 listOf(night),
-                listOf(night.copy(enabled = false, enableWifi = false)),
+                listOf(off),
                 friday(23, 30),
                 Started(friday(23), both),
             ),
@@ -103,7 +108,7 @@ class BoundaryTest {
     @Test
     fun deletingTheRunningWindowUsesItsLastWifiOption() {
         assertEquals(
-            Step.End(Changes(airplane = true, wifi = false)),
+            Step.End(Changes(airplane = true, wifi = false), night.copy(enableWifi = false)),
             Boundary.atEdit(
                 listOf(night.copy(enableWifi = false)),
                 emptyList(),
@@ -116,7 +121,7 @@ class BoundaryTest {
     @Test
     fun switchingOffAWindowWhoseStartWasMissedChangesNothing() {
         assertEquals(
-            Step.End(Changes.NONE),
+            Step.End(Changes.NONE, night),
             Boundary.atEdit(listOf(night), emptyList(), friday(23, 30), started = null),
         )
     }
@@ -161,7 +166,7 @@ class BoundaryTest {
     fun endingEarlyEndsTheRunningWindow() {
         val started = Started(thursdayNight, both)
         val ended = ScheduleResolver.skip(night, friday(3))
-        assertEquals(Step.End(both), Boundary.atEdit(listOf(night), listOf(ended), friday(3), started))
+        assertEquals(Step.End(both, ended), Boundary.atEdit(listOf(night), listOf(ended), friday(3), started))
     }
 
     @Test
@@ -169,7 +174,7 @@ class BoundaryTest {
         val started = Started(thursdayNight, both)
         val skipped = listOf(night, ScheduleResolver.skip(morning, friday(3)))
         assertEquals(Step.None, Boundary.atEdit(listOf(night, morning), skipped, friday(3), started))
-        assertEquals(Step.End(both), Boundary.atAlarm(skipped, friday(7), started))
+        assertEquals(Step.End(both, night), Boundary.atAlarm(skipped, friday(7), started))
     }
 
     @Test
@@ -187,10 +192,31 @@ class BoundaryTest {
         assertEquals(window, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = false))
         assertEquals(window, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, Changes.NONE), false))
         assertEquals(null, Boundary.missed(listOf(night), friday(3), Started(thursdayNight, both), false))
-        // Airplane mode was already on at the start, and someone turned it off since.
-        val already = Started(thursdayNight, Changes.NONE, already = Changes(airplane = true, wifi = false))
-        assertEquals(null, Boundary.missed(listOf(night), friday(3), already, false))
+        val wasOn = Started(thursdayNight, Changes.NONE, Changes.NONE, already = Changes(airplane = true, wifi = false))
+        assertEquals(null, Boundary.missed(listOf(night), friday(3), wasOn, false))
         assertEquals(null, Boundary.missed(listOf(night), friday(3), started = null, airplaneOn = true))
         assertEquals(null, Boundary.missed(listOf(night), friday(12), started = null, airplaneOn = false))
+    }
+
+    @Test
+    fun pausingEndsTheRunningWindowAndItStartsAgainLater() {
+        val started = Started(friday(23), both)
+        val paused = ScheduleResolver.postpone(night, friday(23, 40), 30)
+        val resumes = friday(23, 40).plusMinutes(30)
+        assertEquals(Step.End(both, paused), Boundary.atEdit(listOf(night), listOf(paused), friday(23, 40), started))
+        assertEquals(Step.None, Boundary.atAlarm(listOf(paused), friday(23, 50), started = null))
+        val restarted = Window(resumes, inFirst = true, disableWifi = true)
+        assertEquals(Step.Start(restarted), Boundary.atAlarm(listOf(paused), resumes, started = null))
+        assertEquals(
+            Step.End(both, paused),
+            Boundary.atAlarm(listOf(paused), friday(7).plusDays(1), Started(resumes, both)),
+        )
+    }
+
+    @Test
+    fun postponingBeforeTheStartChangesNothingYet() {
+        val postponed = ScheduleResolver.postpone(night, friday(22, 30), 30)
+        assertEquals(Step.None, Boundary.atEdit(listOf(night), listOf(postponed), friday(22, 30), started = null))
+        assertEquals(Step.None, Boundary.atAlarm(listOf(postponed), friday(23), started = null))
     }
 }

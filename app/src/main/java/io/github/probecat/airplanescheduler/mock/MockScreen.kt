@@ -1,9 +1,11 @@
 package io.github.probecat.airplanescheduler.mock
 
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,14 +45,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
+import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.data.ThemeMode
 import io.github.probecat.airplanescheduler.system.App
+import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.SectionHeader
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.SwitchRow
 import io.github.probecat.airplanescheduler.ui.rememberFormat
+import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import java.util.Locale
 
 // Always provides the locals, so turning mock data on or off doesn't rebuild the screens below.
@@ -86,6 +93,22 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
 
     fun update(transform: (MockConfig) -> MockConfig) = Mock.update(app, transform)
 
+    var pending by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val requestNotifications = rememberNotificationRequest(real = true) { granted ->
+        if (granted) pending?.invoke()
+        pending = null
+    }
+
+    fun post(action: () -> Unit) {
+        update { it.copy(notifications = true) }
+        if (NotificationManagerCompat.from(app).areNotificationsEnabled()) {
+            action()
+        } else {
+            pending = action
+            requestNotifications()
+        }
+    }
+
     Subpage("UI states", onBack) {
         SwitchRow(icon = null, title = "Mock data", checked = on) { enabled ->
             viewModel.clearDrafts()
@@ -111,6 +134,24 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
         }
         SwitchRow(null, "Notifications allowed", config.notifications, on) { allowed ->
             update { it.copy(notifications = allowed) }
+        }
+
+        SectionHeader("Notifications")
+        Note("Posts real ones for the mock schedules, clock and Shizuku. Android's permission is needed.")
+        FlowRow(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ClockButton("Notices", on) {
+                post {
+                    if (!Notifier.repost(app)) {
+                        Toast.makeText(app, "No schedule has a notice at this time", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            for ((label, report) in endReports) {
+                ClockButton(label, on) { post { report(app) } }
+            }
         }
 
         SectionHeader("Clock")
@@ -225,6 +266,23 @@ private fun ScenarioPicker(applied: Scenario?, onApply: (Scenario) -> Unit) {
             }
         }
     }
+}
+
+private val endReports: List<Pair<String, (App) -> Unit>> = listOf(
+    "Ended" to { app -> ended(app, Ending(Changes.NONE, wifiBackOn = true)) },
+    "Wi-Fi kept off" to { app -> ended(app, Ending(Changes.NONE, wifiKeptOff = true)) },
+    "Already on" to
+        { app -> ended(app, Ending(Changes.NONE, airplaneWasOn = true, airplaneStaysOn = true, wifiWasOff = true)) },
+    "Turned off" to { app -> ended(app, Ending(Changes.NONE, airplaneTurnedOff = true, wifiBackOn = true)) },
+    "Missed start" to { app -> ended(app, Ending(Changes.NONE, missedStart = true)) },
+    "Failed end" to { app -> ended(app, Ending(Changes(airplane = true, wifi = true))) },
+    "Missed end" to { app -> Notifier.missedEnd(app, app.schedules.all.firstOrNull(), Changes(true, false)) },
+)
+
+private fun ended(app: App, ending: Ending) {
+    val schedule = app.schedules.all.firstOrNull()
+    val report = schedule?.let { Notifier.report(app, it) } ?: Notifier.Report(0, "A schedule")
+    Notifier.ended(app, report, ending)
 }
 
 // Narrower than the default padding, so four fit in a row.
