@@ -79,6 +79,7 @@
     <string name="schedules_paused">Schedule paused</string>
     <string name="schedules_turn_on_failed">Couldn\'t turn on airplane mode</string>
     <string name="schedules_deleted">Schedule deleted</string>
+    <string name="strip_alarms">Allow alarms so schedules run on time</string>
     <string name="strip_shizuku_ready">Shizuku is ready</string>
     <string name="strip_shizuku_offline">Shizuku is unavailable, schedules can\'t work</string>
     <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
@@ -123,6 +124,8 @@
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_shizuku_ready">Ready</string>
     <string name="settings_notifications">Notifications</string>
+    <string name="settings_alarms">Alarms</string>
+    <string name="settings_alarms_denied">Not allowed, schedules may run late</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
     <string name="settings_source">Source code</string>
@@ -163,6 +166,8 @@
     <string name="help_missed_a">Shizuku wasn\'t running or the phone was off. The app doesn\'t automatically catch up by design, but it notifies you.</string>
     <string name="help_shizuku_stopped_q">Why did Shizuku stop?</string>
     <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. If you have notifications on, you\'ll get a warning an hour before a schedule runs.</string>
+    <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
+    <string name="help_shizuku_stopped_legacy">On this Android version, starting Shizuku needs a computer or root.</string>
     <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
     <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
 

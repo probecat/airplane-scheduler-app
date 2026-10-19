@@ -58,6 +58,7 @@ import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.SwitchRow
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 import java.util.Locale
 
 // Always provides the locals, so turning mock data on or off doesn't rebuild the screens below.
@@ -178,7 +179,7 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
         Choice("Theme", themes, settings.theme, true) { theme ->
             viewModel.updateSettings { it.copy(theme = theme) }
         }
-        SwitchRow(null, "Dynamic color", settings.dynamicColor) { dynamic ->
+        SwitchRow(null, "Dynamic color", settings.dynamicColor, hasDynamicColor) { dynamic ->
             viewModel.updateSettings { it.copy(dynamicColor = dynamic) }
         }
         Choice(

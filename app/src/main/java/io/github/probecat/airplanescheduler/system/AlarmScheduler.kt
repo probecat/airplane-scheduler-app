@@ -28,16 +28,28 @@ object AlarmScheduler {
         set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, ScheduleResolver.AHEAD_MINUTES))
     }
 
-    // Setting the same intent again replaces its alarm; no time cancels it.
-    @SuppressLint("MissingPermission") // USE_EXACT_ALARM is granted at install.
+    // Setting the same intent again replaces its alarm; no time cancels it. Without exact alarms, Android may
+    // run it late, which beats not at all.
+    @SuppressLint("MissingPermission") // Checked by exactAlarmsAllowed.
     private fun set(context: Context, action: String, time: ZonedDateTime?) {
         val alarms = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java).setAction(action)
         val pending = PendingIntent.getBroadcast(context, 0, intent, FLAGS)
-        if (time == null) {
-            alarms.cancel(pending)
-        } else {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, time.toInstant().toEpochMilli(), pending)
+        val millis = time?.toInstant()?.toEpochMilli()
+        when {
+            millis == null -> alarms.cancel(pending)
+            exactAlarmsAllowed(context) -> alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
+            else -> alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
+        }
+        // Denying exact alarms on Android 12 drops them, so an inexact twin keeps changes coming. The first
+        // to fire sets both again, which replaces the other.
+        if (action == CHANGE && exactAlarmsDeniable) {
+            val backup = PendingIntent.getBroadcast(context, 1, intent, FLAGS)
+            if (millis == null) {
+                alarms.cancel(backup)
+            } else {
+                alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, backup)
+            }
         }
     }
 }

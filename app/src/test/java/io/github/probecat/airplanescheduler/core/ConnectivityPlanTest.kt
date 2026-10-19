@@ -8,11 +8,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConnectivityPlanTest {
-    private val wifiOff = listOf("wifi", "set-wifi-enabled", "disabled")
-    private val airplaneOn = listOf("connectivity", "airplane-mode", "enable")
-    private val airplaneOff = listOf("connectivity", "airplane-mode", "disable")
-    private val wifiOn = listOf("wifi", "set-wifi-enabled", "enabled")
-
     @Test
     fun startChangesOnlyWhatIsNotAlreadyInPlace() {
         assertEquals(
@@ -45,27 +40,24 @@ class ConnectivityPlanTest {
     @Test
     fun startDisablesWifiBeforeEnablingAirplaneMode() {
         assertEquals(
-            listOf(WIFI to wifiOff, AIRPLANE to airplaneOn),
-            ConnectivityPlan.commands(enabled = true, Changes(airplane = true, wifi = true)),
+            listOf(WIFI, AIRPLANE),
+            ConnectivityPlan.order(enabled = true, Changes(airplane = true, wifi = true)),
         )
     }
 
     @Test
     fun endDisablesAirplaneModeBeforeEnablingWifi() {
         assertEquals(
-            listOf(AIRPLANE to airplaneOff, WIFI to wifiOn),
-            ConnectivityPlan.commands(enabled = false, Changes(airplane = true, wifi = true)),
+            listOf(AIRPLANE, WIFI),
+            ConnectivityPlan.order(enabled = false, Changes(airplane = true, wifi = true)),
         )
     }
 
     @Test
     fun onlyTheChangesRun() {
-        assertEquals(
-            listOf(AIRPLANE to airplaneOn),
-            ConnectivityPlan.commands(true, Changes(airplane = true, wifi = false)),
-        )
-        assertEquals(listOf(WIFI to wifiOn), ConnectivityPlan.commands(false, Changes(airplane = false, wifi = true)))
-        assertTrue(ConnectivityPlan.commands(true, Changes.NONE).isEmpty())
+        assertEquals(listOf(AIRPLANE), ConnectivityPlan.order(true, Changes(airplane = true, wifi = false)))
+        assertEquals(listOf(WIFI), ConnectivityPlan.order(false, Changes(airplane = false, wifi = true)))
+        assertTrue(ConnectivityPlan.order(true, Changes.NONE).isEmpty())
     }
 
     @Test

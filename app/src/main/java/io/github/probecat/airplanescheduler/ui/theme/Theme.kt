@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.theme
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -17,13 +18,16 @@ fun isDark(theme: ThemeMode): Boolean = when (theme) {
     ThemeMode.DARK, ThemeMode.BLACK -> true
 }
 
+// Android 12 added the wallpaper colors.
+val hasDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
 @Composable
 fun AppTheme(theme: ThemeMode, dynamicColor: Boolean, content: @Composable () -> Unit) {
     val dark = isDark(theme)
     val context = LocalContext.current
     val scheme = when {
-        dynamicColor && dark -> dynamicDarkColorScheme(context)
-        dynamicColor -> dynamicLightColorScheme(context)
+        hasDynamicColor && dynamicColor && dark -> dynamicDarkColorScheme(context)
+        hasDynamicColor && dynamicColor -> dynamicLightColorScheme(context)
         dark -> SeedDark
         else -> SeedLight
     }

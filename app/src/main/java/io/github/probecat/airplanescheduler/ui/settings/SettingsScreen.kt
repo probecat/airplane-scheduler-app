@@ -38,6 +38,9 @@ import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.data.ThemeMode
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
+import io.github.probecat.airplanescheduler.system.exactAlarmSettings
+import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
+import io.github.probecat.airplanescheduler.system.exactAlarmsDeniable
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Format
@@ -51,6 +54,7 @@ import io.github.probecat.airplanescheduler.ui.SwitchRow
 import io.github.probecat.airplanescheduler.ui.notificationSettings
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
 @Composable
 fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit) {
@@ -58,6 +62,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val format = rememberFormat()
     var notifications by remember { mutableStateOf(notificationsAllowed(context)) }
+    var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
     var choosingPostpone by rememberSaveable { mutableStateOf(false) }
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
@@ -66,6 +71,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
+        exactAlarms = exactAlarmsAllowed(context)
     }
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
 
@@ -77,11 +83,13 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             text = stringResource(settings.theme.label),
             onClick = { choosingTheme = true },
         )
-        SwitchRow(
-            icon = R.drawable.ic_palette,
-            title = stringResource(R.string.settings_dynamic_color),
-            checked = settings.dynamicColor,
-        ) { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } }
+        if (hasDynamicColor) {
+            SwitchRow(
+                icon = R.drawable.ic_palette,
+                title = stringResource(R.string.settings_dynamic_color),
+                checked = settings.dynamicColor,
+            ) { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } }
+        }
 
         SectionHeader(stringResource(R.string.settings_schedules))
         SettingRow(
@@ -145,6 +153,18 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
                 }
             },
         )
+        if (exactAlarmsDeniable) {
+            SettingRow(
+                icon = R.drawable.ic_alarm,
+                title = stringResource(R.string.settings_alarms),
+                text = stringResource(if (exactAlarms) R.string.status_allowed else R.string.settings_alarms_denied),
+                trailing = {
+                    TextButton(onClick = { context.startActivity(exactAlarmSettings(context)) }) {
+                        Text(stringResource(if (exactAlarms) R.string.action_manage else R.string.action_allow))
+                    }
+                },
+            )
+        }
 
         SectionHeader(stringResource(R.string.settings_about))
         SettingRow(

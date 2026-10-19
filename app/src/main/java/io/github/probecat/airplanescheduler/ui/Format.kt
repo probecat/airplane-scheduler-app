@@ -123,6 +123,8 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))
 
+    fun sentences(first: String, second: String): String = strings.get(R.string.sentences, first, second)
+
     private fun short(day: DayOfWeek): String = day.getDisplayName(TextStyle.SHORT, locale)
 
     fun dayName(day: DayOfWeek): String = day.getDisplayName(TextStyle.FULL, locale)

@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.help
 
+import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -57,11 +58,18 @@ private fun schedules(format: Format) = listOf(
 )
 
 @Composable
-private fun troubleshooting() = listOf(
-    topic(R.string.help_missed_q, R.string.help_missed_a),
-    topic(R.string.help_shizuku_stopped_q, R.string.help_shizuku_stopped_a),
-    topic(R.string.help_overlap_q, R.string.help_overlap_a),
-)
+private fun troubleshooting(format: Format): List<Pair<String, String>> {
+    var shizukuStopped = stringResource(R.string.help_shizuku_stopped_a)
+    // Wireless debugging, which Shizuku starts with, came in Android 11.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        shizukuStopped = format.sentences(shizukuStopped, stringResource(R.string.help_shizuku_stopped_legacy))
+    }
+    return listOf(
+        topic(R.string.help_missed_q, R.string.help_missed_a),
+        stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
+        topic(R.string.help_overlap_q, R.string.help_overlap_a),
+    )
+}
 
 @Composable
 fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
@@ -80,7 +88,7 @@ fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
         schedules(format).forEach { (question, answer) -> Topic(question, answer) }
 
         SectionHeader(stringResource(R.string.help_troubleshooting))
-        troubleshooting().forEach { (question, answer) -> Topic(question, answer) }
+        troubleshooting(format).forEach { (question, answer) -> Topic(question, answer) }
         LinkRow(R.drawable.ic_bug_report, stringResource(R.string.help_report), ISSUES_URL)
     }
 }
