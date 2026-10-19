@@ -17,7 +17,6 @@ object Boundary {
         // Forgets the started window and undoes [changes], if any.
         data class End(val changes: Changes) : Step
 
-        // An edit moved the start of the window that is running.
         data class Move(val started: Started) : Step
 
         data object None : Step
@@ -51,7 +50,6 @@ object Boundary {
         }
     }
 
-    // A window that the edit switches on starts at once, and one that it switches off ends at once.
     fun atEdit(old: List<Schedule>, new: List<Schedule>, now: LocalDateTime, started: Started?): Step {
         val before = ScheduleResolver.window(old, now)
         val after = ScheduleResolver.window(new, now)

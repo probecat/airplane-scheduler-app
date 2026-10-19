@@ -37,7 +37,6 @@ class Scenario(
     // The app couldn't turn airplane mode on at the running window's start.
     val missedStart: Boolean = false,
     val schedules: (today: LocalDate) -> List<Schedule> = { emptyList() },
-    // Unsaved sheet edits, by schedule id.
     val drafts: Map<Long, (Schedule) -> Schedule> = emptyMap(),
 ) {
     // [day] in the current week, so the mock clock stays within a few days of the real one.

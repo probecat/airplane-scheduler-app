@@ -23,7 +23,6 @@ import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
 
-// Time and day labels that follow the system 24-hour setting and locale.
 class Format(val is24Hour: Boolean, val locale: Locale) {
     private val clock = DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm", locale)
     private val marker = DateTimeFormatter.ofPattern("a", locale)
@@ -34,7 +33,6 @@ class Format(val is24Hour: Boolean, val locale: Locale) {
 
     fun time(minute: Int): String = time(minute, markerSize = TextUnit.Unspecified).text
 
-    // "11:00 PM" with a smaller marker.
     fun time(minute: Int, markerSize: TextUnit): AnnotatedString {
         val time = LocalTime.of(minute / 60, minute % 60)
         return buildAnnotatedString {

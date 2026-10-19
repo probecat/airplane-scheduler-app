@@ -28,11 +28,9 @@ object ConnectivityPlan {
     fun start(airplaneOn: Boolean, wifiOn: Boolean, disableWifi: Boolean) =
         Changes(airplane = !airplaneOn, wifi = disableWifi && wifiOn)
 
-    // What a start finds already as it wants it.
     fun already(airplaneOn: Boolean, wifiOn: Boolean, disableWifi: Boolean) =
         Changes(airplane = airplaneOn, wifi = disableWifi && !wifiOn)
 
-    // An end undoes the start's changes, and turns Wi-Fi back on only when the schedule asks for it.
     fun end(started: Changes, enableWifi: Boolean) = started.copy(wifi = started.wifi && enableWifi)
 
     // Wi-Fi goes off before airplane mode turns on, and back on after it turns off.

@@ -414,7 +414,6 @@ private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, c
 @Composable
 private fun ScheduleCard(
     schedule: Schedule,
-    // Minutes until it ends, while it's active.
     endsIn: Int?,
     // Why airplane mode is off while it's active.
     missed: ShizukuState?,

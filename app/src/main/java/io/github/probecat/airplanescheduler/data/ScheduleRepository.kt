@@ -24,7 +24,6 @@ class ScheduleRepository(private val context: Context) {
 
     fun nextId(): Long = highestId + 1
 
-    // Debug builds keep mock schedules in a store of their own, so the real ones stay untouched.
     fun useStore(mock: Boolean) {
         prefs = context.getSharedPreferences(if (mock) "mock_$PREFS" else PREFS, Context.MODE_PRIVATE)
         state.value = decode(prefs.getString(KEY, null))
