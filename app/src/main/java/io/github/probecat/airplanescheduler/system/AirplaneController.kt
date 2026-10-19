@@ -44,10 +44,15 @@ object AirplaneController {
                     )
                 // Saved before Shizuku answers, so an alarm in the meantime doesn't start the window twice.
                 app.settings.started = started
+                // An end while it was switching, as from Skip, undoes what it made.
                 set(app, true, wanted) { made ->
-                    val changes = Changes(started.changes.airplane || made.airplane, started.changes.wifi || made.wifi)
-                    app.settings.started = started.copy(changes = changes)
-                    done()
+                    val current = app.settings.started
+                    if (current != null) {
+                        app.settings.started = current.copy(changes = current.changes + made)
+                        done()
+                    } else {
+                        set(app, false, made) { done() }
+                    }
                 }
             }
             is Boundary.Step.End -> {

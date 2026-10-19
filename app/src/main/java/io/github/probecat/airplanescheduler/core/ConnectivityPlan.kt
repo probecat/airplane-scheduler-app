@@ -15,6 +15,8 @@ object ConnectivityPlan {
 
         val bits: Int get() = (if (airplane) AIRPLANE else 0) or (if (wifi) WIFI else 0)
 
+        operator fun plus(other: Changes) = Changes(airplane || other.airplane, wifi || other.wifi)
+
         companion object {
             val NONE = Changes(airplane = false, wifi = false)
 
