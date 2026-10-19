@@ -43,6 +43,7 @@ import io.github.probecat.airplanescheduler.ui.SettingRow
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.rememberFormat
+import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColor
 
 @Composable
 private fun topic(@StringRes question: Int, @StringRes answer: Int, vararg args: Any) =
@@ -154,6 +155,7 @@ private fun Step(
         icon = if (done) R.drawable.ic_check_circle else number,
         title = stringResource(title),
         text = stringResource(status),
+        tint = if (done) LocalSuccessColor.current else MaterialTheme.colorScheme.error,
         trailing = if (done) null else action,
     )
 }

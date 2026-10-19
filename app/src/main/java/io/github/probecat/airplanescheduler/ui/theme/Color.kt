@@ -92,3 +92,7 @@ data class WarningColors(val container: Color, val onContainer: Color)
 
 internal val WarningLight = WarningColors(Color(0xFFFFDDB8), Color(0xFF653E00))
 internal val WarningDark = WarningColors(Color(0xFF653E00), Color(0xFFFFDDB8))
+
+// Material has no success role either; a fixed green pairs with the error red for finished steps.
+internal val SuccessLight = Color(0xFF006E1C)
+internal val SuccessDark = Color(0xFFA3D39C)
