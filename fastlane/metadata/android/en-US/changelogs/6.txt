@@ -1,0 +1,2 @@
+• Fixed: a schedule could show as missed when airplane mode was already on at its start and was turned off later.
+• Fixed: ending a schedule right as it started could leave airplane mode on.
