@@ -29,3 +29,10 @@ run = [
   "./gradlew installDebug",
   "adb shell am start -n io.github.probecat.airplanescheduler.debug/io.github.probecat.airplanescheduler.ui.MainActivity",
 ]
+
+[tasks.dev-clean]
+description = "Uninstall the debug app (wiping its data and permissions), then run dev"
+run = [
+  "adb uninstall io.github.probecat.airplanescheduler.debug || true",
+  "mise run dev",
+]
