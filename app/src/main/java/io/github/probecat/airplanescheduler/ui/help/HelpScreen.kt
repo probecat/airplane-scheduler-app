@@ -2,7 +2,6 @@ package io.github.probecat.airplanescheduler.ui.help
 
 import android.os.Build
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
@@ -177,7 +176,7 @@ private fun Topic(question: String, answer: String) {
             .semantics { stateDescription = state }
             .padding(horizontal = 8.dp),
     )
-    AnimatedVisibility(open) {
+    if (open) {
         Text(
             answer,
             style = MaterialTheme.typography.bodyMedium,
