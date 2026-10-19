@@ -43,7 +43,6 @@ object ScheduleResolver {
         }
     }
 
-    // Skipped windows that haven't ended.
     fun pendingSkips(schedule: Schedule, now: LocalDateTime): Set<LocalDate> =
         schedule.skipped.filterTo(mutableSetOf()) { windowEnd(schedule, it).isAfter(now) }
 
@@ -157,7 +156,6 @@ object ScheduleResolver {
         return if (startsOn(schedule, started)) started.atTime(schedule.start / 60, schedule.start % 60) else null
     }
 
-    // Walks back through windows that end exactly where the current one starts.
     private fun firstOfChain(
         active: Schedule,
         live: List<Schedule>,

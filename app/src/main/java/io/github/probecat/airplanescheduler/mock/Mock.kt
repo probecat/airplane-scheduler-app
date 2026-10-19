@@ -22,7 +22,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-// What debug builds pretend about the device while mock data is on.
 @Serializable
 data class MockConfig(
     val enabled: Boolean = false,
@@ -115,7 +114,6 @@ object Mock {
     }
 }
 
-// The config while mock data is on, recomposing when it changes.
 @Composable
 fun activeMock(): MockConfig? {
     if (!BuildConfig.DEBUG) return null

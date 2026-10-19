@@ -41,7 +41,6 @@ object ShizukuStatus {
         false
     }
 
-    // Where to get Shizuku when it isn't installed.
     fun repository(): Intent = Intent(Intent.ACTION_VIEW, "https://github.com/RikkaApps/Shizuku".toUri())
 
     fun launchIntent(context: Context): Intent? {

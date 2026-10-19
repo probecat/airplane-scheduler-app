@@ -39,7 +39,6 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    // Debug builds keep mock settings in a store of their own, so the real ones stay untouched.
     fun useStore(mock: Boolean) {
         prefs = context.getSharedPreferences(if (mock) "mock_$PREFS" else PREFS, Context.MODE_PRIVATE)
         state.value = read()

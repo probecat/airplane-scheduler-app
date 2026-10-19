@@ -125,7 +125,6 @@ fun SettingRow(
     )
 }
 
-// Snackbars can be swiped away sideways, as elsewhere in Android.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DismissibleSnackbarHost(state: SnackbarHostState) {
