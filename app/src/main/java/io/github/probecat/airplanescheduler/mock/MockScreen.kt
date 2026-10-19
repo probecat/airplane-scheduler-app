@@ -136,6 +136,9 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
         SwitchRow(null, "Notifications allowed", config.notifications, on) { allowed ->
             update { it.copy(notifications = allowed) }
         }
+        SwitchRow(null, "Battery optimization (Android 9-11)", config.batteryOptimized, on) { optimized ->
+            update { it.copy(batteryOptimized = optimized) }
+        }
 
         SectionHeader("Notifications")
         Note("Posts real ones for the mock schedules, clock and Shizuku. Android's permission is needed.")

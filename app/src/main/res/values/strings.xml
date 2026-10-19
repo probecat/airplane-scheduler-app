@@ -80,6 +80,7 @@
     <string name="schedules_turn_on_failed">Couldn\'t turn on airplane mode</string>
     <string name="schedules_deleted">Schedule deleted</string>
     <string name="strip_alarms">Allow alarms so schedules run on time</string>
+    <string name="strip_battery">Battery optimization may delay schedules</string>
     <string name="strip_shizuku_ready">Shizuku is ready</string>
     <string name="strip_shizuku_offline">Shizuku is unavailable, schedules can\'t work</string>
     <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
@@ -164,6 +165,9 @@
     <string name="help_change_active_a">Switching a schedule off or deleting it ends it right away, like a normal end. Switching on or adding a schedule that covers the current time starts it right away. Editing the times starts or ends it to match.</string>
     <string name="help_missed_q">Why didn\'t airplane mode turn on or off?</string>
     <string name="help_missed_a">Shizuku wasn\'t running or the phone was off. The app doesn\'t automatically catch up by design, but it notifies you.</string>
+    <!-- Shown below Android 12 only. -->
+    <string name="help_late_q">Why did a schedule run late?</string>
+    <string name="help_late_a">Battery optimization can delay it by up to 2 hours if you rarely open the app. Disable battery optimization for Airplane Scheduler in your settings.</string>
     <string name="help_shizuku_stopped_q">Why did Shizuku stop?</string>
     <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. If you have notifications on, you\'ll get a warning an hour before a schedule runs.</string>
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->

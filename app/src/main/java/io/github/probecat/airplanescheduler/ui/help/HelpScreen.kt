@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
+import io.github.probecat.airplanescheduler.system.batteryOptimizationDelays
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.ISSUES_URL
@@ -64,8 +65,9 @@ private fun troubleshooting(format: Format): List<Pair<String, String>> {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
         shizukuStopped = format.sentences(shizukuStopped, stringResource(R.string.help_shizuku_stopped_legacy))
     }
-    return listOf(
+    return listOfNotNull(
         topic(R.string.help_missed_q, R.string.help_missed_a),
+        if (batteryOptimizationDelays) topic(R.string.help_late_q, R.string.help_late_a) else null,
         stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
         topic(R.string.help_overlap_q, R.string.help_overlap_a),
     )

@@ -86,3 +86,9 @@ internal val SeedDark = darkColorScheme(
 // container.
 val AddButton = Color(0xFFE4CEFF)
 val OnAddButton = Color(0xFF54436B)
+
+// Material has no warning role, so a fixed orange stands in for problems that only delay schedules.
+data class WarningColors(val container: Color, val onContainer: Color)
+
+internal val WarningLight = WarningColors(Color(0xFFFFDDB8), Color(0xFF653E00))
+internal val WarningDark = WarningColors(Color(0xFF653E00), Color(0xFFFFDDB8))

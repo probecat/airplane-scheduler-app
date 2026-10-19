@@ -28,6 +28,7 @@ mock          scenario id, on or off
 shizuku       ready, offline or no-access
 shizukuApp    true or false
 notifications true or false
+battery       true or false
 at            wed 23:15, 23:15 or real
 clock         system, 12 or 24
 locale        language tag or system
@@ -74,6 +75,7 @@ Any override turns mock data on."""
             shizuku = value("shizuku")?.let { SHIZUKU[it] } ?: before.shizuku,
             shizukuInstalled = flag("shizukuApp") ?: before.shizukuInstalled,
             notifications = flag("notifications") ?: before.notifications,
+            batteryOptimized = flag("battery") ?: before.batteryOptimized,
             clockOffset = value("at")?.let { at ->
                 if (at == "real") 0 else parseAt(at, LocalDateTime.now())?.let(Mock::offsetTo)
             } ?: before.clockOffset,
