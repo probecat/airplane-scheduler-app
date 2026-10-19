@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -184,7 +185,10 @@ fun Subpage(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = "Back")
+                        Icon(
+                            painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = stringResource(R.string.back),
+                        )
                     }
                 },
                 actions = actions,

@@ -96,7 +96,10 @@ private fun details(
             },
         )
         appendLine("Notifications: " + if (notificationsAllowed(context)) "allowed" else "not allowed")
-        appendLine("Theme: ${settings.theme.label}, dynamic color ${if (settings.dynamicColor) "on" else "off"}")
+        appendLine(
+            "Theme: ${context.getString(settings.theme.label)}, dynamic color " +
+                if (settings.dynamicColor) "on" else "off",
+        )
         appendLine(
             "Shizuku reminder: " +
                 if (settings.remindShizuku) reminder?.let { "next ${moment.format(it)}" } ?: "on" else "off",

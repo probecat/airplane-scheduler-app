@@ -5,6 +5,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 
@@ -14,28 +16,20 @@ fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> U
     val shizuku = ShizukuStatus.launchIntent(context)
     val (title, text) = when {
         state == ShizukuState.READY -> return
-        shizuku == null ->
-            "Shizuku isn't installed" to
-                "Airplane Scheduler switches airplane mode through Shizuku. Install Shizuku and start it. Until " +
-                "then, schedules can't switch anything."
-        state == ShizukuState.OFFLINE ->
-            "Shizuku isn't running" to
-                "Airplane Scheduler switches airplane mode through Shizuku. Shizuku stops when the phone restarts, " +
-                "so start it again in the Shizuku app. Until then, schedules can't switch anything."
-        else ->
-            "Allow access in Shizuku" to
-                "Shizuku won't ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it."
+        shizuku == null -> R.string.shizuku_missing_title to R.string.shizuku_missing_text
+        state == ShizukuState.OFFLINE -> R.string.shizuku_offline_title to R.string.shizuku_offline_text
+        else -> R.string.shizuku_permission_title to R.string.shizuku_permission_text
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(text) },
+        title = { Text(stringResource(title)) },
+        text = { Text(stringResource(text)) },
         confirmButton = {
             TextButton(onClick = {
                 onDismiss()
                 context.startActivity(shizuku ?: ShizukuStatus.repository())
-            }) { Text(if (shizuku != null) "Open Shizuku" else "Get Shizuku") }
+            }) { Text(stringResource(if (shizuku != null) R.string.shizuku_open else R.string.shizuku_get)) }
         },
-        dismissButton = onHelp?.let { { TextButton(onClick = it) { Text("Help") } } },
+        dismissButton = onHelp?.let { { TextButton(onClick = it) { Text(stringResource(R.string.help)) } } },
     )
 }

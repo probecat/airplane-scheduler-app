@@ -64,6 +64,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -95,7 +96,6 @@ val ScheduleSaver: Saver<Schedule?, String> = Saver(
 )
 
 private const val NAME_LENGTH = 40
-private const val NAME_PLACEHOLDER = "Unnamed"
 
 // Edits apply only on Save. Closing the sheet any other way keeps them through [onEdit] for next time.
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,44 +138,46 @@ fun ScheduleSheet(
     ) {
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                TimeButton("Starts", schedule.start, format, Modifier.weight(1f)) { picking = true }
+                TimeButton(stringResource(R.string.sheet_starts), schedule.start, format, Modifier.weight(1f)) {
+                    picking =
+                        true
+                }
                 Icon(
                     painterResource(R.drawable.ic_arrow_forward),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 8.dp).size(20.dp),
                 )
-                TimeButton("Ends", schedule.end, format, Modifier.weight(1f)) { picking = false }
+                TimeButton(stringResource(R.string.sheet_ends), schedule.end, format, Modifier.weight(1f)) {
+                    picking =
+                        false
+                }
             }
             Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
                 when {
-                    sameTimes -> ErrorText("Start and end can't be the same time.")
+                    sameTimes -> ErrorText(stringResource(R.string.sheet_same_times))
                     conflict != null -> ErrorText(
-                        "This schedule overlaps ${format.label(conflict, now.toLocalDate())}.",
+                        stringResource(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())),
                     )
                     else -> Text(
-                        "Airplane mode stays on for " +
-                            "${format.duration(ScheduleTime.duration(schedule.start, schedule.end))}.",
+                        stringResource(
+                            R.string.sheet_stays_on,
+                            format.duration(ScheduleTime.duration(schedule.start, schedule.end)),
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            Text(
-                "Repeats",
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier
-                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp)
-                    .semantics { heading() },
-            )
+            SheetHeading(stringResource(R.string.sheet_repeats))
             DayChips(format, schedule.days, Modifier.padding(horizontal = 16.dp)) { day ->
                 draft = schedule.copy(days = if (day in schedule.days) schedule.days - day else schedule.days + day)
             }
             Spacer(Modifier.height(8.dp))
             SwitchRow(
                 icon = R.drawable.ic_wifi_off,
-                title = "Turn off Wi-Fi at start",
+                title = stringResource(R.string.sheet_wifi_off),
                 checked = schedule.disableWifi,
             ) { draft = schedule.copy(disableWifi = it) }
             // Only Wi-Fi that the start turned off comes back, so the end option needs the start one.
@@ -183,7 +185,7 @@ fun ScheduleSheet(
             // move the switch above it out from under the finger.
             SwitchRow(
                 icon = R.drawable.ic_wifi,
-                title = "Turn on Wi-Fi at end",
+                title = stringResource(R.string.sheet_wifi_on),
                 checked = schedule.enableWifi,
                 enabled = schedule.disableWifi,
             ) { draft = schedule.copy(enableWifi = it) }
@@ -208,21 +210,21 @@ fun ScheduleSheet(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Delete")
+                        Text(stringResource(R.string.action_delete))
                     }
                 }
                 Button(
                     onClick = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
                     enabled = !sameTimes && conflict == null,
                     modifier = Modifier.weight(1f),
-                ) { Text("Save") }
+                ) { Text(stringResource(R.string.action_save)) }
             }
         }
     }
 
     picking?.let { start ->
         TimeDialog(
-            title = if (start) "Start time" else "End time",
+            title = stringResource(if (start) R.string.sheet_start_time else R.string.sheet_end_time),
             minute = if (start) schedule.start else schedule.end,
             is24Hour = format.is24Hour,
             onDismiss = { picking = null },
@@ -232,6 +234,17 @@ fun ScheduleSheet(
             },
         )
     }
+}
+
+@Composable
+private fun SheetHeading(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp)
+            .semantics { heading() },
+    )
 }
 
 @Composable
@@ -278,6 +291,7 @@ private fun DayChips(
             val colors = MaterialTheme.colorScheme
             val corner by animateIntAsState(if (selected) 50 else 25)
             val shape = RoundedCornerShape(percent = corner)
+            val state = stringResource(if (selected) R.string.sheet_day_repeats else R.string.sheet_day_doesnt_repeat)
             Surface(
                 shape = shape,
                 color = animateColorAsState(
@@ -290,7 +304,7 @@ private fun DayChips(
                     .clip(shape)
                     .semantics {
                         contentDescription = format.dayName(day)
-                        stateDescription = if (selected) "Repeats" else "Doesn't repeat"
+                        stateDescription = state
                     }
                     .toggleable(
                         value = selected,
@@ -318,8 +332,12 @@ private fun TimeDialog(title: String, minute: Int, is24Hour: Boolean, onDismiss:
     var mode by remember { mutableStateOf(TimePickerDisplayMode.Picker) }
     TimePickerDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onConfirm(state.hour * 60 + state.minute) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(onClick = {
+                onConfirm(state.hour * 60 + state.minute)
+            }) { Text(stringResource(R.string.action_ok)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
         title = {
             Text(title, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 20.dp))
         },
@@ -360,7 +378,8 @@ private fun NameRow(name: String, onChange: (String) -> Unit) {
     ) {
         Icon(painterResource(R.drawable.ic_label), contentDescription = null, tint = colors.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
-        Text("Schedule name", style = MaterialTheme.typography.bodyLarge)
+        val label = stringResource(R.string.sheet_name)
+        Text(label, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.width(16.dp))
         BasicTextField(
             value = field,
@@ -387,7 +406,7 @@ private fun NameRow(name: String, onChange: (String) -> Unit) {
                     focused = it.isFocused
                     if (it.isFocused) field = field.copy(selection = TextRange(0, field.text.length))
                 }
-                .semantics { contentDescription = "Schedule name" },
+                .semantics { contentDescription = label },
             decorationBox = { inner ->
                 Box(
                     contentAlignment = Alignment.CenterEnd,
@@ -402,7 +421,7 @@ private fun NameRow(name: String, onChange: (String) -> Unit) {
                 ) {
                     if (field.text.isEmpty()) {
                         Text(
-                            NAME_PLACEHOLDER,
+                            stringResource(R.string.sheet_name_placeholder),
                             style = MaterialTheme.typography.bodyLarge,
                             color = colors.onSurfaceVariant,
                             onTextLayout = { placeholderWidth = it.size.width.toFloat() },
