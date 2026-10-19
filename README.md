@@ -23,12 +23,12 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 
 ## Features
 
-- Any number of schedules, one-off or repeating on any days of the week.
-- Supports overnight time ranges.
-- Skip or postpone a schedule, or end or pause one that is running.
-- Optionally turns off Wi-Fi at the start and back on at the end.
-- Undoes only what it changed on start. What you toggled stays as you left it.
-- Optional notifications before, during and after a schedule, with a warning if Shizuku isn't ready.
+- Add as many schedules as you want. Each one runs once or repeats on the days you pick.
+- Schedules can run past midnight.
+- Skip or postpone an upcoming schedule. End or pause one that is running.
+- Can also turn Wi-Fi off at the start and back on at the end.
+- When a schedule ends, it only reverts what it changed. Anything you changed yourself stays as you left it.
+- Optional notifications before, during and after a schedule.
 - No internet access, ads or tracking.
 
 ## Requirements
