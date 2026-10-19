@@ -1,0 +1,5 @@
+• New: notifications before, during and after a schedule.
+• New: skip, postpone, pause, or end schedule from notification.
+• The Shizuku reminder moved to notification before a schedule.
+• Back-to-back schedules now read as one.
+• Add Support for Android 9 and later.

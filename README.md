@@ -1,6 +1,6 @@
-# Airplane Scheduler
-
 <div align="center">
+
+# Airplane Scheduler
 
 [![CI][ci-image]][ci-url] [![Release][release-image]][release-url] [![License][license-image]][license-url]
 
