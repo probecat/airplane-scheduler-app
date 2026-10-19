@@ -28,9 +28,12 @@ import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
+import io.github.probecat.airplanescheduler.system.exactAlarmsDeniable
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Subpage
+import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -95,9 +98,18 @@ private fun details(
             },
         )
         appendLine("Notifications: " + if (notificationsAllowed(context)) "allowed" else "not allowed")
+        if (exactAlarmsDeniable) {
+            appendLine("Exact alarms: " + if (exactAlarmsAllowed(context)) "allowed" else "not allowed")
+        }
         appendLine(
             "Theme: ${context.getString(settings.theme.label)}, dynamic color " +
-                if (settings.dynamicColor) "on" else "off",
+                if (!hasDynamicColor) {
+                    "unsupported"
+                } else if (settings.dynamicColor) {
+                    "on"
+                } else {
+                    "off"
+                },
         )
         appendLine("Postpone and pause: ${settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "off"}")
         appendLine("Next notice: ${notice?.let(moment::format) ?: "none"}")

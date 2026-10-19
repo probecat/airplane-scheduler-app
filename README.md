@@ -33,7 +33,7 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 
 ## Requirements
 
-- Android 13 or later.
+- Android 9 or later.
 - [Shizuku](https://github.com/RikkaApps/Shizuku).
 
 ## Building

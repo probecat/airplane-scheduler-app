@@ -4,11 +4,6 @@ object ConnectivityPlan {
     const val AIRPLANE = 1
     const val WIFI = 2
 
-    private val WIFI_OFF = listOf("wifi", "set-wifi-enabled", "disabled")
-    private val AIRPLANE_ON = listOf("connectivity", "airplane-mode", "enable")
-    private val AIRPLANE_OFF = listOf("connectivity", "airplane-mode", "disable")
-    private val WIFI_ON = listOf("wifi", "set-wifi-enabled", "enabled")
-
     // What the app changes at a start, so the end undoes only that.
     data class Changes(val airplane: Boolean, val wifi: Boolean) {
         val isEmpty: Boolean get() = !airplane && !wifi
@@ -36,9 +31,9 @@ object ConnectivityPlan {
     fun end(started: Changes, enableWifi: Boolean) = started.copy(wifi = started.wifi && enableWifi)
 
     // Wi-Fi goes off before airplane mode turns on, and back on after it turns off.
-    fun commands(enabled: Boolean, changes: Changes): List<Pair<Int, List<String>>> {
-        val airplane = (AIRPLANE to if (enabled) AIRPLANE_ON else AIRPLANE_OFF).takeIf { changes.airplane }
-        val wifi = (WIFI to if (enabled) WIFI_OFF else WIFI_ON).takeIf { changes.wifi }
+    fun order(enabled: Boolean, changes: Changes): List<Int> {
+        val airplane = AIRPLANE.takeIf { changes.airplane }
+        val wifi = WIFI.takeIf { changes.wifi }
         return if (enabled) listOfNotNull(wifi, airplane) else listOfNotNull(airplane, wifi)
     }
 }

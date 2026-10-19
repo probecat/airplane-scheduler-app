@@ -67,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
@@ -79,11 +80,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.exactAlarmSettings
+import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
@@ -111,6 +116,7 @@ fun SchedulesScreen(
     // Debug builds only.
     onMock: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     val resources = LocalResources.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
@@ -126,6 +132,10 @@ fun SchedulesScreen(
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
+    var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        exactAlarms = exactAlarmsAllowed(context)
+    }
     val requestNotifications = rememberNotificationRequest(fallback = false) {}
 
     // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
@@ -242,16 +252,43 @@ fun SchedulesScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (!exactAlarms && schedules.any { it.enabled }) {
+                    item(key = "alarms") {
+                        Strip(
+                            label = stringResource(R.string.strip_alarms),
+                            icon = R.drawable.ic_error,
+                            error = true,
+                            onClick = { context.startActivity(exactAlarmSettings(context)) },
+                            modifier = Modifier.animateItem().padding(bottom = 8.dp),
+                        )
+                    }
+                }
                 if (shizuku != ShizukuState.READY || !settings.hideShizukuReady) {
                     item(key = "status") {
-                        ShizukuStrip(
-                            state = shizuku,
-                            onClick = {
-                                if (shizuku != ShizukuState.PERMISSION_NEEDED || !viewModel.requestShizuku()) {
-                                    explaining = shizuku
+                        val (label, icon) = when (shizuku) {
+                            ShizukuState.READY -> R.string.strip_shizuku_ready to R.drawable.ic_check_circle
+                            ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
+                            ShizukuState.PERMISSION_NEEDED -> R.string.strip_shizuku_permission to R.drawable.ic_lock
+                        }
+                        val ready = shizuku == ShizukuState.READY
+                        Strip(
+                            label = stringResource(label),
+                            icon = icon,
+                            error = !ready,
+                            onClick = if (ready) {
+                                null
+                            } else {
+                                {
+                                    if (shizuku != ShizukuState.PERMISSION_NEEDED || !viewModel.requestShizuku()) {
+                                        explaining = shizuku
+                                    }
                                 }
                             },
-                            onDismiss = { viewModel.updateSettings { it.copy(hideShizukuReady = true) } },
+                            onDismiss = if (ready) {
+                                { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
+                            } else {
+                                null
+                            },
                             modifier = Modifier.animateItem().padding(bottom = 8.dp),
                         )
                     }
@@ -388,41 +425,46 @@ private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit, onMock: (()
     }
 }
 
+// A line above the schedules about what the app needs. An error one stays until it's fixed; others can
+// be dismissed.
 @Composable
-private fun ShizukuStrip(
-    state: ShizukuState,
-    onClick: () -> Unit,
-    onDismiss: () -> Unit,
+private fun Strip(
+    label: String,
+    icon: Int,
     modifier: Modifier = Modifier,
+    error: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
-    val ready = state == ShizukuState.READY
-    val (label, icon) = when (state) {
-        ShizukuState.READY -> R.string.strip_shizuku_ready to R.drawable.ic_check_circle
-        ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
-        ShizukuState.PERMISSION_NEEDED -> R.string.strip_shizuku_permission to R.drawable.ic_lock
-    }
     Surface(
-        onClick = onClick,
-        enabled = !ready,
+        onClick = onClick ?: {},
+        enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = if (ready) colors.surfaceContainer else colors.errorContainer,
-        contentColor = if (ready) colors.onSurface else colors.onErrorContainer,
+        color = if (error) colors.errorContainer else colors.surfaceContainer,
+        contentColor = if (error) colors.onErrorContainer else colors.onSurface,
     ) {
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp, end = if (ready) 8.dp else 16.dp),
+            modifier = Modifier.heightIn(min = 48.dp).padding(
+                start = 16.dp,
+                end = if (onDismiss != null) 8.dp else 16.dp,
+            ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 painterResource(icon),
                 contentDescription = null,
-                tint = if (ready) colors.primary else LocalContentColor.current,
+                tint = if (error) LocalContentColor.current else colors.primary,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            if (ready) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+            )
+            if (onDismiss != null) {
                 TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 12.dp)) {
                     Text(stringResource(R.string.action_dismiss))
                 }

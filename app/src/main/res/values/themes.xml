@@ -2,9 +2,7 @@
 <resources>
     <style name="Base.AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar" />
 
-    <!-- The system splash grows the icon from the screen center over the window background. -->
     <style name="AppTheme" parent="Base.AppTheme">
         <item name="android:windowBackground">@color/window_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
     </style>
 </resources>
