@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -132,7 +133,8 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
         }
 
         SectionHeader("Display")
-        Choice("Theme", ThemeMode.entries.map { it to it.label.substringBefore(" ") }, settings.theme, true) { theme ->
+        val themes = ThemeMode.entries.map { it to stringResource(it.label).substringBefore(" ") }
+        Choice("Theme", themes, settings.theme, true) { theme ->
             viewModel.updateSettings { it.copy(theme = theme) }
         }
         SwitchRow(null, "Dynamic color", settings.dynamicColor) { dynamic ->

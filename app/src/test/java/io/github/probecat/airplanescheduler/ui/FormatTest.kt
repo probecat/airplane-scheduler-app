@@ -14,8 +14,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FormatTest {
-    private val us = Format(is24Hour = false, Locale.US)
-    private val uk = Format(is24Hour = true, Locale.UK)
+    private val us = Format(is24Hour = false, Locale.US, TestStrings)
+    private val uk = Format(is24Hour = true, Locale.UK, TestStrings)
 
     @Test
     fun aSingleRunOfThreeOrMoreDaysIsARange() {

@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.help
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -40,59 +42,45 @@ import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 
+@Composable
+private fun topic(@StringRes question: Int, @StringRes answer: Int, vararg args: Any) =
+    stringResource(question) to stringResource(answer, *args)
+
+@Composable
 private fun schedules(format: Format) = listOf(
-    "What happens at the start and end?" to
-        "At the start, airplane mode turns on. At the end, the app undoes only what it changed: if airplane " +
-        "mode was already on at the start, it stays on. If you turn airplane mode off during a schedule, the " +
-        "app leaves it off.",
-    "How do the Wi-Fi options work?" to
-        "“Turn off Wi-Fi at start” turns Wi-Fi off before airplane mode turns on, unless it's already off. " +
-        "“Turn on Wi-Fi at end” turns it back on, but only if the app turned it off.",
-    "Which day does an overnight schedule belong to?" to
-        "The day it starts. A Friday schedule from ${format.time(23 * 60)} to ${format.time(7 * 60)} ends on " +
-        "Saturday morning.",
-    "What does a schedule without days do?" to
-        "It runs once, then switches itself off. It starts the next time its times come around, or right " +
-        "away if it covers the current time.",
-    "What happens if I change an active schedule?" to
-        "Switching it off or deleting it ends it right away, and the app undoes what it changed, as at a " +
-        "normal end. Switching on or adding a schedule that covers the current time starts it right away. " +
-        "Changing the times works the same way.",
+    topic(R.string.help_start_end_q, R.string.help_start_end_a),
+    topic(R.string.help_wifi_q, R.string.help_wifi_a),
+    topic(R.string.help_overnight_q, R.string.help_overnight_a, format.time(23 * 60), format.time(7 * 60)),
+    topic(R.string.help_once_q, R.string.help_once_a),
+    topic(R.string.help_change_active_q, R.string.help_change_active_a),
 )
 
-private val troubleshooting = listOf(
-    "Why didn't airplane mode turn on or off?" to
-        "Shizuku wasn't running at that time. Nothing changes then, and the app doesn't reconcile until the " +
-        "next schedule.",
-    "Why did Shizuku stop?" to
-        "Shizuku stops whenever the phone restarts. You need to open it and start it again. To get a " +
-        "warning, turn on “Remind me if Shizuku is off” in Settings. You'll get a notification if Shizuku " +
-        "isn't ready an hour before a schedule starts.",
-    "Why can't two schedules overlap?" to
-        "Schedules that are switched on can't overlap. If one ends exactly when another starts, they work as " +
-        "one, and airplane mode stays on between them. Wi-Fi follows the first one's start option and the " +
-        "last one's end option.",
+@Composable
+private fun troubleshooting() = listOf(
+    topic(R.string.help_missed_q, R.string.help_missed_a),
+    topic(R.string.help_shizuku_stopped_q, R.string.help_shizuku_stopped_a),
+    topic(R.string.help_overlap_q, R.string.help_overlap_a),
 )
 
 @Composable
 fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val format = rememberFormat()
-    Subpage("Help", onBack) {
-        SectionHeader("Set up Shizuku")
+    Subpage(stringResource(R.string.help), onBack) {
+        SectionHeader(stringResource(R.string.help_setup))
         Text(
-            "Android doesn't let apps switch airplane mode, so Airplane Scheduler does it through Shizuku.",
+            stringResource(R.string.help_setup_text),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
         SetupSteps(viewModel)
 
-        SectionHeader("How schedules work")
+        SectionHeader(stringResource(R.string.help_schedules))
         schedules(format).forEach { (question, answer) -> Topic(question, answer) }
 
-        SectionHeader("Troubleshooting")
-        troubleshooting.forEach { (question, answer) -> Topic(question, answer) }
-        LinkRow(R.drawable.ic_bug_report, "Still stuck? Report an issue", ISSUES_URL)
+        SectionHeader(stringResource(R.string.help_troubleshooting))
+        troubleshooting().forEach { (question, answer) -> Topic(question, answer) }
+        LinkRow(R.drawable.ic_bug_report, stringResource(R.string.help_report), ISSUES_URL)
     }
 }
 
@@ -107,15 +95,36 @@ private fun SetupSteps(viewModel: AppViewModel) {
     val installed = app != null
     val running = installed && shizuku != ShizukuState.OFFLINE
     val allowed = shizuku == ShizukuState.READY
-    Step(R.drawable.ic_counter_1, "Install Shizuku", if (installed) "Installed" else "Not installed", installed) {
-        TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) { Text("Get") }
+    Step(
+        R.drawable.ic_counter_1,
+        R.string.help_install,
+        if (installed) R.string.help_installed else R.string.status_not_installed,
+        installed,
+    ) {
+        TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
+            Text(stringResource(R.string.action_get))
+        }
     }
-    Step(R.drawable.ic_counter_2, "Start Shizuku", if (running) "Running" else "Not running", running) {
-        if (installed) TextButton(onClick = { app?.let(context::startActivity) }) { Text("Open") }
+    Step(
+        R.drawable.ic_counter_2,
+        R.string.help_start,
+        if (running) R.string.help_running else R.string.status_not_running,
+        running,
+    ) {
+        if (installed) {
+            TextButton(onClick = { app?.let(context::startActivity) }) { Text(stringResource(R.string.action_open)) }
+        }
     }
-    Step(R.drawable.ic_counter_3, "Grant permission", if (allowed) "Allowed" else "Not allowed", allowed) {
+    Step(
+        R.drawable.ic_counter_3,
+        R.string.help_grant,
+        if (allowed) R.string.status_allowed else R.string.status_not_allowed,
+        allowed,
+    ) {
         if (running) {
-            TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) { Text("Allow") }
+            TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) {
+                Text(stringResource(R.string.action_allow))
+            }
         }
     }
 
@@ -123,11 +132,17 @@ private fun SetupSteps(viewModel: AppViewModel) {
 }
 
 @Composable
-private fun Step(number: Int, title: String, status: String, done: Boolean, action: @Composable () -> Unit) {
+private fun Step(
+    number: Int,
+    @StringRes title: Int,
+    @StringRes status: Int,
+    done: Boolean,
+    action: @Composable () -> Unit,
+) {
     SettingRow(
         icon = if (done) R.drawable.ic_check_circle else number,
-        title = title,
-        text = status,
+        title = stringResource(title),
+        text = stringResource(status),
         trailing = if (done) null else action,
     )
 }
@@ -136,6 +151,8 @@ private fun Step(number: Int, title: String, status: String, done: Boolean, acti
 private fun Topic(question: String, answer: String) {
     var open by rememberSaveable(question) { mutableStateOf(false) }
     val turn by animateFloatAsState(if (open) 180f else 0f)
+    val clickLabel = stringResource(if (open) R.string.help_collapse else R.string.help_expand)
+    val state = stringResource(if (open) R.string.help_expanded else R.string.help_collapsed)
     ListItem(
         headlineContent = { Text(question) },
         trailingContent = {
@@ -143,8 +160,8 @@ private fun Topic(question: String, answer: String) {
         },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier
-            .clickable(onClickLabel = if (open) "Collapse" else "Expand") { open = !open }
-            .semantics { stateDescription = if (open) "Expanded" else "Collapsed" }
+            .clickable(onClickLabel = clickLabel) { open = !open }
+            .semantics { stateDescription = state }
             .padding(horizontal = 8.dp),
     )
     AnimatedVisibility(open) {

@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -88,26 +89,26 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             }
         }
 
-    Subpage("Settings", onBack, actions = { SettingsMenu(onReset = { resetting = true }) }) {
-        SectionHeader("Appearance")
+    Subpage(stringResource(R.string.settings), onBack, actions = { SettingsMenu(onReset = { resetting = true }) }) {
+        SectionHeader(stringResource(R.string.settings_appearance))
         SettingRow(
             icon = R.drawable.ic_contrast,
-            title = "Theme",
-            text = settings.theme.label,
+            title = stringResource(R.string.settings_theme),
+            text = stringResource(settings.theme.label),
             onClick = { choosingTheme = true },
         )
         SwitchRow(
             icon = R.drawable.ic_palette,
-            title = "Dynamic color",
+            title = stringResource(R.string.settings_dynamic_color),
             checked = settings.dynamicColor,
         ) { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } }
 
-        SectionHeader("Reminders")
+        SectionHeader(stringResource(R.string.settings_reminders))
         // The reminder can't work without notifications, so it shows as off until they're allowed, and
         // switching it on asks for them.
         SwitchRow(
             icon = R.drawable.ic_notifications_active,
-            title = "Remind me if Shizuku is off",
+            title = stringResource(R.string.settings_remind_shizuku),
             checked = settings.remindShizuku && notifications,
         ) { on ->
             when {
@@ -125,50 +126,65 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             }
         }
 
-        SectionHeader("Permissions")
+        SectionHeader(stringResource(R.string.settings_permissions))
         SettingRow(
             icon = when (shizuku) {
                 ShizukuState.READY -> R.drawable.ic_check_circle
                 ShizukuState.OFFLINE -> R.drawable.ic_error
                 ShizukuState.PERMISSION_NEEDED -> R.drawable.ic_lock
             },
-            title = "Shizuku",
-            text = when (shizuku) {
-                ShizukuState.READY -> "Ready"
-                ShizukuState.OFFLINE -> if (shizukuApp != null) "Not running" else "Not installed"
-                ShizukuState.PERMISSION_NEEDED -> "Not allowed"
-            },
+            title = stringResource(R.string.settings_shizuku),
+            text = stringResource(
+                when (shizuku) {
+                    ShizukuState.READY -> R.string.settings_shizuku_ready
+                    ShizukuState.OFFLINE ->
+                        if (shizukuApp != null) R.string.status_not_running else R.string.status_not_installed
+                    ShizukuState.PERMISSION_NEEDED -> R.string.status_not_allowed
+                },
+            ),
             trailing = {
                 when {
                     shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = {
                         if (!viewModel.requestShizuku()) explaining = shizuku
-                    }) { Text("Allow") }
+                    }) { Text(stringResource(R.string.action_allow)) }
                     shizukuApp != null -> TextButton(onClick = { context.startActivity(shizukuApp) }) {
-                        Text(if (shizuku == ShizukuState.READY) "Manage" else "Open")
+                        Text(
+                            stringResource(
+                                if (shizuku ==
+                                    ShizukuState.READY
+                                ) {
+                                    R.string.action_manage
+                                } else {
+                                    R.string.action_open
+                                },
+                            ),
+                        )
                     }
-                    else -> TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) { Text("Get") }
+                    else -> TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
+                        Text(stringResource(R.string.action_get))
+                    }
                 }
             },
         )
         SettingRow(
             icon = R.drawable.ic_notifications,
-            title = "Notifications",
-            text = if (notifications) "Allowed" else "Not allowed",
+            title = stringResource(R.string.settings_notifications),
+            text = stringResource(if (notifications) R.string.status_allowed else R.string.status_not_allowed),
             trailing = {
                 TextButton(onClick = { context.startActivity(notificationSettings(context)) }) {
-                    Text(if (notifications) "Manage" else "Allow")
+                    Text(stringResource(if (notifications) R.string.action_manage else R.string.action_allow))
                 }
             },
         )
 
-        SectionHeader("About")
+        SectionHeader(stringResource(R.string.settings_about))
         SettingRow(
             icon = R.drawable.ic_info,
-            title = "Version",
+            title = stringResource(R.string.settings_version),
             text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             onClick = onDebug,
         )
-        LinkRow(R.drawable.ic_code, "Source code", SOURCE_URL)
+        LinkRow(R.drawable.ic_code, stringResource(R.string.settings_source), SOURCE_URL)
     }
 
     explaining?.let { state ->
@@ -178,15 +194,17 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     if (resetting) {
         AlertDialog(
             onDismissRequest = { resetting = false },
-            title = { Text("Reset preferences?") },
-            text = { Text("Settings go back to their defaults. Schedules are kept.") },
+            title = { Text(stringResource(R.string.settings_reset_title)) },
+            text = { Text(stringResource(R.string.settings_reset_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.resetSettings()
                     resetting = false
-                }) { Text("Reset") }
+                }) { Text(stringResource(R.string.action_reset)) }
             },
-            dismissButton = { TextButton(onClick = { resetting = false }) { Text("Cancel") } },
+            dismissButton = {
+                TextButton(onClick = { resetting = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 
@@ -207,11 +225,11 @@ private fun SettingsMenu(onReset: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options")
+            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text("Reset preferences") },
+                text = { Text(stringResource(R.string.settings_reset)) },
                 leadingIcon = {
                     Icon(painterResource(R.drawable.ic_settings_backup_restore), contentDescription = null)
                 },
@@ -228,7 +246,7 @@ private fun SettingsMenu(onReset: () -> Unit) {
 private fun ThemeDialog(selected: ThemeMode, onSelect: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Theme") },
+        title = { Text(stringResource(R.string.settings_theme)) },
         text = {
             Column(Modifier.selectableGroup()) {
                 ThemeMode.entries.forEach { theme ->
@@ -241,7 +259,7 @@ private fun ThemeDialog(selected: ThemeMode, onSelect: (ThemeMode) -> Unit, onDi
                     ) {
                         RadioButton(selected = theme == selected, onClick = null)
                         Text(
-                            theme.label,
+                            stringResource(theme.label),
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(start = 16.dp),
                         )
@@ -249,7 +267,7 @@ private fun ThemeDialog(selected: ThemeMode, onSelect: (ThemeMode) -> Unit, onDi
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

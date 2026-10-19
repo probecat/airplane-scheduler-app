@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Airplane Scheduler</string>
+
+    <!-- Shared -->
+    <string name="action_allow">Allow</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_dismiss">Dismiss</string>
+    <string name="action_end">End</string>
+    <string name="action_get">Get</string>
+    <string name="action_manage">Manage</string>
+    <string name="action_ok">OK</string>
+    <string name="action_open">Open</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_save">Save</string>
+    <string name="action_skip">Skip</string>
+    <string name="action_turn_on">Turn on</string>
+    <string name="action_undo">Undo</string>
+    <string name="back">Back</string>
+    <string name="more_options">More options</string>
+    <string name="help">Help</string>
+    <string name="settings">Settings</string>
+    <string name="status_allowed">Allowed</string>
+    <string name="status_not_allowed">Not allowed</string>
+    <string name="status_not_installed">Not installed</string>
+    <string name="status_not_running">Not running</string>
+    <string name="schedule_overlaps">Schedule overlaps %1$s.</string>
+
+    <!-- Days, dates and durations -->
+    <string name="days_every_day">Every day</string>
+    <string name="days_once">Once</string>
+    <string name="day_today">today</string>
+    <string name="day_tomorrow">tomorrow</string>
+    <string name="day_yesterday">yesterday</string>
+    <string name="once_not_scheduled">not scheduled</string>
+    <!-- A named schedule, as in "This schedule overlaps “Sleep”." -->
+    <string name="schedule_label_named">“%1$s”</string>
+    <!-- An unnamed schedule: its times and days, as in "11:00 PM – 7:00 AM (every day)". -->
+    <string name="schedule_label_unnamed">%1$s (%2$s)</string>
+    <string name="schedule_label_every_day">every day</string>
+    <string name="skipped">Skipped</string>
+    <string name="skipped_resumes">Skipped, resumes %1$s</string>
+    <string name="ended_early">Ended early</string>
+    <string name="ended_early_resumes">Ended early, resumes %1$s</string>
+    <!-- No-break spaces keep a number and its unit together. -->
+    <plurals name="duration_days">
+        <item quantity="one">%d\u00A0d</item>
+        <item quantity="other">%d\u00A0d</item>
+    </plurals>
+    <plurals name="duration_hours">
+        <item quantity="one">%d\u00A0h</item>
+        <item quantity="other">%d\u00A0h</item>
+    </plurals>
+    <plurals name="duration_minutes">
+        <item quantity="one">%d\u00A0min</item>
+        <item quantity="other">%d\u00A0min</item>
+    </plurals>
+    <!-- Two units, as in "4 h 2 min". -->
+    <string name="duration_pair">%1$s %2$s</string>
+
+    <!-- Schedules -->
+    <string name="schedules_add">Add schedule</string>
+    <string name="schedules_empty">No schedules yet</string>
+    <string name="schedules_on_for">Airplane mode is on for %1$s</string>
+    <string name="schedules_set_for">Airplane mode set for %1$s from now</string>
+    <string name="schedules_skipped">Schedule skipped</string>
+    <string name="schedules_ended_early">Schedule ended early</string>
+    <string name="schedules_turn_on_failed">Couldn\'t turn on airplane mode</string>
+    <string name="schedules_deleted">Schedule deleted</string>
+    <string name="strip_shizuku_ready">Shizuku is ready</string>
+    <string name="strip_shizuku_offline">Shizuku is unavailable, schedules can\'t work</string>
+    <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
+    <string name="card_ends_in">Ends in %1$s</string>
+    <string name="card_ends_in_description">Active now, ends in %1$s</string>
+    <string name="card_missed">Missed the start</string>
+    <string name="card_missed_offline">Missed, Shizuku is unavailable</string>
+    <string name="card_missed_permission">Missed, need Shizuku permission</string>
+    <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
+
+    <!-- Schedule sheet -->
+    <string name="sheet_starts">Starts</string>
+    <string name="sheet_ends">Ends</string>
+    <string name="sheet_start_time">Start time</string>
+    <string name="sheet_end_time">End time</string>
+    <string name="sheet_same_times">Start and end are the same.</string>
+    <string name="sheet_stays_on">Lasts %1$s.</string>
+    <string name="sheet_repeats">Repeats</string>
+    <string name="sheet_day_repeats">Repeats</string>
+    <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>
+    <string name="sheet_wifi_off">Turn off Wi-Fi at start</string>
+    <string name="sheet_wifi_on">Turn on Wi-Fi at end</string>
+    <string name="sheet_name">Schedule name</string>
+    <string name="sheet_name_placeholder">Unnamed</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_black">Black</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_reminders">Reminders</string>
+    <string name="settings_remind_shizuku">Remind me if Shizuku is off</string>
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_shizuku">Shizuku</string>
+    <string name="settings_shizuku_ready">Ready</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_source">Source code</string>
+    <string name="settings_reset">Reset preferences</string>
+    <string name="settings_reset_title">Reset preferences?</string>
+    <string name="settings_reset_text">Schedules won\'t be deleted.</string>
+
+    <!-- Help -->
+    <string name="help_setup">Set up Shizuku</string>
+    <string name="help_setup_text">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Shizuku.</string>
+    <string name="help_install">Install Shizuku</string>
+    <string name="help_installed">Installed</string>
+    <string name="help_start">Start Shizuku</string>
+    <string name="help_running">Running</string>
+    <string name="help_grant">Grant permission</string>
+    <string name="help_schedules">How schedules work</string>
+    <string name="help_troubleshooting">Troubleshooting</string>
+    <string name="help_report">Still stuck? Report an issue</string>
+    <string name="help_expand">Expand</string>
+    <string name="help_collapse">Collapse</string>
+    <string name="help_expanded">Expanded</string>
+    <string name="help_collapsed">Collapsed</string>
+
+    <string name="help_start_end_q">What happens at the start and end?</string>
+    <string name="help_start_end_a">Airplane mode turns on at the start. At the end, the app only undoes what it changed, so if airplane mode was already on, it stays on, and if you turned it off midway, it stays off.</string>
+    <string name="help_wifi_q">How do the Wi-Fi options work?</string>
+    <string name="help_wifi_a">“Turn off Wi-Fi at start” turns Wi-Fi off before airplane mode. “Turn on Wi-Fi at end” turns it back on, but only if the app turned it off.</string>
+    <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
+    <!-- %1$s is 11 PM and %2$s is 7 AM. -->
+    <string name="help_overnight_a">The day it starts. A Friday schedule from %1$s to %2$s ends on Saturday morning.</string>
+    <string name="help_once_q">What does a schedule without days do?</string>
+    <string name="help_once_a">It runs once at its next start time, then switches itself off. If you switch it on between its start and end, it starts right away.</string>
+    <string name="help_change_active_q">What happens if I change an active schedule?</string>
+    <string name="help_change_active_a">Switching a schedule off or deleting it ends it right away, like a normal end. Switching on or adding a schedule that covers the current time starts it right away. Editing the times starts or ends it to match.</string>
+    <string name="help_missed_q">Why didn\'t airplane mode turn on or off?</string>
+    <string name="help_missed_a">Shizuku wasn\'t running at that time. The app doesn\'t automatically catch up by design.</string>
+    <string name="help_shizuku_stopped_q">Why did Shizuku stop?</string>
+    <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. Turn on “Remind me if Shizuku is off” in Settings to get a warning an hour before a schedule runs.</string>
+    <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
+    <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
+
+    <!-- Shizuku dialog -->
+    <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
+    <string name="shizuku_missing_text">Airplane Scheduler needs Shizuku to switch airplane mode. Install it and start it.</string>
+    <string name="shizuku_offline_title">Shizuku isn\'t running</string>
+    <string name="shizuku_offline_text">Restart Shizuku so schedules can switch airplane mode.</string>
+    <string name="shizuku_permission_title">Allow access in Shizuku</string>
+    <string name="shizuku_permission_text">Shizuku won\'t ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it.</string>
+    <string name="shizuku_open">Open Shizuku</string>
+    <string name="shizuku_get">Get Shizuku</string>
+</resources>

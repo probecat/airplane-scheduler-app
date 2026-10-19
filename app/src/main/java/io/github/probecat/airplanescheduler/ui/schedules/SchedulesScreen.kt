@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.schedules
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -61,7 +62,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -100,6 +103,7 @@ fun SchedulesScreen(
     // Debug builds only.
     onMock: (() -> Unit)? = null,
 ) {
+    val resources = LocalResources.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -117,10 +121,10 @@ fun SchedulesScreen(
     fun showStart(id: Long) {
         val schedule = viewModel.schedules.value.find { it.id == id }?.takeIf { it.enabled } ?: return
         val message = if (ScheduleResolver.isActive(schedule, now)) {
-            minutesLeft(schedule, now)?.let { "Airplane mode is on for ${format.duration(it)}" }
+            minutesLeft(schedule, now)?.let { resources.getString(R.string.schedules_on_for, format.duration(it)) }
         } else {
             minutesUntil(now) { ScheduleResolver.nextStart(schedule, it) }
-                ?.let { "Airplane mode set for ${format.duration(it)} from now" }
+                ?.let { resources.getString(R.string.schedules_set_for, format.duration(it)) }
         } ?: return
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
@@ -131,7 +135,9 @@ fun SchedulesScreen(
     fun showConflict(conflict: Schedule) {
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar("This schedule overlaps ${format.label(conflict, now.toLocalDate())}.")
+            snackbar.showSnackbar(
+                resources.getString(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())),
+            )
         }
     }
 
@@ -144,7 +150,9 @@ fun SchedulesScreen(
         viewModel.skip(schedule)
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(if (ending) "Schedule ended early" else "Schedule skipped")
+            snackbar.showSnackbar(
+                resources.getString(if (ending) R.string.schedules_ended_early else R.string.schedules_skipped),
+            )
         }
     }
 
@@ -155,7 +163,7 @@ fun SchedulesScreen(
             } else {
                 scope.launch {
                     snackbar.currentSnackbarData?.dismiss()
-                    snackbar.showSnackbar("Couldn't turn on airplane mode")
+                    snackbar.showSnackbar(resources.getString(R.string.schedules_turn_on_failed))
                 }
             }
         }
@@ -165,7 +173,11 @@ fun SchedulesScreen(
         viewModel.delete(schedule)
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
-            val result = snackbar.showSnackbar("Schedule deleted", "Undo", duration = SnackbarDuration.Long)
+            val result = snackbar.showSnackbar(
+                resources.getString(R.string.schedules_deleted),
+                resources.getString(R.string.action_undo),
+                duration = SnackbarDuration.Long,
+            )
             if (result == SnackbarResult.ActionPerformed) {
                 viewModel.restore(schedule)
             }
@@ -176,7 +188,7 @@ fun SchedulesScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
-                title = { Text("Airplane Scheduler") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = { OverflowMenu(onSettings, onHelp, onMock) },
                 scrollBehavior = scrollBehavior,
             )
@@ -191,7 +203,7 @@ fun SchedulesScreen(
             ) {
                 Icon(
                     painterResource(R.drawable.ic_add),
-                    contentDescription = "Add schedule",
+                    contentDescription = stringResource(R.string.schedules_add),
                     modifier = Modifier.size(28.dp),
                 )
             }
@@ -292,12 +304,12 @@ private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit, onMock: (()
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options")
+            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             listOfNotNull(
-                Triple("Settings", R.drawable.ic_settings, onSettings),
-                Triple("Help", R.drawable.ic_help, onHelp),
+                Triple(stringResource(R.string.settings), R.drawable.ic_settings, onSettings),
+                Triple(stringResource(R.string.help), R.drawable.ic_help, onHelp),
                 onMock?.let { Triple("UI states", R.drawable.ic_code, it) },
             ).forEach { (label, icon, action) ->
                 DropdownMenuItem(
@@ -323,9 +335,9 @@ private fun ShizukuStrip(
     val colors = MaterialTheme.colorScheme
     val ready = state == ShizukuState.READY
     val (label, icon) = when (state) {
-        ShizukuState.READY -> "Shizuku is ready" to R.drawable.ic_check_circle
-        ShizukuState.OFFLINE -> "Shizuku is unavailable, schedules can't work" to R.drawable.ic_error
-        ShizukuState.PERMISSION_NEEDED -> "Allow Shizuku access for the app to work" to R.drawable.ic_lock
+        ShizukuState.READY -> R.string.strip_shizuku_ready to R.drawable.ic_check_circle
+        ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
+        ShizukuState.PERMISSION_NEEDED -> R.string.strip_shizuku_permission to R.drawable.ic_lock
     }
     Surface(
         onClick = onClick,
@@ -346,9 +358,11 @@ private fun ShizukuStrip(
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(12.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text(stringResource(label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
             if (ready) {
-                TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 12.dp)) { Text("Dismiss") }
+                TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 12.dp)) {
+                    Text(stringResource(R.string.action_dismiss))
+                }
             }
         }
     }
@@ -369,7 +383,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             )
         }
         Spacer(Modifier.height(16.dp))
-        Text("No schedules yet", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.schedules_empty), style = MaterialTheme.typography.titleLarge)
     }
 }
 
@@ -460,7 +474,7 @@ private fun ScheduleCard(
                 }
                 if (action != null) {
                     Spacer(Modifier.width(8.dp))
-                    ActionButton(action.label, onAction, Modifier.alignByBaseline())
+                    ActionButton(stringResource(action.label), onAction, Modifier.alignByBaseline())
                 }
             }
             Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -489,17 +503,26 @@ private fun ScheduleCard(
 private val TIME_SIZE = 36.sp
 
 @Composable
-private fun EndsIn(duration: String) =
-    Status("Ends in $duration", R.drawable.ic_airplanemode_active, "Active now, ends in $duration")
+private fun EndsIn(duration: String) = Status(
+    stringResource(R.string.card_ends_in, duration),
+    R.drawable.ic_airplanemode_active,
+    stringResource(R.string.card_ends_in_description, duration),
+)
 
 @Composable
 private fun Missed(shizuku: ShizukuState) {
     val (text, icon) = when (shizuku) {
-        ShizukuState.READY -> "Missed the start" to R.drawable.ic_error
-        ShizukuState.OFFLINE -> "Missed, Shizuku is unavailable" to R.drawable.ic_error
-        ShizukuState.PERMISSION_NEEDED -> "Missed, Shizuku access needed" to R.drawable.ic_lock
+        ShizukuState.READY -> R.string.card_missed to R.drawable.ic_error
+        ShizukuState.OFFLINE -> R.string.card_missed_offline to R.drawable.ic_error
+        ShizukuState.PERMISSION_NEEDED -> R.string.card_missed_permission to R.drawable.ic_lock
     }
-    Status(text, icon, "Active now, but airplane mode is off. $text", MaterialTheme.colorScheme.error)
+    val label = stringResource(text)
+    Status(
+        label,
+        icon,
+        stringResource(R.string.card_missed_description, label),
+        MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable
@@ -537,11 +560,11 @@ private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier 
     }
 }
 
-private enum class CardAction(val label: String) {
-    SKIP("Skip"),
-    END("End"),
-    UNDO("Undo"),
-    TURN_ON("Turn on"),
+private enum class CardAction(@StringRes val label: Int) {
+    SKIP(R.string.action_skip),
+    END(R.string.action_end),
+    UNDO(R.string.action_undo),
+    TURN_ON(R.string.action_turn_on),
 }
 
 // Skipping is offered only for a start that is close.
@@ -560,10 +583,7 @@ private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolea
 
 private fun skippedNote(schedule: Schedule, now: LocalDateTime, format: Format): String? {
     val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null
-    val started = !skipped.atTime(schedule.start / 60, schedule.start % 60).isAfter(now)
-    val what = if (started) "Ended early" else "Skipped"
-    val next = ScheduleResolver.nextWindow(schedule, now) ?: return what
-    return "$what, resumes ${format.upcomingDay(next.toLocalDate(), now.toLocalDate())}"
+    return format.skipped(schedule, skipped, now)
 }
 
 private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =
