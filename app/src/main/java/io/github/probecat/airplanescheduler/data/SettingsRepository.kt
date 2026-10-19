@@ -54,15 +54,21 @@ class SettingsRepository(private val context: Context) {
                 if (value == null) {
                     remove("startedWindow")
                     remove("startedChanges")
+                    remove("startedAlready")
                 } else {
                     putString("startedWindow", value.window.toString())
                     putInt("startedChanges", value.changes.bits)
+                    putInt("startedAlready", value.already.bits)
                 }
             }
         }
 
     private fun readStarted() = prefs.getString("startedWindow", null)?.let { window ->
-        Boundary.Started(LocalDateTime.parse(window), Changes.of(prefs.getInt("startedChanges", 0)))
+        Boundary.Started(
+            LocalDateTime.parse(window),
+            Changes.of(prefs.getInt("startedChanges", 0)),
+            Changes.of(prefs.getInt("startedAlready", 0)),
+        )
     }
 
     private fun read() = Settings(

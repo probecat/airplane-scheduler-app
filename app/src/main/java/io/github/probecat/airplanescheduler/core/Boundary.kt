@@ -7,8 +7,9 @@ import java.time.LocalDateTime
 // What the app does when a window starts or ends. It undoes only what it changed itself, and it
 // skips a start or end that it missed instead of catching up later.
 object Boundary {
-    // The last window the app started, keyed by its chain's start, and what it changed then.
-    data class Started(val window: LocalDateTime, val changes: Changes)
+    // The last window the app started, keyed by its chain's start: what it changed then, and what was
+    // already as the start wanted it.
+    data class Started(val window: LocalDateTime, val changes: Changes, val already: Changes = Changes.NONE)
 
     sealed interface Step {
         data class Start(val window: ScheduleResolver.Window) : Step
@@ -36,7 +37,7 @@ object Boundary {
     }
 
     // The running window when airplane mode is off and the app didn't turn it on, such as when Shizuku
-    // wasn't ready at the start.
+    // wasn't ready at the start. Not when it was already on at the start and someone turned it off since.
     fun missed(
         schedules: List<Schedule>,
         now: LocalDateTime,
@@ -45,7 +46,9 @@ object Boundary {
     ): ScheduleResolver.Window? {
         if (airplaneOn) return null
         val window = ScheduleResolver.window(schedules, now) ?: return null
-        return window.takeIf { started?.window != it.start || !started.changes.airplane }
+        return window.takeIf {
+            started?.window != it.start || !(started.changes.airplane || started.already.airplane)
+        }
     }
 
     // A window that the edit switches on starts at once, and one that it switches off ends at once.
