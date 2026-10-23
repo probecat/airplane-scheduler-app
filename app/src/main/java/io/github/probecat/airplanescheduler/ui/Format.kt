@@ -169,7 +169,6 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
     }
 }
 
-// For text outside Compose, such as notifications.
 fun format(context: Context): Format = Format(
     (if (Mock.active) Mock.config.value.is24Hour else null) ?: DateFormat.is24HourFormat(context),
     (if (Mock.active) Mock.config.value.locale?.let(Locale::forLanguageTag) else null)

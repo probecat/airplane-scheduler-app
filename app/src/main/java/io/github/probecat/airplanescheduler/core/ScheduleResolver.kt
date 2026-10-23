@@ -187,7 +187,6 @@ object ScheduleResolver {
     fun nextChange(schedules: List<Schedule>, now: ZonedDateTime): ZonedDateTime? =
         live(schedules).flatMap { listOfNotNull(nextStart(it, now), nextEnd(it, now)) }.minOrNull()
 
-    // [minutes] before the next start that is still at least that far away.
     fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
         nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes)
 

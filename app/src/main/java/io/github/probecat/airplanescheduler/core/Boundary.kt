@@ -59,7 +59,6 @@ object Boundary {
         val before = ScheduleResolver.window(old, now)
         val after = ScheduleResolver.window(new, now)
         if (before == null) return if (after != null) Step.Start(after) else Step.None
-        // Null when the app missed this window's start, so it has nothing to undo or move.
         val running = started?.takeIf { it.window == before.start }
         return when {
             after == null -> {

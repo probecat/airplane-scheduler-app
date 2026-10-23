@@ -26,7 +26,6 @@ import kotlinx.serialization.json.Json
 @Serializable
 data class MockConfig(
     val enabled: Boolean = false,
-    // The scenario applied last, by id.
     val scenario: String? = null,
     val shizuku: ShizukuState = ShizukuState.READY,
     val shizukuInstalled: Boolean = true,
@@ -111,13 +110,11 @@ object Mock {
 
     fun now(): LocalDateTime = LocalDateTime.now().let { if (active) it.plusMinutes(state.value.clockOffset) else it }
 
-    // The real time when the mock clock reads [time].
     fun real(time: LocalDateTime): LocalDateTime = if (active) time.minusMinutes(state.value.clockOffset) else time
 
     fun zonedNow(): ZonedDateTime =
         ZonedDateTime.now().let { if (active) it.plusMinutes(state.value.clockOffset) else it }
 
-    // Moves the mock clock so it reads [target] now.
     fun offsetTo(target: LocalDateTime): Long =
         Duration.between(LocalDateTime.now().withSecond(0).withNano(0), target).toMinutes()
 

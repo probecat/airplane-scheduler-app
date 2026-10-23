@@ -4,7 +4,6 @@ object ConnectivityPlan {
     const val AIRPLANE = 1
     const val WIFI = 2
 
-    // What the app changes at a start, so the end undoes only that.
     data class Changes(val airplane: Boolean, val wifi: Boolean) {
         val isEmpty: Boolean get() = !airplane && !wifi
 
@@ -21,7 +20,6 @@ object ConnectivityPlan {
         }
     }
 
-    // A start leaves alone what the user already switched: airplane mode that is on, Wi-Fi that is off.
     fun start(airplaneOn: Boolean, wifiOn: Boolean, disableWifi: Boolean) =
         Changes(airplane = !airplaneOn, wifi = disableWifi && wifiOn)
 
@@ -30,7 +28,6 @@ object ConnectivityPlan {
 
     fun end(started: Changes, enableWifi: Boolean) = started.copy(wifi = started.wifi && enableWifi)
 
-    // Wi-Fi goes off before airplane mode turns on, and back on after it turns off.
     fun order(enabled: Boolean, changes: Changes): List<Int> {
         val airplane = AIRPLANE.takeIf { changes.airplane }
         val wifi = WIFI.takeIf { changes.wifi }

@@ -12,7 +12,6 @@ import org.junit.Test
 class BoundaryTest {
     private fun at(hour: Int, minute: Int = 0) = hour * 60 + minute
 
-    // 2026-10-09 is a Friday.
     private fun friday(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, 9, hour, minute)
 
     private val thursdayNight = friday(23).minusDays(1)

@@ -7,7 +7,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class NoticeTest {
-    // 2026-10-09 is a Friday.
     private fun friday(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, 9, hour, minute)
 
     private val today = friday(0).toLocalDate()
