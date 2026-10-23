@@ -2,6 +2,7 @@ package io.github.probecat.airplanescheduler.ui.schedules
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -260,60 +261,57 @@ fun SchedulesScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (!exactAlarms && schedules.any { it.enabled }) {
-                    item(key = "alarms") {
-                        Strip(
-                            label = stringResource(R.string.strip_alarms),
-                            icon = R.drawable.ic_error,
-                            error = true,
-                            onClick = { context.startActivity(exactAlarmSettings(context)) },
-                            modifier = Modifier.animateItem().padding(bottom = 8.dp),
-                        )
-                    }
-                }
-                if (!batteryOff && schedules.any { it.enabled }) {
-                    item(key = "battery") {
-                        Strip(
-                            label = stringResource(R.string.strip_battery),
-                            icon = R.drawable.ic_warning,
-                            warning = true,
-                            onClick = { stopBatteryOptimization(context) },
-                            modifier = Modifier.animateItem().padding(bottom = 8.dp),
-                        )
-                    }
-                }
-                if (shizuku != ShizukuState.READY || !settings.hideShizukuReady) {
-                    item(key = "status") {
-                        val (label, icon) = when (shizuku) {
-                            ShizukuState.READY ->
-                                (if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready) to
-                                    R.drawable.ic_check_circle
-                            ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
-                            ShizukuState.PERMISSION_NEEDED ->
-                                (if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission) to
-                                    R.drawable.ic_lock
+                val showAlarms = !exactAlarms && schedules.any { it.enabled }
+                val showBattery = !batteryOff && schedules.any { it.enabled }
+                val showStatus = shizuku != ShizukuState.READY || !settings.hideShizukuReady
+                if (showAlarms || showBattery || showStatus) {
+                    item(key = "notices") {
+                        Column(
+                            Modifier.animateItem().animateContentSize().padding(bottom = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            if (showAlarms) {
+                                Strip(
+                                    label = stringResource(R.string.strip_alarms),
+                                    icon = R.drawable.ic_error,
+                                    error = true,
+                                    onClick = { context.startActivity(exactAlarmSettings(context)) },
+                                )
+                            }
+                            if (showStatus) {
+                                val (label, icon) = statusStrip(shizuku, sui)
+                                val ready = shizuku == ShizukuState.READY
+                                Strip(
+                                    label = stringResource(label),
+                                    icon = icon,
+                                    error = !ready,
+                                    onClick = if (ready) {
+                                        null
+                                    } else {
+                                        {
+                                            if (shizuku != ShizukuState.PERMISSION_NEEDED ||
+                                                !viewModel.requestShizuku()
+                                            ) {
+                                                explaining = shizuku
+                                            }
+                                        }
+                                    },
+                                    onDismiss = if (ready) {
+                                        { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
+                                    } else {
+                                        null
+                                    },
+                                )
+                            }
+                            if (showBattery) {
+                                Strip(
+                                    label = stringResource(R.string.strip_battery),
+                                    icon = R.drawable.ic_warning,
+                                    warning = true,
+                                    onClick = { stopBatteryOptimization(context) },
+                                )
+                            }
                         }
-                        val ready = shizuku == ShizukuState.READY
-                        Strip(
-                            label = stringResource(label),
-                            icon = icon,
-                            error = !ready,
-                            onClick = if (ready) {
-                                null
-                            } else {
-                                {
-                                    if (shizuku != ShizukuState.PERMISSION_NEEDED || !viewModel.requestShizuku()) {
-                                        explaining = shizuku
-                                    }
-                                }
-                            },
-                            onDismiss = if (ready) {
-                                { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
-                            } else {
-                                null
-                            },
-                            modifier = Modifier.animateItem().padding(bottom = 8.dp),
-                        )
                     }
                 }
                 if (schedules.isEmpty()) {
@@ -447,6 +445,14 @@ private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit, onMock: (()
             }
         }
     }
+}
+
+private fun statusStrip(shizuku: ShizukuState, sui: Boolean): Pair<Int, Int> = when (shizuku) {
+    ShizukuState.READY ->
+        (if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready) to R.drawable.ic_check_circle
+    ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
+    ShizukuState.PERMISSION_NEEDED ->
+        (if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission) to R.drawable.ic_lock
 }
 
 // A line above the schedules about what the app needs. An error one stays until it's fixed; others can
