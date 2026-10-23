@@ -1,0 +1,3 @@
+• Schedule notifications show on the lock screen and in the status bar, without sound.
+• A notification that turns into a problem now alerts.
+• Improved Sui support for rooted phones.
