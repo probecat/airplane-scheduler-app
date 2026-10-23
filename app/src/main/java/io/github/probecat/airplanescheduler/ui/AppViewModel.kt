@@ -8,6 +8,7 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.mock.Mock
+import io.github.probecat.airplanescheduler.system.AirplaneController
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
@@ -53,9 +54,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val missed: StateFlow<Long?> = combine(schedules, now, app.settings.startedWindow, app.airplane, ::missed)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    // Notices tell whether Shizuku is ready, which a fresh process may not know yet.
     fun refresh() {
-        app.refreshShizuku()
-        Notifier.refresh(app)
+        AirplaneController.awaitBinder(tap = true) {
+            app.refreshShizuku()
+            Notifier.refresh(app)
+        }
     }
 
     fun catchUp(done: (Boolean) -> Unit) = ScheduleUpdater.catchUp(app, done)

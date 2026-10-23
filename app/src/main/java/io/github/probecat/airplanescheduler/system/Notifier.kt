@@ -53,6 +53,7 @@ object Notifier {
     private const val TAG = "schedule"
     private const val PROBLEM_TAG = "problem"
     private const val KIND = "kind"
+    private const val CHANNEL = "channel"
     private const val CLEAN_END_SHOWS_MINUTES = 60L
 
     private enum class Kind { NOTICE, REPORT, PROBLEM }
@@ -130,7 +131,9 @@ object Notifier {
         for ((id, content) in wanted) {
             val key = content.toString()
             if (posted[id]?.getString(KEY) == key || dismissed.getString(id.toString(), null) == key) continue
-            post(app, id, content, now)
+            // A notice that turns into a problem alerts, though updates otherwise don't.
+            val alert = content.channel == PROBLEMS && posted[id]?.getString(CHANNEL) != PROBLEMS
+            post(app, id, content, now, alert)
         }
         for ((id, extras) in posted) {
             if (id !in wanted && extras.getString(KIND) == Kind.NOTICE.name) {
@@ -404,10 +407,15 @@ object Notifier {
         notificationsAllowed(context) && NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     @SuppressLint("MissingPermission") // Callers check canPost.
-    private fun post(app: App, id: Long, content: Content, now: LocalDateTime) {
+    private fun post(app: App, id: Long, content: Content, now: LocalDateTime, alert: Boolean = false) {
         val tag = if (content.kind == Kind.PROBLEM) PROBLEM_TAG else TAG
         val key = content.toString()
-        val extras = bundleOf(KEY to key, KIND to content.kind.name, CHANGES to content.changes.bits)
+        val extras = bundleOf(
+            KEY to key,
+            KIND to content.kind.name,
+            CHANNEL to content.channel,
+            CHANGES to content.changes.bits,
+        )
         val open = Intent(app, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val builder = NotificationCompat.Builder(app, content.channel)
             .setSmallIcon(R.drawable.ic_notification)
@@ -415,7 +423,7 @@ object Notifier {
             .setContentText(content.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content.text))
             .setContentIntent(PendingIntent.getActivity(app, 0, open, PendingIntent.FLAG_IMMUTABLE))
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!alert)
             .setShowWhen(false)
             .setCategory(
                 if (content.channel == PROBLEMS) {
