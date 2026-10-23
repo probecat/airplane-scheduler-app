@@ -48,7 +48,7 @@ object Notifier {
     const val TITLE = "title"
     const val KEY = "key"
 
-    private const val SCHEDULES = "schedules"
+    private const val SCHEDULES = "schedules_v2"
     private const val PROBLEMS = "problems"
     private const val TAG = "schedule"
     private const val PROBLEM_TAG = "problem"
@@ -88,18 +88,29 @@ object Notifier {
     fun createChannels(context: Context) {
         val manager = NotificationManagerCompat.from(context)
         manager.deleteNotificationChannel("shizuku_reminder")
+        val blocked = manager.getNotificationChannelCompat("schedules")?.importance ==
+            NotificationManagerCompat.IMPORTANCE_NONE
+        manager.deleteNotificationChannel("schedules")
         manager.createNotificationChannelsCompat(
             listOf(
-                channel(context, SCHEDULES, R.string.channel_schedules, low = true),
-                channel(context, PROBLEMS, R.string.channel_problems, low = false),
+                NotificationChannelCompat.Builder(
+                    SCHEDULES,
+                    if (blocked) {
+                        NotificationManagerCompat.IMPORTANCE_NONE
+                    } else {
+                        NotificationManagerCompat.IMPORTANCE_DEFAULT
+                    },
+                )
+                    .setName(context.getString(R.string.channel_schedules))
+                    .setSound(null, null)
+                    .setVibrationEnabled(false)
+                    .build(),
+                NotificationChannelCompat.Builder(PROBLEMS, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                    .setName(context.getString(R.string.channel_problems))
+                    .build(),
             ),
         )
     }
-
-    private fun channel(context: Context, id: String, name: Int, low: Boolean) = NotificationChannelCompat.Builder(
-        id,
-        if (low) NotificationManagerCompat.IMPORTANCE_LOW else NotificationManagerCompat.IMPORTANCE_DEFAULT,
-    ).setName(context.getString(name)).build()
 
     fun refresh(context: Context) {
         val app = App.from(context)
