@@ -59,7 +59,7 @@ private fun schedules(format: Format) = listOf(
 )
 
 @Composable
-private fun troubleshooting(format: Format): List<Pair<String, String>> {
+private fun troubleshooting(format: Format, sui: Boolean): List<Pair<String, String>> {
     var shizukuStopped = stringResource(R.string.help_shizuku_stopped_a)
     // Wireless debugging, which Shizuku starts with, came in Android 11.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -68,7 +68,9 @@ private fun troubleshooting(format: Format): List<Pair<String, String>> {
     return listOfNotNull(
         topic(R.string.help_missed_q, R.string.help_missed_a),
         if (batteryOptimizationDelays) topic(R.string.help_late_q, R.string.help_late_a) else null,
-        stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
+        // Sui runs from boot, so these are about Shizuku only.
+        if (sui) null else stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
+        if (sui) null else topic(R.string.help_root_q, R.string.help_root_a),
         topic(R.string.help_overlap_q, R.string.help_overlap_a),
     )
 }
@@ -76,21 +78,22 @@ private fun troubleshooting(format: Format): List<Pair<String, String>> {
 @Composable
 fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val format = rememberFormat()
+    val sui by viewModel.sui.collectAsStateWithLifecycle()
     Subpage(stringResource(R.string.help), onBack) {
-        SectionHeader(stringResource(R.string.help_setup))
+        SectionHeader(stringResource(if (sui) R.string.help_setup_sui else R.string.help_setup))
         Text(
-            stringResource(R.string.help_setup_text),
+            stringResource(if (sui) R.string.help_setup_text_sui else R.string.help_setup_text),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
-        SetupSteps(viewModel)
+        if (sui) SuiSteps(viewModel) else SetupSteps(viewModel)
 
         SectionHeader(stringResource(R.string.help_schedules))
         schedules(format).forEach { (question, answer) -> Topic(question, answer) }
 
         SectionHeader(stringResource(R.string.help_troubleshooting))
-        troubleshooting(format).forEach { (question, answer) -> Topic(question, answer) }
+        troubleshooting(format, sui).forEach { (question, answer) -> Topic(question, answer) }
         LinkRow(R.drawable.ic_bug_report, stringResource(R.string.help_report), ISSUES_URL)
     }
 }
@@ -136,6 +139,26 @@ private fun SetupSteps(viewModel: AppViewModel) {
             TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) {
                 Text(stringResource(R.string.action_allow))
             }
+        }
+    }
+
+    explaining?.let { state -> ShizukuDialog(state, onHelp = null, onDismiss = { explaining = null }) }
+}
+
+@Composable
+private fun SuiSteps(viewModel: AppViewModel) {
+    val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
+    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    val allowed = shizuku == ShizukuState.READY
+    Step(R.drawable.ic_counter_1, R.string.help_install_sui, R.string.help_installed, done = true) {}
+    Step(
+        R.drawable.ic_counter_2,
+        R.string.help_grant,
+        if (allowed) R.string.status_allowed else R.string.status_not_allowed,
+        allowed,
+    ) {
+        TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) {
+            Text(stringResource(R.string.action_allow))
         }
     }
 

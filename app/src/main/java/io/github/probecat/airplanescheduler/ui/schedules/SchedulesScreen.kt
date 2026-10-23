@@ -124,6 +124,7 @@ fun SchedulesScreen(
     val resources = LocalResources.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
+    val sui by viewModel.sui.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val missed by viewModel.missed.collectAsStateWithLifecycle()
@@ -284,9 +285,13 @@ fun SchedulesScreen(
                 if (shizuku != ShizukuState.READY || !settings.hideShizukuReady) {
                     item(key = "status") {
                         val (label, icon) = when (shizuku) {
-                            ShizukuState.READY -> R.string.strip_shizuku_ready to R.drawable.ic_check_circle
+                            ShizukuState.READY ->
+                                (if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready) to
+                                    R.drawable.ic_check_circle
                             ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
-                            ShizukuState.PERMISSION_NEEDED -> R.string.strip_shizuku_permission to R.drawable.ic_lock
+                            ShizukuState.PERMISSION_NEEDED ->
+                                (if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission) to
+                                    R.drawable.ic_lock
                         }
                         val ready = shizuku == ShizukuState.READY
                         Strip(
@@ -323,6 +328,7 @@ fun SchedulesScreen(
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
                             missed = shizuku.takeIf { isMissed },
+                            sui = sui,
                             note = if (action == CardAction.UNDO || action == CardAction.RESUME) {
                                 note(schedule, now, format)
                             } else {
@@ -564,6 +570,7 @@ private fun ScheduleCard(
     endsIn: Int?,
     // Why airplane mode is off while it's active.
     missed: ShizukuState?,
+    sui: Boolean,
     // Why the next window won't run as planned.
     note: Pair<String, Int>?,
     action: CardAction?,
@@ -601,7 +608,7 @@ private fun ScheduleCard(
                         }
                     }
                     when {
-                        missed != null -> Missed(missed)
+                        missed != null -> Missed(missed, sui)
                         endsIn != null -> EndsIn(format.duration(endsIn))
                         note != null -> Status(note.first, note.second)
                     }
@@ -644,11 +651,12 @@ private fun EndsIn(duration: String) = Status(
 )
 
 @Composable
-private fun Missed(shizuku: ShizukuState) {
+private fun Missed(shizuku: ShizukuState, sui: Boolean) {
     val (text, icon) = when (shizuku) {
         ShizukuState.READY -> R.string.card_missed to R.drawable.ic_error
         ShizukuState.OFFLINE -> R.string.card_missed_offline to R.drawable.ic_error
-        ShizukuState.PERMISSION_NEEDED -> R.string.card_missed_permission to R.drawable.ic_lock
+        ShizukuState.PERMISSION_NEEDED ->
+            (if (sui) R.string.card_missed_permission_sui else R.string.card_missed_permission) to R.drawable.ic_lock
     }
     val label = stringResource(text)
     Status(

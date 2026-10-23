@@ -23,6 +23,9 @@ class App : Application() {
     private val shizukuState = MutableStateFlow(ShizukuStatus.current())
     val shizuku: StateFlow<ShizukuState> = shizukuState.asStateFlow()
 
+    private val suiState = MutableStateFlow(ShizukuStatus.sui)
+    val sui: StateFlow<Boolean> = suiState.asStateFlow()
+
     private val airplaneState = MutableStateFlow(false)
     val airplane: StateFlow<Boolean> = airplaneState.asStateFlow()
 
@@ -53,8 +56,10 @@ class App : Application() {
 
     fun refreshShizuku() {
         val state = ShizukuStatus.current()
-        if (state == shizukuState.value) return
+        val sui = ShizukuStatus.sui
+        if (state == shizukuState.value && sui == suiState.value) return
         shizukuState.value = state
+        suiState.value = sui
         Notifier.refresh(this)
     }
 

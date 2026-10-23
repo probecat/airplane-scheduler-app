@@ -45,8 +45,9 @@ fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
+    val sui by viewModel.sui.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
-    val details = details(context, schedules, settings, shizuku, now)
+    val details = details(context, schedules, settings, shizuku, sui, now)
     Subpage(
         title = "Debug info",
         onBack = onBack,
@@ -77,6 +78,7 @@ private fun details(
     schedules: List<Schedule>,
     settings: Settings,
     shizuku: ShizukuState,
+    sui: Boolean,
     now: LocalDateTime,
 ): String {
     val app = App.from(context)
@@ -95,7 +97,7 @@ private fun details(
                 ShizukuState.READY -> "ready"
                 ShizukuState.OFFLINE -> "offline"
                 ShizukuState.PERMISSION_NEEDED -> "permission required"
-            },
+            } + if (sui) " (Sui)" else "",
         )
         appendLine("Notifications: " + if (notificationsAllowed(context)) "allowed" else "not allowed")
         if (exactAlarmsDeniable) {

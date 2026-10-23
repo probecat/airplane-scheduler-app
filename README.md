@@ -34,7 +34,7 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 ## Requirements
 
 - Android 9 or later.
-- [Shizuku](https://github.com/RikkaApps/Shizuku).
+- [Shizuku](https://github.com/RikkaApps/Shizuku), or [Sui](https://github.com/RikkaApps/Sui) on a rooted phone.
 
 ## Building
 

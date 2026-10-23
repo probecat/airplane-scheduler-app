@@ -84,11 +84,14 @@
     <string name="strip_shizuku_ready">Shizuku is ready</string>
     <string name="strip_shizuku_offline">Shizuku is unavailable, schedules can\'t work</string>
     <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
+    <string name="strip_sui_ready">Sui is ready</string>
+    <string name="strip_sui_permission">Grant Sui permission for the app to work</string>
     <string name="card_ends_in">Ends in %1$s</string>
     <string name="card_ends_in_description">Active now, ends in %1$s</string>
     <string name="card_missed">Missed the start</string>
     <string name="card_missed_offline">Missed, Shizuku is unavailable</string>
     <string name="card_missed_permission">Missed, need Shizuku permission</string>
+    <string name="card_missed_permission_sui">Missed, need Sui permission</string>
     <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
     <string name="postpone_turns_back_on">Back on at %1$s</string>
     <string name="postpone_resumes">Resumes %1$s</string>
@@ -123,6 +126,7 @@
     <string name="settings_postpone_off">Off</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_shizuku">Shizuku</string>
+    <string name="settings_sui">Sui</string>
     <string name="settings_shizuku_ready">Ready</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_alarms">Alarms</string>
@@ -136,8 +140,11 @@
 
     <!-- Help -->
     <string name="help_setup">Set up Shizuku</string>
+    <string name="help_setup_sui">Set up Sui</string>
     <string name="help_setup_text">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Shizuku.</string>
+    <string name="help_setup_text_sui">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Sui.</string>
     <string name="help_install">Install Shizuku</string>
+    <string name="help_install_sui">Install Sui</string>
     <string name="help_installed">Installed</string>
     <string name="help_start">Start Shizuku</string>
     <string name="help_running">Running</string>
@@ -172,6 +179,8 @@
     <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. If you have notifications on, you\'ll get a warning an hour before a schedule runs.</string>
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
     <string name="help_shizuku_stopped_legacy">On this Android version, starting Shizuku needs a computer or root.</string>
+    <string name="help_root_q">Can I use root instead?</string>
+    <string name="help_root_a">Yes. Start Shizuku with root, or install Sui instead.</string>
     <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
     <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
 
@@ -184,6 +193,8 @@
     <string name="shizuku_permission_text">Shizuku won\'t ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it.</string>
     <string name="shizuku_open">Open Shizuku</string>
     <string name="shizuku_get">Get Shizuku</string>
+    <string name="sui_permission_title">Allow access in Sui</string>
+    <string name="sui_permission_text">Sui won\'t ask again. Dial *#*#784784#*#* to open Sui, find Airplane Scheduler, and allow it.</string>
 
     <!-- Notification channels -->
     <string name="channel_schedules">Schedules</string>
@@ -219,4 +230,5 @@
     <string name="notification_shizuku_missing">Shizuku isn\'t installed.</string>
     <string name="notification_shizuku_offline">Shizuku isn\'t running.</string>
     <string name="notification_shizuku_permission">Need Shizuku permission.</string>
+    <string name="notification_sui_permission">Need Sui permission.</string>
 </resources>

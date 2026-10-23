@@ -37,6 +37,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val shizuku: StateFlow<ShizukuState> = app.shizuku
 
+    val sui: StateFlow<Boolean> = app.sui
+
     // Ticks on each minute so the active schedule and its time left follow the clock, and when debug builds
     // move the mock clock.
     val now: StateFlow<LocalDateTime> = combine(

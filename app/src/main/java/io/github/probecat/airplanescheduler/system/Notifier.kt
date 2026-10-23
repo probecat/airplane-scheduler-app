@@ -400,7 +400,9 @@ object Notifier {
                 R.string.notification_shizuku_offline
             },
         )
-        ShizukuState.PERMISSION_NEEDED -> context.getString(R.string.notification_shizuku_permission)
+        ShizukuState.PERMISSION_NEEDED -> context.getString(
+            if (ShizukuStatus.sui) R.string.notification_sui_permission else R.string.notification_shizuku_permission,
+        )
     }
 
     private fun canPost(context: Context) =

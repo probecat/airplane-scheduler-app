@@ -7,4 +7,4 @@
 • Optional notifications before, during and after a schedule.
 • No internet access, ads or tracking.
 
-<b>Note:</b> This app needs Shizuku to work.
+<b>Note:</b> This app needs Shizuku, or Sui on a rooted phone.

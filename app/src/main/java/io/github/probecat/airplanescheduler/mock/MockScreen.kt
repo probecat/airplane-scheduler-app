@@ -133,6 +133,9 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
         SwitchRow(null, "Shizuku app installed", config.shizukuInstalled, on) { installed ->
             update { it.copy(shizukuInstalled = installed) }
         }
+        SwitchRow(null, "Sui instead of Shizuku", config.sui, on) { sui ->
+            update { it.copy(sui = sui) }
+        }
         SwitchRow(null, "Notifications allowed", config.notifications, on) { allowed ->
             update { it.copy(notifications = allowed) }
         }

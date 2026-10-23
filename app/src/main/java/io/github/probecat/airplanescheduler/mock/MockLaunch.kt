@@ -27,6 +27,7 @@ object MockLaunch {
 mock          scenario id, on or off
 shizuku       ready, offline or no-access
 shizukuApp    true or false
+sui           true or false
 notifications true or false
 battery       true or false
 at            wed 23:15, 23:15 or real
@@ -74,6 +75,7 @@ Any override turns mock data on."""
         val after = before.copy(
             shizuku = value("shizuku")?.let { SHIZUKU[it] } ?: before.shizuku,
             shizukuInstalled = flag("shizukuApp") ?: before.shizukuInstalled,
+            sui = flag("sui") ?: before.sui,
             notifications = flag("notifications") ?: before.notifications,
             batteryOptimized = flag("battery") ?: before.batteryOptimized,
             clockOffset = value("at")?.let { at ->

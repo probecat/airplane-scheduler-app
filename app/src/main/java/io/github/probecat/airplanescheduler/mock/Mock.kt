@@ -30,6 +30,7 @@ data class MockConfig(
     val scenario: String? = null,
     val shizuku: ShizukuState = ShizukuState.READY,
     val shizukuInstalled: Boolean = true,
+    val sui: Boolean = false,
     val notifications: Boolean = true,
     // As below Android 12 with battery optimization on for the app, whatever the real version.
     val batteryOptimized: Boolean = false,
@@ -74,7 +75,7 @@ object Mock {
     fun update(app: App, transform: (MockConfig) -> MockConfig) {
         if (!BuildConfig.DEBUG) return
         val before = state.value
-        val after = installedIfRunning(before, transform(before))
+        val after = suiIfRunning(before, installedIfRunning(before, transform(before)))
         state.value = after
         prefs.edit { putString(KEY, json.encodeToString(after)) }
         if (before.enabled != after.enabled) {
@@ -82,7 +83,7 @@ object Mock {
             AlarmScheduler.scheduleAll(app)
         }
         // A dismissed ready strip comes back, so each state shows its strip.
-        if (after.enabled && before.shizuku != after.shizuku) {
+        if (after.enabled && (before.shizuku != after.shizuku || before.sui != after.sui)) {
             app.settings.update { it.copy(hideShizukuReady = false) }
         }
         app.refreshShizuku()
@@ -94,6 +95,13 @@ object Mock {
         after.shizukuInstalled || after.shizuku == ShizukuState.OFFLINE -> after
         before.shizukuInstalled -> after.copy(shizuku = ShizukuState.OFFLINE)
         else -> after.copy(shizukuInstalled = true)
+    }
+
+    // Sui is only detected while it runs. Whichever of the two just changed decides the other.
+    private fun suiIfRunning(before: MockConfig, after: MockConfig): MockConfig = when {
+        !after.sui || after.shizuku != ShizukuState.OFFLINE -> after
+        before.sui -> after.copy(sui = false)
+        else -> after.copy(shizuku = ShizukuState.READY)
     }
 
     private fun useStores(app: App, mock: Boolean) {

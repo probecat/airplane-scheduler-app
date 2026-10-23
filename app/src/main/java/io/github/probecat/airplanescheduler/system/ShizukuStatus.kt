@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import androidx.core.net.toUri
 import io.github.probecat.airplanescheduler.mock.Mock
 import rikka.shizuku.Shizuku
+import rikka.sui.Sui
 
 enum class ShizukuState { READY, OFFLINE, PERMISSION_NEEDED }
 
@@ -14,6 +15,8 @@ object ShizukuStatus {
     private const val REQUEST = 1
 
     fun current(): ShizukuState = if (Mock.active) Mock.config.value.shizuku else real()
+
+    val sui: Boolean get() = if (Mock.active) Mock.config.value.sui else Sui.isSui()
 
     private fun real(): ShizukuState = try {
         when {

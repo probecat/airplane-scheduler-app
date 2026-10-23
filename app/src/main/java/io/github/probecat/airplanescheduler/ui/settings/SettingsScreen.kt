@@ -66,6 +66,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
     var choosingPostpone by rememberSaveable { mutableStateOf(false) }
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
+    val sui by viewModel.sui.collectAsStateWithLifecycle()
     val shizukuApp = ShizukuStatus.launchIntent(context)
     var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
     var resetting by rememberSaveable { mutableStateOf(false) }
@@ -106,7 +107,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
                 ShizukuState.OFFLINE -> R.drawable.ic_error
                 ShizukuState.PERMISSION_NEEDED -> R.drawable.ic_lock
             },
-            title = stringResource(R.string.settings_shizuku),
+            title = stringResource(if (sui) R.string.settings_sui else R.string.settings_shizuku),
             text = stringResource(
                 when (shizuku) {
                     ShizukuState.READY -> R.string.settings_shizuku_ready
@@ -115,26 +116,30 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
                     ShizukuState.PERMISSION_NEEDED -> R.string.status_not_allowed
                 },
             ),
-            trailing = {
-                when {
-                    shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = {
-                        if (!viewModel.requestShizuku()) explaining = shizuku
-                    }) { Text(stringResource(R.string.action_allow)) }
-                    shizukuApp != null -> TextButton(onClick = { context.startActivity(shizukuApp) }) {
-                        Text(
-                            stringResource(
-                                if (shizuku ==
-                                    ShizukuState.READY
-                                ) {
-                                    R.string.action_manage
-                                } else {
-                                    R.string.action_open
-                                },
-                            ),
-                        )
-                    }
-                    else -> TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
-                        Text(stringResource(R.string.action_get))
+            trailing = if (sui && shizuku != ShizukuState.PERMISSION_NEEDED) {
+                null
+            } else {
+                {
+                    when {
+                        shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = {
+                            if (!viewModel.requestShizuku()) explaining = shizuku
+                        }) { Text(stringResource(R.string.action_allow)) }
+                        shizukuApp != null -> TextButton(onClick = { context.startActivity(shizukuApp) }) {
+                            Text(
+                                stringResource(
+                                    if (shizuku ==
+                                        ShizukuState.READY
+                                    ) {
+                                        R.string.action_manage
+                                    } else {
+                                        R.string.action_open
+                                    },
+                                ),
+                            )
+                        }
+                        else -> TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
+                            Text(stringResource(R.string.action_get))
+                        }
                     }
                 }
             },
