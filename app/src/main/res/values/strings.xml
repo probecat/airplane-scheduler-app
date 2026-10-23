@@ -152,31 +152,34 @@
     <string name="help_collapsed">Collapsed</string>
 
     <string name="help_start_end_q">What happens at the start and end?</string>
-    <string name="help_start_end_a">Airplane mode turns on at the start. At the end, the app only undoes what it changed, so if airplane mode was already on, it stays on, and if you turned it off midway, it stays off.</string>
-    <string name="help_wifi_q">How do the Wi-Fi options work?</string>
+    <string name="help_start_end_a">Airplane mode turns on at the start and off at the end. The app only undoes what it changed, so if airplane mode was already on, it stays on, and if you turned it off midway, it stays off.</string>
+    <string name="help_wifi_q">What do the Wi-Fi options do?</string>
     <string name="help_wifi_a">“Turn off Wi-Fi at start” turns Wi-Fi off before airplane mode. “Turn on Wi-Fi at end” turns it back on, but only if the app turned it off.</string>
-    <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
+    <string name="help_overnight_q">Which day is an overnight schedule on?</string>
     <!-- %1$s is 11 PM and %2$s is 7 AM. -->
     <string name="help_overnight_a">The day it starts. A Friday schedule from %1$s to %2$s ends on Saturday morning.</string>
-    <string name="help_once_q">What does a schedule without days do?</string>
-    <string name="help_once_a">It runs once at its next start time, then switches itself off. If you switch it on between its start and end, it starts right away.</string>
-    <string name="help_postpone_q">How do skip, postpone and pause work?</string>
-    <string name="help_postpone_a">In the hour before a schedule starts, you can skip it, or postpone it to start later and still end on time. While it runs, you can end it early, or pause it to turn airplane mode off for a while. You can change how long postpone and pause last, or turn them off, in Settings.</string>
-    <string name="help_change_active_q">What happens if I change an active schedule?</string>
-    <string name="help_change_active_a">Switching a schedule off or deleting it ends it right away, like a normal end. Switching on or adding a schedule that covers the current time starts it right away. Editing the times starts or ends it to match.</string>
-    <string name="help_missed_q">Why didn\'t airplane mode turn on or off?</string>
-    <string name="help_missed_a">Shizuku wasn\'t running or the phone was off. The app doesn\'t automatically catch up by design, but it notifies you.</string>
+    <string name="help_once_q">What if I pick no days?</string>
+    <string name="help_once_a">The schedule runs once at its next start time, then switches itself off. If you switch it on between its start and end, it starts right away.</string>
+    <string name="help_skip_q">Can I skip or delay a schedule?</string>
+    <string name="help_skip_a">In the hour before a schedule starts, you can skip it, or postpone it to start later and still end on time.</string>
+    <string name="help_pause_q">Can I take a break during a schedule?</string>
+    <string name="help_pause_a">Yes. Pause it to turn airplane mode off for a while, or end it early. Postpone and pause share one length, which you can change or turn off in Settings.</string>
+    <string name="help_change_active_q">Do changes apply right away?</string>
+    <string name="help_change_active_a">Yes. Switching off or deleting a running schedule ends it, like a normal end. Switching on or adding one that covers the current time starts it. Editing the times starts or ends it to match.</string>
+    <string name="help_overlap_q">Why can\'t schedules overlap?</string>
+    <string name="help_overlap_a">Only one schedule can be in charge at a time. Back-to-back schedules act as one, so airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
+    <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
+    <string name="help_missed_a">Shizuku wasn\'t running or allowed, or the phone was off. The app doesn\'t catch up on its own by design. But if notifications are allowed, you\'ll get an alert.</string>
+    <string name="help_missed_a_sui">Sui wasn\'t allowed, or the phone was off. The app doesn\'t catch up on its own by design. But if notifications are allowed, you\'ll get an alert.</string>
     <!-- Shown below Android 12 only. -->
     <string name="help_late_q">Why did a schedule run late?</string>
-    <string name="help_late_a">Battery optimization can delay it by up to 2 hours if you rarely open the app. Disable battery optimization for Airplane Scheduler in your settings.</string>
-    <string name="help_shizuku_stopped_q">Why did Shizuku stop?</string>
-    <string name="help_shizuku_stopped_a">You may need to start Shizuku again whenever the phone restarts. If you have notifications on, you\'ll get a warning an hour before a schedule runs.</string>
+    <string name="help_late_a">Battery optimization can delay it by up to 2 hours if you rarely open the app. Tap the battery warning on the Schedules screen to turn it off for Airplane Scheduler.</string>
+    <string name="help_shizuku_stopped_q">Why does Shizuku keep stopping?</string>
+    <string name="help_shizuku_stopped_a">Shizuku stops whenever the phone restarts. If notifications are allowed, you\'ll get a warning an hour before a schedule.</string>
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
     <string name="help_shizuku_stopped_legacy">On this Android version, starting Shizuku needs a computer or root.</string>
-    <string name="help_root_q">Can I use root instead?</string>
-    <string name="help_root_a">Yes. Start Shizuku with root, or install Sui instead.</string>
-    <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
-    <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
+    <string name="help_root_q">Can I use root?</string>
+    <string name="help_root_a">Yes. Start Shizuku with root, and it can start on its own at boot. With Magisk and Zygisk, you can install the Sui module instead, which replaces the Shizuku app and runs from boot.</string>
 
     <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
     <string name="shizuku_missing_text">Airplane Scheduler needs Shizuku to switch airplane mode. Install it and start it.</string>

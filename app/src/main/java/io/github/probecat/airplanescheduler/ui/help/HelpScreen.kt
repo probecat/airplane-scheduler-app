@@ -54,8 +54,10 @@ private fun schedules(format: Format) = listOf(
     topic(R.string.help_wifi_q, R.string.help_wifi_a),
     topic(R.string.help_overnight_q, R.string.help_overnight_a, format.time(23 * 60), format.time(7 * 60)),
     topic(R.string.help_once_q, R.string.help_once_a),
-    topic(R.string.help_postpone_q, R.string.help_postpone_a),
+    topic(R.string.help_skip_q, R.string.help_skip_a),
+    topic(R.string.help_pause_q, R.string.help_pause_a),
     topic(R.string.help_change_active_q, R.string.help_change_active_a),
+    topic(R.string.help_overlap_q, R.string.help_overlap_a),
 )
 
 @Composable
@@ -66,12 +68,11 @@ private fun troubleshooting(format: Format, sui: Boolean): List<Pair<String, Str
         shizukuStopped = format.sentences(shizukuStopped, stringResource(R.string.help_shizuku_stopped_legacy))
     }
     return listOfNotNull(
-        topic(R.string.help_missed_q, R.string.help_missed_a),
+        topic(R.string.help_missed_q, if (sui) R.string.help_missed_a_sui else R.string.help_missed_a),
         if (batteryOptimizationDelays) topic(R.string.help_late_q, R.string.help_late_a) else null,
         // Sui runs from boot, so these are about Shizuku only.
         if (sui) null else stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
         if (sui) null else topic(R.string.help_root_q, R.string.help_root_a),
-        topic(R.string.help_overlap_q, R.string.help_overlap_a),
     )
 }
 
