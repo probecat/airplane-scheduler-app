@@ -23,7 +23,6 @@ fun isDark(theme: ThemeMode): Boolean = when (theme) {
 val LocalWarningColors = staticCompositionLocalOf { WarningLight }
 val LocalSuccessColor = staticCompositionLocalOf { SuccessLight }
 
-// Android 12 added the wallpaper colors.
 val hasDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 @Composable

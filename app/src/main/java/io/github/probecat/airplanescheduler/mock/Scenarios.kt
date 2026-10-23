@@ -62,7 +62,6 @@ class Scenario(
         val schedules = schedules(now.toLocalDate())
         app.schedules.replaceAll(schedules)
         app.settings.update { it.copy(hideShizukuReady = hideShizukuReady) }
-        // As if the app had started the window that is running.
         app.settings.started = ScheduleResolver.window(schedules, now)?.let {
             val wanted = Changes(airplane = true, wifi = it.disableWifi)
             Boundary.Started(it.start, if (missedStart) Changes.NONE else wanted, wanted)

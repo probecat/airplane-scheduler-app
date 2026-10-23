@@ -20,7 +20,6 @@ import org.junit.Test
 class ScheduleResolverTest {
     private fun at(hour: Int, minute: Int = 0) = hour * 60 + minute
 
-    // 2026-10-09 is a Friday.
     private fun friday(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, 9, hour, minute)
 
     private val night = Schedule(id = 1, name = "Night", start = at(23), end = at(7))

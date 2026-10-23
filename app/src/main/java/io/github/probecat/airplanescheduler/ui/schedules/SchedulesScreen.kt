@@ -718,7 +718,6 @@ private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolea
         ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
         ScheduleResolver.delay(schedule, now) != null -> CardAction.UNDO
         ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
-        // Skipping is offered only for a start that is close.
         ScheduleResolver.nextWindow(schedule, now)
             ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
         else -> null

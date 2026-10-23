@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Airplane Scheduler</string>
 
-    <!-- Shared -->
     <string name="action_allow">Allow</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
@@ -35,7 +34,6 @@
     <!-- Ends a phrase that is followed by more sentences. -->
     <string name="sentence">%1$s.</string>
 
-    <!-- Days, dates and durations -->
     <string name="days_every_day">Every day</string>
     <string name="days_once">Once</string>
     <string name="day_today">today</string>
@@ -68,7 +66,6 @@
     <!-- Two units, as in "4 h 2 min". -->
     <string name="duration_pair">%1$s %2$s</string>
 
-    <!-- Schedules -->
     <string name="schedules_add">Add schedule</string>
     <string name="schedules_empty">No schedules yet</string>
     <string name="schedules_on_for">Airplane mode is on for %1$s</string>
@@ -98,7 +95,6 @@
     <string name="postpone_switches_off">Switches the schedule off</string>
     <string name="postpone_breaks_at">Airplane mode turns off at %1$s</string>
 
-    <!-- Schedule sheet -->
     <string name="sheet_starts">Starts</string>
     <string name="sheet_ends">Ends</string>
     <string name="sheet_start_time">Start time</string>
@@ -113,7 +109,6 @@
     <string name="sheet_name">Schedule name</string>
     <string name="sheet_name_placeholder">Unnamed</string>
 
-    <!-- Settings -->
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="theme_system">System default</string>
@@ -138,7 +133,6 @@
     <string name="settings_reset_title">Reset preferences?</string>
     <string name="settings_reset_text">Schedules won\'t be deleted.</string>
 
-    <!-- Help -->
     <string name="help_setup">Set up Shizuku</string>
     <string name="help_setup_sui">Set up Sui</string>
     <string name="help_setup_text">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Shizuku.</string>
@@ -184,7 +178,6 @@
     <string name="help_overlap_q">Why can\'t two schedules overlap?</string>
     <string name="help_overlap_a">Only one schedule can be in charge at a time, so switched-on schedules can\'t overlap. Back-to-back schedules behave as merged, and airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
 
-    <!-- Shizuku dialog -->
     <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
     <string name="shizuku_missing_text">Airplane Scheduler needs Shizuku to switch airplane mode. Install it and start it.</string>
     <string name="shizuku_offline_title">Shizuku isn\'t running</string>
@@ -196,11 +189,9 @@
     <string name="sui_permission_title">Allow access in Sui</string>
     <string name="sui_permission_text">Sui won\'t ask again. Dial *#*#784784#*#* to open Sui, find Airplane Scheduler, and allow it.</string>
 
-    <!-- Notification channels -->
     <string name="channel_schedules">Schedules</string>
     <string name="channel_problems">Problems</string>
 
-    <!-- Notifications -->
     <string name="notification_ended">%1$s ended</string>
     <!-- Stands in for a schedule that was deleted. -->
     <string name="notification_unknown_schedule">A schedule</string>

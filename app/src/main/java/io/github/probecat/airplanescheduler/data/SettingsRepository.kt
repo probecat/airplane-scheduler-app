@@ -15,7 +15,6 @@ data class Settings(
     val hideShizukuReady: Boolean = false,
     // How long Postpone and Pause wait. 0 turns them off.
     val postponeMinutes: Int = 30,
-    // Whether saving the first schedule asked for notifications.
     val askedNotifications: Boolean = false,
 )
 

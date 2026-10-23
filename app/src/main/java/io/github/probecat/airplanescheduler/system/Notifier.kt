@@ -249,7 +249,6 @@ object Notifier {
                 Kind.REPORT,
                 SCHEDULES,
                 report.title,
-                // One sentence for both, rather than two that repeat each other.
                 if (airplane == R.string.notification_airplane_was_on && wifi == R.string.notification_wifi_was_off) {
                     app.getString(R.string.notification_both_were_set)
                 } else {
