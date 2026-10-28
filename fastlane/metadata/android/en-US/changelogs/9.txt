@@ -1,0 +1,6 @@
+• Fixed: Postpone in a notification could stack delays.
+• Fixed: a schedule could briefly show as missed as it started.
+• A schedule that missed its start offers Skip instead of End.
+• Pause and Postpone show their length.
+• Undo on cards now reads Unskip, Resume or Restore.
+• Clearer notifications and help text.
