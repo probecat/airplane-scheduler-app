@@ -198,7 +198,7 @@ val scenarios = listOf(
         title = "Ended",
         minute = at(23, 15),
         schedules = { today ->
-            skips(today).map { if (it.id == 2L) it.copy(skipped = setOf(today)) else it }
+            skips(today).map { if (it.id == 2L) it.copy(skipped = setOf(today), endedEarly = setOf(today)) else it }
         },
     ),
     Scenario(

@@ -58,13 +58,24 @@ object ScheduleUpdater {
     }
 
     // Skips the next window, or ends the running one early. A schedule that runs once is switched off
-    // instead, since that is its only window.
+    // instead, since that is its only window. A running window whose start was missed is skipped, since
+    // the app never started it.
     fun skip(context: Context, schedule: Schedule, done: () -> Unit = {}) {
+        val app = App.from(context)
         if (schedule.once) {
-            setEnabled(context, schedule, false, done)
-        } else {
-            save(context, ScheduleResolver.skip(schedule, Mock.now()), done)
+            setEnabled(app, schedule, false, done)
+            return
         }
+        val now = Mock.now()
+        val missed = Boundary.missed(
+            app.schedules.all,
+            now,
+            app.settings.started,
+            AirplaneController.airplaneOn(app) && !Mock.active,
+            AirplaneController.switching,
+        ) != null
+        val running = ScheduleResolver.isActive(schedule, now) && !missed
+        save(app, ScheduleResolver.skip(schedule, now, running), done)
     }
 
     fun postpone(context: Context, schedule: Schedule, minutes: Int, done: () -> Unit = {}) {

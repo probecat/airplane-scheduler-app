@@ -28,7 +28,7 @@ sealed interface Notice {
         val next: Schedule? = null,
     ) : Notice
 
-    // Skipped, or ended early once it started, until the window would have ended.
+    // Skipped, or ended early once it was running, until the window would have ended.
     data class Skipped(override val date: LocalDate, val until: LocalDateTime) : Notice
 
     companion object {

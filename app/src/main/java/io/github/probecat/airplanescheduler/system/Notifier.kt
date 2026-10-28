@@ -336,7 +336,7 @@ object Notifier {
                     notice.date,
                     listOfNotNull(
                         Action(TURN_ON, app.getString(R.string.action_turn_on)).takeIf { problem == null },
-                        Action(END, app.getString(R.string.action_end)),
+                        Action(SKIP, app.getString(R.string.action_skip)),
                     ),
                 )
             } else {

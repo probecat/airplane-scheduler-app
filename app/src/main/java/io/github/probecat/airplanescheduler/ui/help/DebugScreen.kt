@@ -158,7 +158,9 @@ private fun scheduleDetails(schedule: Schedule, now: ZonedDateTime): String = bu
     if (schedule.enabled) {
         appendLine()
         for ((date, minutes) in schedule.delayed.toSortedMap()) appendLine("  Delayed: $date by $minutes min")
-        for (date in schedule.skipped.sorted()) appendLine("  Skipped: $date")
+        for (date in schedule.skipped.sorted()) {
+            appendLine("  ${if (date in schedule.endedEarly) "Ended early" else "Skipped"}: $date")
+        }
         appendLine("  Next start: ${ScheduleResolver.nextStart(schedule, now)?.let(moment::format) ?: "none"}")
         append("  Next end: ${ScheduleResolver.nextEnd(schedule, now)?.let(moment::format) ?: "none"}")
     }

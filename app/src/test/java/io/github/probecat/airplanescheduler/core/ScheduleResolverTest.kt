@@ -336,6 +336,15 @@ class ScheduleResolverTest {
     }
 
     @Test
+    fun onlyARunningWindowEndsEarly() {
+        val thursday = thursdayNight.toLocalDate()
+        assertEquals(setOf(thursday), ScheduleResolver.skip(night, friday(3), running = true).endedEarly)
+        assertTrue(ScheduleResolver.skip(night, friday(3)).endedEarly.isEmpty())
+        val ended = ScheduleResolver.skip(night, friday(3), running = true)
+        assertTrue(ScheduleResolver.unskip(ended, friday(3)).endedEarly.isEmpty())
+    }
+
+    @Test
     fun unskippingRestoresOnlyPendingWindows() {
         val old = thursdayNight.toLocalDate().minusDays(3)
         val skipped = ScheduleResolver.skip(night.copy(skipped = setOf(old)), friday(12))
@@ -396,7 +405,7 @@ class ScheduleResolverTest {
         val saturdayMorning = friday(6, 45).plusDays(1)
         assertNull(ScheduleResolver.postponedTo(night, saturdayMorning, 15))
         assertEquals(
-            ScheduleResolver.skip(night, saturdayMorning),
+            ScheduleResolver.skip(night, saturdayMorning, running = true),
             ScheduleResolver.postpone(night, saturdayMorning, 15),
         )
     }

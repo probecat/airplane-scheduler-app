@@ -114,7 +114,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     // "Skipped, resumes tomorrow" for the window that started on [date].
     fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
-        val started = !ScheduleResolver.plannedStart(schedule, date).isAfter(now)
+        val started = date in schedule.endedEarly
         val next = ScheduleResolver.nextWindow(schedule, now)
             ?: return strings.get(if (started) R.string.ended_early else R.string.skipped)
         val day = upcomingDay(next.toLocalDate(), now.toLocalDate())

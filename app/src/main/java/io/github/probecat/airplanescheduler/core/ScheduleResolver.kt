@@ -86,11 +86,15 @@ object ScheduleResolver {
         return Delay(date, start, due = !plannedStart(schedule, date).isAfter(now))
     }
 
-    // Leaves out the window that is running, or else the next one. Skips stay while [lastEnd] can
-    // still look back at their windows.
-    fun skip(schedule: Schedule, now: LocalDateTime): Schedule {
+    // Leaves out the window that is running, or else the next one. [running] when the app had started it,
+    // so it ends early. Skips stay while [lastEnd] can still look back at their windows.
+    fun skip(schedule: Schedule, now: LocalDateTime, running: Boolean = false): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
-        return schedule.copy(skipped = recent(schedule.skipped, now) + date, delayed = recent(schedule.delayed, now))
+        return schedule.copy(
+            skipped = recent(schedule.skipped, now) + date,
+            delayed = recent(schedule.delayed, now),
+            endedEarly = recent(schedule.endedEarly, now) + setOfNotNull(date.takeIf { running }),
+        )
     }
 
     // Moves the start of the next window [minutes] later, or pauses the running one until then. A window
@@ -98,7 +102,7 @@ object ScheduleResolver {
     fun postpone(schedule: Schedule, now: LocalDateTime, minutes: Int): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
         val start = postponedStart(schedule, date, now, minutes)
-        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now)
+        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now, running = isActive(schedule, now))
         val delay = Duration.between(plannedStart(schedule, date), start).toMinutes().toInt()
         return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
     }
@@ -112,6 +116,7 @@ object ScheduleResolver {
     // Undoes [skip] and [postpone] for windows that haven't ended.
     fun unskip(schedule: Schedule, now: LocalDateTime): Schedule = schedule.copy(
         skipped = schedule.skipped - pendingSkips(schedule, now),
+        endedEarly = schedule.endedEarly - pendingSkips(schedule, now),
         delayed = schedule.delayed.filterKeys { !windowEnd(schedule, it).isAfter(now) },
     )
 

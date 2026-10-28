@@ -320,7 +320,8 @@ fun SchedulesScreen(
                 items(schedules, key = { it.id }) { schedule ->
                     val isActive = schedule.id == active?.id
                     val isMissed = isActive && schedule.id == missed
-                    val action = cardAction(schedule, isActive, isMissed && shizuku == ShizukuState.READY, now)
+                    val action =
+                        cardAction(schedule, isActive, isMissed, isMissed && shizuku == ShizukuState.READY, now)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
@@ -345,7 +346,8 @@ fun SchedulesScreen(
                                         } else {
                                             skip(schedule, ending = action == CardAction.END)
                                         }
-                                    CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME -> unskip(schedule.id)
+                                    CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME, CardAction.START ->
+                                        unskip(schedule.id)
                                     CardAction.TURN_ON -> catchUp(schedule.id)
                                     null -> {}
                                 }
@@ -716,24 +718,32 @@ private enum class CardAction(@StringRes val label: Int, val undoes: Boolean = f
     UNSKIP(R.string.action_unskip, undoes = true),
     RESTORE(R.string.action_restore, undoes = true),
     RESUME(R.string.action_resume, undoes = true),
+    START(R.string.action_turn_on, undoes = true),
     TURN_ON(R.string.action_turn_on),
 }
 
-private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolean, now: LocalDateTime): CardAction? =
-    when {
-        !schedule.enabled -> null
-        canCatchUp -> CardAction.TURN_ON
-        isActive -> CardAction.END
-        ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
-        ScheduleResolver.delay(schedule, now) != null -> CardAction.RESTORE
-        // Undoing a skip whose window is under way turns airplane mode on now.
-        ScheduleResolver.pendingSkips(schedule, now)
-            .any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.RESUME
-        ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNSKIP
-        ScheduleResolver.nextWindow(schedule, now)
-            ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
-        else -> null
-    }
+// A missed start was never running, so it's skipped rather than ended.
+private fun cardAction(
+    schedule: Schedule,
+    isActive: Boolean,
+    isMissed: Boolean,
+    canCatchUp: Boolean,
+    now: LocalDateTime,
+): CardAction? = when {
+    !schedule.enabled -> null
+    canCatchUp -> CardAction.TURN_ON
+    isActive -> if (isMissed) CardAction.SKIP else CardAction.END
+    ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
+    ScheduleResolver.delay(schedule, now) != null -> CardAction.RESTORE
+    // Undoing a skip whose window is under way turns airplane mode on now.
+    ScheduleResolver.pendingSkips(schedule, now).any { it in schedule.endedEarly } -> CardAction.RESUME
+    ScheduleResolver.pendingSkips(schedule, now)
+        .any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.START
+    ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNSKIP
+    ScheduleResolver.nextWindow(schedule, now)
+        ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
+    else -> null
+}
 
 private fun note(schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? {
     ScheduleResolver.delay(schedule, now)?.let {

@@ -103,8 +103,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // have changed while it was open.
     fun save(edited: Schedule): Schedule? {
         val stored = app.schedules.get(edited.id)
-        val schedule = stored?.let { edited.copy(enabled = it.enabled, skipped = it.skipped, delayed = it.delayed) }
-            ?: edited
+        val schedule = stored?.let {
+            edited.copy(enabled = it.enabled, skipped = it.skipped, endedEarly = it.endedEarly, delayed = it.delayed)
+        } ?: edited
         return ScheduleUpdater.save(app, schedule).also { if (it == null) drafts.remove(edited.id) }
     }
 

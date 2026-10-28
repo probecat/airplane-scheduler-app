@@ -37,6 +37,18 @@ class FormatTest {
     }
 
     @Test
+    fun aSkippedWindowEndedEarlyOnlyIfItWasRunning() {
+        val night = Schedule(id = 1, start = 23 * 60, end = 7 * 60)
+        val now = LocalDate.of(2026, 10, 10).atTime(3, 0)
+        val friday = LocalDate.of(2026, 10, 9)
+        assertEquals("Skipped, resumes today", us.skipped(night.copy(skipped = setOf(friday)), friday, now))
+        assertEquals(
+            "Ended early, resumes today",
+            us.skipped(night.copy(skipped = setOf(friday), endedEarly = setOf(friday)), friday, now),
+        )
+    }
+
+    @Test
     fun everyDayIsNamed() {
         assertEquals("Every day", us.days(Schedule.EVERY_DAY))
     }
