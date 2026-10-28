@@ -338,8 +338,9 @@ fun SchedulesScreen(
                             onClick = { editing = schedule },
                             onAction = {
                                 when (action) {
+                                    // A missed start has nothing to pause.
                                     CardAction.SKIP, CardAction.END ->
-                                        if (postponedTo(schedule, now, settings.postponeMinutes) != null) {
+                                        if (!isMissed && postponedTo(schedule, now, settings.postponeMinutes) != null) {
                                             choosing = schedule.id
                                         } else {
                                             skip(schedule, ending = action == CardAction.END)
