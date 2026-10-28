@@ -17,10 +17,7 @@ class EndingTest {
     fun anEndThatUndidEverythingIsClean() {
         val ending = Ending.of(Started(window, both), both, both, airplaneOn = true, wifiOn = false, enableWifi = true)
         assertTrue(ending.clean)
-        assertTrue(
-            Ending.of(Started(window, both), airplane, airplane, true, false, enableWifi = false)
-                .let { it.clean && it.wifiKeptOff },
-        )
+        assertTrue(Ending.of(Started(window, both), airplane, airplane, true, false, enableWifi = false).clean)
     }
 
     @Test

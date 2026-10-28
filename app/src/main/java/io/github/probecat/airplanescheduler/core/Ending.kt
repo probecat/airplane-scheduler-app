@@ -15,8 +15,6 @@ data class Ending(
     val airplaneStaysOn: Boolean = false,
     // Wi-Fi was off before the start, so it stays off although the schedule turns it back on.
     val wifiWasOff: Boolean = false,
-    // The app turned Wi-Fi off, and the schedule keeps it off.
-    val wifiKeptOff: Boolean = false,
     val wifiBackOn: Boolean = false,
 ) {
     val clean: Boolean
@@ -38,7 +36,6 @@ data class Ending(
             airplaneTurnedOff = started.changes.airplane && !airplaneOn,
             airplaneStaysOn = airplaneOn && !made.airplane,
             wifiWasOff = started.already.wifi && enableWifi && !wifiOn,
-            wifiKeptOff = started.changes.wifi && !enableWifi,
             wifiBackOn = made.wifi,
         )
     }

@@ -277,7 +277,6 @@ private fun ScenarioPicker(applied: Scenario?, onApply: (Scenario) -> Unit) {
 
 private val endReports: List<Pair<String, (App) -> Unit>> = listOf(
     "Ended" to { app -> ended(app, Ending(Changes.NONE, wifiBackOn = true)) },
-    "Wi-Fi kept off" to { app -> ended(app, Ending(Changes.NONE, wifiKeptOff = true)) },
     "Already on" to
         { app -> ended(app, Ending(Changes.NONE, airplaneWasOn = true, airplaneStaysOn = true, wifiWasOff = true)) },
     "Turned off" to { app -> ended(app, Ending(Changes.NONE, airplaneTurnedOff = true, wifiBackOn = true)) },
