@@ -36,14 +36,8 @@ class NotificationReceiver : BroadcastReceiver() {
         AirplaneController.awaitBinder(tap = true) {
             app.refreshShizuku()
             when (intent.action) {
-                Notifier.SKIP ->
-                    if (ScheduleResolver.nextDate(schedule, now) == date) {
-                        ScheduleUpdater.skip(app, schedule, done)
-                    } else {
-                        done()
-                    }
-                // Ending leaves nothing to act on but Undo, which the app has too.
-                Notifier.END ->
+                // Skipping and ending leave nothing to act on but Undo, which only the app has.
+                Notifier.SKIP, Notifier.END ->
                     if (ScheduleResolver.nextDate(schedule, now) == date) {
                         ScheduleUpdater.skip(app, schedule) {
                             Notifier.dismiss(app, id)

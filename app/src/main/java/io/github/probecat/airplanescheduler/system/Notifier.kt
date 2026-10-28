@@ -288,6 +288,8 @@ object Notifier {
         val postpone = minutes > 0 && ScheduleResolver.postponedTo(schedule, now, minutes) != null
         return when (notice) {
             is Notice.Upcoming -> {
+                // Postponing is once, as in the app.
+                val postponable = postpone && !notice.postponed
                 val problem = shizukuProblem(app)
                 val start = when {
                     notice.after != null -> app.getString(
@@ -301,7 +303,7 @@ object Notifier {
                 // Leaving out a window that continues another one ends the other one at its end.
                 val breaks = notice.after?.let {
                     app.getString(
-                        if (postpone) {
+                        if (postponable) {
                             R.string.notification_skip_or_postpone_breaks
                         } else {
                             R.string.notification_skip_breaks
@@ -318,8 +320,7 @@ object Notifier {
                     listOfNotNull(
                         Action(SKIP, app.getString(R.string.action_skip)),
                         Action(POSTPONE, app.getString(R.string.action_postpone))
-                            .takeIf { postpone },
-                        Action(UNDO, app.getString(R.string.action_undo)).takeIf { notice.postponed },
+                            .takeIf { postponable },
                     ),
                     minutes = minutes,
                 )
@@ -371,7 +372,6 @@ object Notifier {
                 title,
                 format.skipped(schedule, notice.date, now),
                 notice.date,
-                listOf(Action(UNDO, app.getString(R.string.action_undo))),
                 until = notice.until,
             )
         }

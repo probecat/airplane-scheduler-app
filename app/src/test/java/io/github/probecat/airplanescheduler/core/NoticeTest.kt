@@ -23,12 +23,13 @@ class NoticeTest {
     }
 
     @Test
-    fun postponedIsUpcomingUntilItsPlannedStart() {
-        val postponed = ScheduleResolver.postpone(night, friday(22, 50), 60)
-        val start = friday(23).plusHours(1)
+    fun postponedIsUpcomingWithinTheHourBeforeItsStartUntilItsPlannedStart() {
+        val postponed = ScheduleResolver.postpone(night, friday(22, 10), 30)
+        val start = friday(23, 30)
+        assertNull(Notice.of(postponed, listOf(postponed), friday(22, 15), false))
         assertEquals(
             Notice.Upcoming(today, start, postponed = true),
-            Notice.of(postponed, listOf(postponed), friday(22, 55), false),
+            Notice.of(postponed, listOf(postponed), friday(22, 30), false),
         )
         assertEquals(Notice.Paused(today, start), Notice.of(postponed, listOf(postponed), friday(23, 10), false))
     }

@@ -48,7 +48,7 @@ sealed interface Notice {
                         ScheduleResolver.following(schedule, date, schedules),
                     )
                     delay?.due == true -> return Paused(date, start)
-                    !ScheduleResolver.plannedStart(schedule, date).isAfter(ahead) -> return Upcoming(
+                    !start.isAfter(ahead) -> return Upcoming(
                         date,
                         start,
                         postponed = delay != null,
