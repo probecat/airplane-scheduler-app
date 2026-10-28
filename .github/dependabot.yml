@@ -3,18 +3,18 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: quarterly
     cooldown:
-      default-days: 7
+      default-days: 3
     groups:
       actions:
         patterns: ['*']
   - package-ecosystem: gradle
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
     cooldown:
-      default-days: 7
+      default-days: 3
     groups:
       gradle:
         patterns: ['*']
