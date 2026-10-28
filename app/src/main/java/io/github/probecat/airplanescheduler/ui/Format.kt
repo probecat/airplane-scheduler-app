@@ -123,6 +123,9 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))
 
+    // A delayed window whose planned start has passed, as when paused.
+    fun resumes(start: LocalDateTime): String = strings.get(R.string.postpone_resumes_at, time(start))
+
     fun sentences(first: String, second: String): String = strings.get(R.string.sentences, first, second)
 
     private fun short(day: DayOfWeek): String = day.getDisplayName(TextStyle.SHORT, locale)

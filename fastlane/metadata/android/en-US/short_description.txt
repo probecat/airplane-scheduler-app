@@ -1,1 +1,1 @@
-Automatically switch airplane mode on and off on a schedule
+Automatically switch airplane mode on a schedule

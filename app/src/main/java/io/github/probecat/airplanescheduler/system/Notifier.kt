@@ -236,7 +236,6 @@ object Notifier {
             }
             val wifi = when {
                 ending.wifiWasOff -> R.string.notification_wifi_was_off
-                ending.wifiKeptOff -> R.string.notification_wifi_kept_off
                 ending.wifiBackOn -> R.string.notification_wifi_back_on
                 else -> null
             }
@@ -261,17 +260,12 @@ object Notifier {
     fun missedEnd(context: Context, schedule: Schedule?, left: Changes) {
         val app = App.from(context)
         if (!canPost(app)) return
-        val text = when {
-            left.airplane && left.wifi -> R.string.notification_missed_end_both
-            left.airplane -> R.string.notification_missed_end_airplane
-            else -> R.string.notification_missed_end_wifi
-        }
         val retry = if (left.airplane) R.string.notification_turn_off else R.string.notification_turn_on_wifi
         val content = Content(
             Kind.PROBLEM,
             PROBLEMS,
             schedule?.let { format(app).title(it) } ?: app.getString(R.string.notification_unknown_schedule),
-            app.getString(text),
+            app.getString(R.string.notification_missed_end),
             actions = listOf(Action(RETRY, app.getString(retry))),
             changes = left,
         )
@@ -314,9 +308,9 @@ object Notifier {
                     sentences(app, start, breaks, problem, phrase = true),
                     notice.date,
                     listOfNotNull(
-                        Action(SKIP, app.getString(R.string.action_skip)),
-                        Action(POSTPONE, app.getString(R.string.action_postpone))
+                        Action(POSTPONE, app.getString(R.string.action_postpone, format.duration(minutes)))
                             .takeIf { postponable },
+                        Action(SKIP, app.getString(R.string.action_skip)),
                     ),
                     minutes = minutes,
                 )
@@ -325,10 +319,10 @@ object Notifier {
                 Kind.NOTICE,
                 SCHEDULES,
                 title,
-                format.delayed(notice.until),
+                format.resumes(notice.until),
                 notice.date,
                 listOf(
-                    Action(UNDO, app.getString(R.string.action_resume)),
+                    Action(UNDO, app.getString(R.string.action_resume_now)),
                     Action(END, app.getString(R.string.action_end)),
                 ),
             )
@@ -355,7 +349,7 @@ object Notifier {
                     } ?: app.getString(R.string.notification_ends_at, format.time(notice.end)),
                     notice.date,
                     listOfNotNull(
-                        Action(POSTPONE, app.getString(R.string.action_pause))
+                        Action(POSTPONE, app.getString(R.string.action_pause, format.duration(minutes)))
                             .takeIf { postpone },
                         Action(END, app.getString(R.string.action_end)),
                     ),

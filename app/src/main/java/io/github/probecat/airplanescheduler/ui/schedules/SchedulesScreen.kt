@@ -327,7 +327,7 @@ fun SchedulesScreen(
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
                             missed = shizuku.takeIf { isMissed },
                             sui = sui,
-                            note = if (action == CardAction.UNDO || action == CardAction.RESUME) {
+                            note = if (action?.undoes == true) {
                                 note(schedule, now, format)
                             } else {
                                 null
@@ -345,7 +345,7 @@ fun SchedulesScreen(
                                         } else {
                                             skip(schedule, ending = action == CardAction.END)
                                         }
-                                    CardAction.UNDO, CardAction.RESUME -> unskip(schedule.id)
+                                    CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME -> unskip(schedule.id)
                                     CardAction.TURN_ON -> catchUp(schedule.id)
                                     null -> {}
                                 }
@@ -709,11 +709,13 @@ private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier 
     }
 }
 
-private enum class CardAction(@StringRes val label: Int) {
+// [undoes] a skip or postpone, which the card notes.
+private enum class CardAction(@StringRes val label: Int, val undoes: Boolean = false) {
     SKIP(R.string.action_skip),
     END(R.string.action_end),
-    UNDO(R.string.action_undo),
-    RESUME(R.string.action_resume),
+    UNSKIP(R.string.action_unskip, undoes = true),
+    RESTORE(R.string.action_restore, undoes = true),
+    RESUME(R.string.action_resume, undoes = true),
     TURN_ON(R.string.action_turn_on),
 }
 
@@ -723,15 +725,20 @@ private fun cardAction(schedule: Schedule, isActive: Boolean, canCatchUp: Boolea
         canCatchUp -> CardAction.TURN_ON
         isActive -> CardAction.END
         ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
-        ScheduleResolver.delay(schedule, now) != null -> CardAction.UNDO
-        ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNDO
+        ScheduleResolver.delay(schedule, now) != null -> CardAction.RESTORE
+        // Undoing a skip whose window is under way turns airplane mode on now.
+        ScheduleResolver.pendingSkips(schedule, now)
+            .any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.RESUME
+        ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNSKIP
         ScheduleResolver.nextWindow(schedule, now)
             ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
         else -> null
     }
 
 private fun note(schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? {
-    ScheduleResolver.delay(schedule, now)?.let { return format.delayed(it.start) to R.drawable.ic_snooze }
+    ScheduleResolver.delay(schedule, now)?.let {
+        return (if (it.due) format.resumes(it.start) else format.delayed(it.start)) to R.drawable.ic_snooze
+    }
     val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null
     return format.skipped(schedule, skipped, now) to R.drawable.ic_skip_next
 }
@@ -763,7 +770,7 @@ private fun PostponeDialog(
 ) {
     val next = if (schedule.once) null else ScheduleResolver.nextWindow(ScheduleResolver.skip(schedule, now), now)
     val resumes = next?.let {
-        stringResource(R.string.postpone_resumes, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
+        stringResource(R.string.postpone_starts, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
     } ?: stringResource(R.string.postpone_switches_off)
     val breaks = breaksAt?.let { stringResource(R.string.postpone_breaks_at, format.time(it)) }
     fun lines(text: String) = listOfNotNull(breaks, text).joinToString("\n")
@@ -774,10 +781,13 @@ private fun PostponeDialog(
             Column {
                 DialogChoice(
                     icon = R.drawable.ic_snooze,
-                    title = stringResource(if (ending) R.string.action_pause else R.string.action_postpone),
+                    title = stringResource(
+                        if (ending) R.string.action_pause else R.string.action_postpone,
+                        format.duration(minutes),
+                    ),
                     text = lines(
                         stringResource(
-                            if (ending) R.string.postpone_turns_back_on else R.string.starts_at,
+                            if (ending) R.string.postpone_resumes_at else R.string.starts_at,
                             format.time(to),
                         ),
                     ),
