@@ -198,6 +198,16 @@ class BoundaryTest {
     }
 
     @Test
+    fun aStartIsNotMissedWhileItSwitchesOrBeforeItsAlarmHadAMinute() {
+        val start = friday(23)
+        val window = Window(start, inFirst = true, disableWifi = true)
+        assertEquals(null, Boundary.missed(listOf(night), start, started = null, airplaneOn = false))
+        assertEquals(window, Boundary.missed(listOf(night), start.plusMinutes(1), started = null, airplaneOn = false))
+        assertEquals(window, Boundary.missed(listOf(night), start, Started(start, Changes.NONE), false))
+        assertEquals(null, Boundary.missed(listOf(night), start, Started(start, Changes.NONE), false, switching = true))
+    }
+
+    @Test
     fun pausingEndsTheRunningWindowAndItStartsAgainLater() {
         val started = Started(friday(23), both)
         val paused = ScheduleResolver.postpone(night, friday(23, 40), 30)

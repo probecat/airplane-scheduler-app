@@ -140,7 +140,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Mock data reads airplane mode as off, so only the started window decides.
     private fun missed(schedules: List<Schedule>, now: LocalDateTime, started: Boundary.Started?, airplane: Boolean) =
-        Boundary.missed(schedules, now, started, airplane && !Mock.active)
+        Boundary.missed(schedules, now, started, airplane && !Mock.active, AirplaneController.switching)
             ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
 
     private fun sorted(schedules: List<Schedule>) = schedules.sortedWith(compareBy({ it.start }, { it.end }, { it.id }))

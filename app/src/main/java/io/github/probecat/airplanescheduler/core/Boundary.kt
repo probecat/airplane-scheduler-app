@@ -41,15 +41,18 @@ object Boundary {
     }
 
     // The running window when airplane mode is off and the app didn't turn it on, such as when Shizuku
-    // wasn't ready at the start. Not when it was already on at the start and someone turned it off since.
+    // wasn't ready at the start. Not when it was already on at the start and someone turned it off since,
+    // nor while the start is still switching or before its alarm had a minute to.
     fun missed(
         schedules: List<Schedule>,
         now: LocalDateTime,
         started: Started?,
         airplaneOn: Boolean,
+        switching: Boolean = false,
     ): ScheduleResolver.Window? {
-        if (airplaneOn) return null
+        if (airplaneOn || switching) return null
         val window = ScheduleResolver.window(schedules, now) ?: return null
+        if (started?.window != window.start && now < window.start.plusMinutes(1)) return null
         return window.takeIf {
             started?.window != it.start || !(started.changes.airplane || started.already.airplane)
         }

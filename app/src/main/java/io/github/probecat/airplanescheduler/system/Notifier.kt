@@ -165,11 +165,7 @@ object Notifier {
         // Mock data reads airplane mode as off, so only the started window decides.
         val airplane = AirplaneController.airplaneOn(app) && !Mock.active
         val started = app.settings.started
-        // Not while the start is still switching, nor before its alarm had a chance to.
-        val missed = Boundary.missed(schedules, now, started, airplane)
-            ?.takeIf {
-                !AirplaneController.switching && (started?.window == it.start || now >= it.start.plusMinutes(1))
-            }
+        val missed = Boundary.missed(schedules, now, started, airplane, AirplaneController.switching)
             ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
         val format = format(app)
         return schedules.mapNotNull { schedule ->
