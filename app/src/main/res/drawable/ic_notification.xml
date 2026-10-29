@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The logo's switch, on, with the Material plane in the knob; spans the full width since a pill can't fill the height. -->
+<!-- The logo's switch, on, with the Material plane in the knob. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
