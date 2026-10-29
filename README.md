@@ -6,7 +6,7 @@
 
 Automatically switch airplane mode on a schedule.
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="250"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Schedules in light theme" width="250">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="30%"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="30%"> <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Schedules in light theme" width="30%">
 
 </div>
 
@@ -27,7 +27,7 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 - **Overnight schedules.** Schedules can carry over to the next day.
 - **Full control.** Skip, postpone, pause or end your schedules.
 - **Wi-Fi control.** Off when a schedule starts, back on when it ends.
-- **Safe by default.** Ending a schedule undoes only what it changed; anything you change yourself stays.
+- **Safe by default.** Ending a schedule undoes only what it changed, never what you toggled yourself.
 - **Notifications.** Quiet notifications before, during and after a schedule.
 - **No internet access, ads or tracking.**
 

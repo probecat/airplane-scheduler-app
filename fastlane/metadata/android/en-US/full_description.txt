@@ -3,7 +3,7 @@
 • <b>Overnight schedules.</b> Schedules can carry over to the next day.
 • <b>Full control.</b> Skip, postpone, pause or end your schedules.
 • <b>Wi-Fi control.</b> Off when a schedule starts, back on when it ends.
-• <b>Safe by default.</b> Ending a schedule undoes only what it changed; anything you change yourself stays.
+• <b>Safe by default.</b> Ending a schedule undoes only what it changed, never what you toggled yourself.
 • <b>Notifications.</b> Quiet notifications before, during and after a schedule.
 • <b>No internet access, ads or tracking.</b>
 
