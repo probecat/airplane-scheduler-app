@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The logo's switch knob with the plane punched out, sized to the 20dp circle keyline. -->
+<!-- The logo's switch, on, with the Material plane in the knob; spans the full width since a pill can't fill the height. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M10,2 H14 A10,10 0 0 1 14,22 H10 A10,10 0 0 1 10,2 Z M5.4,12 a8.6,8.6 0 1 0 17.2,0 a8.6,8.6 0 1 0 -17.2,0 Z" />
     <group
-        android:rotation="45"
-        android:scaleX="0.134615"
-        android:scaleY="0.134615"
-        android:translateX="12"
-        android:translateY="12">
-        <group
-            android:translateX="-50"
-            android:translateY="-50">
+        android:scaleX="0.0157"
+        android:scaleY="0.0157"
+        android:translateX="6.464"
+        android:translateY="4.5896">
+        <group android:translateY="960">
             <path
                 android:fillColor="#FFFFFFFF"
-                android:fillType="evenOdd"
-                android:pathData="M-24.2857,50 a74.2857,74.2857 0 1 0 148.5714,0 a74.2857,74.2857 0 1 0 -148.5714,0 Z M50,6 C54,6 56,14 56,22 L56,40 L92,62 L92,70 L56,58 L56,78 L68,88 L68,94 L50,89 L32,94 L32,88 L44,78 L44,58 L8,70 L8,62 L44,40 L44,22 C44,14 46,6 50,6 Z" />
+                android:pathData="M400-408 147-307q-24 10-45.5-4.5T80-352v-22q0-12 5.5-23t15.5-18l299-209v-176q0-33 23.5-56.5T480-880q33 0 56.5 23.5T560-800v176l299 209q10 7 15.5 18t5.5 23v22q0 26-21.5 40.5T813-307L560-408v144l103 72q8 6 12.5 14.5T680-159v24q0 20-16.5 32.5T627-96l-147-44-147 44q-20 6-36.5-6.5T280-135v-24q0-10 4.5-18.5T297-192l103-72v-144Z" />
         </group>
     </group>
 </vector>
