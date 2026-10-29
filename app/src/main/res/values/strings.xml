@@ -104,7 +104,7 @@
     <string name="sheet_start_time">Start time</string>
     <string name="sheet_end_time">End time</string>
     <string name="sheet_same_times">Start and end are the same.</string>
-    <string name="sheet_stays_on">Lasts %1$s.</string>
+    <string name="sheet_stays_on">Duration %1$s</string>
     <string name="sheet_repeats">Repeats</string>
     <string name="sheet_day_repeats">Repeats</string>
     <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>
@@ -173,8 +173,8 @@
     <string name="help_overlap_q">Why can\'t schedules overlap?</string>
     <string name="help_overlap_a">Only one schedule can be in charge at a time. Back-to-back schedules act as one, so airplane mode stays on in between. Wi-Fi follows the first one\'s start option and the last one\'s end option.</string>
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
-    <string name="help_missed_a">Shizuku wasn\'t running or allowed, or the phone was off. The app doesn\'t catch up on its own by design. But if notifications are allowed, you\'ll get an alert.</string>
-    <string name="help_missed_a_sui">Sui wasn\'t allowed, or the phone was off. The app doesn\'t catch up on its own by design. But if notifications are allowed, you\'ll get an alert.</string>
+    <string name="help_missed_a">Shizuku wasn\'t running or allowed, or the phone was off. By design, the app doesn\'t catch up on its own, but if notifications are allowed, you\'ll get an alert.</string>
+    <string name="help_missed_a_sui">Sui wasn\'t allowed, or the phone was off. By design, the app doesn\'t catch up on its own, but if notifications are allowed, you\'ll get an alert.</string>
     <!-- Shown below Android 12 only. -->
     <string name="help_late_q">Why did a schedule run late?</string>
     <string name="help_late_a">Battery optimization can delay it by up to 2 hours if you rarely open the app. Tap the battery warning on the Schedules screen to turn it off for Airplane Scheduler.</string>
@@ -220,7 +220,7 @@
     <string name="notification_airplane_off">Airplane mode turned off.</string>
     <string name="notification_both_were_set">Airplane mode and Wi-Fi were set before the schedule. No action taken.</string>
     <string name="notification_wifi_was_off">Wi-Fi was off before the schedule.</string>
-    <string name="notification_wifi_back_on">Wi-Fi turned back on.</string>
+    <string name="notification_wifi_back_on">Wi-Fi turned on.</string>
     <string name="notification_missed_end">Schedule missed the end. No action taken.</string>
     <string name="notification_shizuku_missing">Shizuku isn\'t installed.</string>
     <string name="notification_shizuku_offline">Shizuku isn\'t running.</string>
