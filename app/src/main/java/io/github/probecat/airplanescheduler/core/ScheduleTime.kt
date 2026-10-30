@@ -7,11 +7,25 @@ import java.util.Locale
 
 object ScheduleTime {
     const val DAY = 24 * 60
+    const val HOUR = 60
 
     // A time in a DST gap shifts later by the length of the gap.
     fun at(time: LocalDateTime, zone: ZoneId): ZonedDateTime = ZonedDateTime.of(time, zone)
 
     fun duration(start: Int, end: Int): Int = Math.floorMod(end - start, DAY)
+
+    // Starts from the next full hour, and falls back to it when no window is free.
+    fun freeSlot(after: Int, length: Int, step: Int, isFree: (start: Int, end: Int) -> Boolean): Int {
+        val first = (after / HOUR + 1) * HOUR % DAY
+        return (0 until DAY / step).asSequence()
+            .map { (first + it * step) % DAY }
+            .firstOrNull { isFree(it, (it + length) % DAY) } ?: first
+    }
+
+    fun movedEnd(start: Int, end: Int, newStart: Int): Int =
+        Math.floorMod(newStart + (duration(start, end).takeIf { it > 0 } ?: HOUR), DAY)
+
+    fun pickedEnd(start: Int, end: Int): Int = if (end == start) (start + HOUR) % DAY else end
 
     fun format(minute: Int): String = String.format(Locale.ROOT, "%02d:%02d", minute / 60, minute % 60)
 }

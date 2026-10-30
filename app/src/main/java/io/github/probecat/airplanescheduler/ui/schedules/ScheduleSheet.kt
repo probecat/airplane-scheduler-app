@@ -169,10 +169,14 @@ fun ScheduleSheet(
                         stringResource(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())),
                     )
                     else -> Text(
-                        stringResource(
-                            R.string.sheet_stays_on,
-                            format.duration(ScheduleTime.duration(schedule.start, schedule.end)),
-                        ),
+                        format.duration(ScheduleTime.duration(schedule.start, schedule.end)).let { length ->
+                            val name = schedule.name.trim()
+                            if (name.isEmpty()) {
+                                stringResource(R.string.sheet_lasts, length)
+                            } else {
+                                stringResource(R.string.sheet_lasts_named, name, length)
+                            }
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -238,7 +242,11 @@ fun ScheduleSheet(
             is24Hour = format.is24Hour,
             onDismiss = { picking = null },
             onConfirm = { minute ->
-                draft = if (start) schedule.copy(start = minute) else schedule.copy(end = minute)
+                draft = if (start) {
+                    schedule.copy(start = minute, end = ScheduleTime.movedEnd(schedule.start, schedule.end, minute))
+                } else {
+                    schedule.copy(end = ScheduleTime.pickedEnd(schedule.start, minute))
+                }
                 picking = null
             },
         )

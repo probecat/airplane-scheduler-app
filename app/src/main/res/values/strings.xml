@@ -108,7 +108,10 @@
     <string name="sheet_discard_title">Discard changes?</string>
     <string name="sheet_discard_text">Your changes won\'t be saved.</string>
     <string name="sheet_same_times">Start and end are the same.</string>
-    <string name="sheet_stays_on">Duration %1$s</string>
+    <!-- %1$s is a length, as in "Schedule lasts 8 h". -->
+    <string name="sheet_lasts">Schedule lasts %1$s</string>
+    <!-- %1$s is the schedule's name and %2$s a length, as in "Sleep lasts 8 h". -->
+    <string name="sheet_lasts_named">%1$s lasts %2$s</string>
     <string name="sheet_repeats">Repeats</string>
     <string name="sheet_day_repeats">Repeats</string>
     <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>

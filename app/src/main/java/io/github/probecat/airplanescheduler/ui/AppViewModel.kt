@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.probecat.airplanescheduler.core.Boundary
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
+import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.mock.Mock
@@ -74,14 +75,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun requestShizuku(): Boolean = ShizukuStatus.request()
 
-    fun newSchedule(): Schedule = Schedule(
-        id = app.schedules.nextId(),
-        start = 23 * 60,
-        end = 7 * 60,
-        days = emptySet(),
-        disableWifi = false,
-        enableWifi = false,
-    )
+    fun newSchedule(): Schedule {
+        val base = Schedule(
+            id = app.schedules.nextId(),
+            start = 0,
+            end = 0,
+            days = emptySet(),
+            disableWifi = false,
+            enableWifi = false,
+        )
+        val now = Mock.now()
+        val start = ScheduleTime.freeSlot(now.hour * 60 + now.minute, ScheduleTime.HOUR, 30) { start, end ->
+            conflict(base.copy(start = start, end = end)) == null
+        }
+        return base.copy(start = start, end = (start + ScheduleTime.HOUR) % ScheduleTime.DAY)
+    }
 
     fun isNew(schedule: Schedule): Boolean = app.schedules.get(schedule.id) == null
 
