@@ -1,0 +1,4 @@
+• New schedules start at the next free hour, and moving the start keeps the length.
+• Asks before discarding unsaved schedule changes.
+• Wi-Fi turned on during a schedule stays on after a pause.
+• Fixed: a missed start notice could show while a schedule was turning on.
