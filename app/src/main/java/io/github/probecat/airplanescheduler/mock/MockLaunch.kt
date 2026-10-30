@@ -66,7 +66,7 @@ Any override turns mock data on."""
             null -> {}
             "on", "off" -> Mock.update(app) { it.copy(enabled = mock == "on") }
             else -> scenarios.find { it.id == mock }?.let {
-                it.apply(app, viewModel)
+                it.apply(app)
                 destination = it.destination
             }
         }

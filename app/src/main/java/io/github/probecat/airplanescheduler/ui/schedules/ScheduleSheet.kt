@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.schedules
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.clickable
@@ -26,6 +27,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +35,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,12 +47,12 @@ import androidx.compose.material3.TimePickerDisplayMode
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -97,32 +100,36 @@ val ScheduleSaver: Saver<Schedule?, String> = Saver(
 
 private const val NAME_LENGTH = 40
 
-// Edits apply only on Save. Closing the sheet any other way keeps them through [onEdit] for next time.
+// Edits apply only on Save. Closing the sheet with unsaved edits asks to discard them first.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleSheet(
     initial: Schedule,
-    edits: Schedule,
     isNew: Boolean,
     now: LocalDateTime,
     conflictOf: (Schedule) -> Schedule?,
     onDismiss: () -> Unit,
-    onEdit: (Schedule) -> Unit,
     onSave: (Schedule) -> Boolean,
     onDelete: (Schedule) -> Unit,
 ) {
     val format = rememberFormat()
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var draft by rememberSaveable(initial.id, stateSaver = ScheduleSaver) { mutableStateOf(edits) }
+    var draft by rememberSaveable(initial.id, stateSaver = ScheduleSaver) { mutableStateOf(initial) }
     var picking by rememberSaveable { mutableStateOf<Boolean?>(null) }
-    val schedule = draft ?: edits
-    LaunchedEffect(schedule) { onEdit(schedule) }
+    var discarding by rememberSaveable { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
+    val schedule = draft ?: initial
+    val dirty = schedule.copy(name = schedule.name.trim()) != initial
+    val currentDirty by rememberUpdatedState(dirty)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true) { value ->
+        (value != SheetValue.Hidden || closing || !currentDirty).also { if (!it) discarding = true }
+    }
 
     val sameTimes = schedule.start == schedule.end
     val conflict = conflictOf(schedule)
 
     fun close(then: () -> Unit = {}) {
+        closing = true
         scope.launch { sheetState.hide() }.invokeOnCompletion {
             onDismiss()
             then()
@@ -136,6 +143,8 @@ fun ScheduleSheet(
         sheetState = sheetState,
         contentWindowInsets = { WindowInsets.navigationBars },
     ) {
+        // The sheet's own back handling hides it without asking the sheet state, so this takes back first.
+        BackHandler(enabled = dirty && !closing) { discarding = true }
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 TimeButton(stringResource(R.string.sheet_starts), schedule.start, format, Modifier.weight(1f)) {
@@ -215,7 +224,7 @@ fun ScheduleSheet(
                 }
                 Button(
                     onClick = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
-                    enabled = !sameTimes && conflict == null,
+                    enabled = !sameTimes && conflict == null && (isNew || dirty),
                     modifier = Modifier.weight(1f),
                 ) { Text(stringResource(R.string.action_save)) }
             }
@@ -231,6 +240,26 @@ fun ScheduleSheet(
             onConfirm = { minute ->
                 draft = if (start) schedule.copy(start = minute) else schedule.copy(end = minute)
                 picking = null
+            },
+        )
+    }
+
+    if (discarding) {
+        AlertDialog(
+            onDismissRequest = { discarding = false },
+            title = { Text(stringResource(R.string.sheet_discard_title)) },
+            text = { Text(stringResource(R.string.sheet_discard_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        discarding = false
+                        close()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text(stringResource(R.string.action_discard)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { discarding = false }) { Text(stringResource(R.string.action_keep_editing)) }
             },
         )
     }

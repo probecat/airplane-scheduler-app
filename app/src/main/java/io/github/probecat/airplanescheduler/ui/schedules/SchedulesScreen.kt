@@ -366,12 +366,10 @@ fun SchedulesScreen(
     editing?.let { schedule ->
         ScheduleSheet(
             initial = schedule,
-            edits = viewModel.draft(schedule),
             isNew = viewModel.isNew(schedule),
             now = now,
             conflictOf = viewModel::conflict,
             onDismiss = { editing = null },
-            onEdit = { viewModel.keepDraft(schedule, it) },
             onSave = { edited ->
                 val isNew = viewModel.isNew(edited)
                 (viewModel.save(edited) == null).also { saved ->

@@ -112,14 +112,13 @@ fun MockScreen(viewModel: AppViewModel, onOpen: (Destination) -> Unit, onBack: (
 
     Subpage("UI states", onBack) {
         SwitchRow(icon = null, title = "Mock data", checked = on) { enabled ->
-            viewModel.clearDrafts()
             update { it.copy(enabled = enabled) }
         }
         Note("Uses its own schedules and settings. Alarms pause while it's on.")
 
         SectionHeader("Scenarios")
         ScenarioPicker(scenarios.find { it.id == config.scenario }) { scenario ->
-            scenario.apply(app, viewModel)
+            scenario.apply(app)
             onOpen(scenario.destination)
         }
 

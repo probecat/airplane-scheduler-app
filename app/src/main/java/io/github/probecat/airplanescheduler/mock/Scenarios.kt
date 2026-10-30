@@ -6,7 +6,6 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.ShizukuState
-import io.github.probecat.airplanescheduler.ui.AppViewModel
 import java.time.DayOfWeek
 import java.time.DayOfWeek.FRIDAY
 import java.time.DayOfWeek.MONDAY
@@ -38,14 +37,13 @@ class Scenario(
     // The app couldn't turn airplane mode on at the running window's start.
     val missedStart: Boolean = false,
     val schedules: (today: LocalDate) -> List<Schedule> = { emptyList() },
-    val drafts: Map<Long, (Schedule) -> Schedule> = emptyMap(),
 ) {
     // [day] in the current week, so the mock clock stays within a few days of the real one.
     fun now(real: LocalDateTime): LocalDateTime =
         real.toLocalDate().with(TemporalAdjusters.previousOrSame(MONDAY)).plusDays(day.ordinal.toLong())
             .atTime(minute / 60, minute % 60)
 
-    fun apply(app: App, viewModel: AppViewModel) {
+    fun apply(app: App) {
         val now = now(LocalDateTime.now())
         Mock.update(app) {
             it.copy(
@@ -65,10 +63,6 @@ class Scenario(
         app.settings.started = ScheduleResolver.window(schedules, now)?.let {
             val wanted = Changes(airplane = true, wifi = it.disableWifi)
             Boundary.Started(it.start, if (missedStart) Changes.NONE else wanted, wanted)
-        }
-        viewModel.clearDrafts()
-        for ((id, edit) in drafts) {
-            schedules.find { it.id == id }?.let { viewModel.keepDraft(it, edit(it)) }
         }
     }
 }
@@ -232,14 +226,10 @@ val scenarios = listOf(
             listOf(
                 Schedule(id = 1, name = "Night", start = at(22), end = at(6)),
                 Schedule(id = 2, name = "Late show", start = at(23), end = at(1), enabled = false),
-                Schedule(id = 3, name = "Early start", start = at(12), end = at(13), days = setOf(MONDAY)),
-                Schedule(id = 4, name = "Same times", start = at(14), end = at(15), days = setOf(TUESDAY)),
+                Schedule(id = 3, name = "Early start", start = at(5), end = at(13), days = setOf(MONDAY)),
+                Schedule(id = 4, name = "Same times", start = at(14), end = at(14), days = setOf(TUESDAY)),
             )
         },
-        drafts = mapOf(
-            3L to { it.copy(start = at(5)) },
-            4L to { it.copy(end = it.start) },
-        ),
     ),
     Scenario(
         id = "offline",

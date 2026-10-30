@@ -5,9 +5,11 @@
     <string name="action_allow">Allow</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
+    <string name="action_discard">Discard</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_end">End</string>
     <string name="action_get">Get</string>
+    <string name="action_keep_editing">Keep editing</string>
     <string name="action_manage">Manage</string>
     <string name="action_ok">OK</string>
     <string name="action_open">Open</string>
@@ -103,6 +105,8 @@
     <string name="sheet_ends">Ends</string>
     <string name="sheet_start_time">Start time</string>
     <string name="sheet_end_time">End time</string>
+    <string name="sheet_discard_title">Discard changes?</string>
+    <string name="sheet_discard_text">Your changes won\'t be saved.</string>
     <string name="sheet_same_times">Start and end are the same.</string>
     <string name="sheet_stays_on">Duration %1$s</string>
     <string name="sheet_repeats">Repeats</string>

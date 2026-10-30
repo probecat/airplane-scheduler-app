@@ -83,21 +83,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         enableWifi = false,
     )
 
-    fun draft(schedule: Schedule): Schedule = drafts[schedule.id]?.takeIf { it.first == schedule }?.second ?: schedule
-
-    fun keepDraft(base: Schedule, draft: Schedule) {
-        if (draft == base) drafts.remove(base.id) else drafts[base.id] = base to draft
-    }
-
-    fun clearDrafts() = drafts.clear()
-
     fun isNew(schedule: Schedule): Boolean = app.schedules.get(schedule.id) == null
 
     fun conflict(schedule: Schedule): Schedule? = ScheduleUpdater.conflict(app, schedule)
 
     // Returns the overlapping schedule instead of switching on.
-    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
-        ScheduleUpdater.setEnabled(app, schedule, enabled).also { if (it == null) drafts.remove(schedule.id) }
+    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? = ScheduleUpdater.setEnabled(app, schedule, enabled)
 
     fun skip(schedule: Schedule) = ScheduleUpdater.skip(app, schedule)
 
@@ -112,7 +103,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val schedule = stored?.let {
             edited.copy(enabled = it.enabled, skipped = it.skipped, endedEarly = it.endedEarly, delayed = it.delayed)
         } ?: edited
-        return ScheduleUpdater.save(app, schedule).also { if (it == null) drafts.remove(edited.id) }
+        return ScheduleUpdater.save(app, schedule)
     }
 
     // True once, when the first schedule is saved and notifications aren't allowed yet.
@@ -123,7 +114,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun delete(schedule: Schedule) {
-        drafts.remove(schedule.id)
         commit(app.schedules.all.filterNot { it.id == schedule.id })
     }
 
@@ -151,10 +141,4 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
 
     private fun sorted(schedules: List<Schedule>) = schedules.sortedWith(compareBy({ it.start }, { it.end }, { it.id }))
-
-    private companion object {
-        // Unsaved sheet edits, kept until saved or the app closes. Each is dropped once the schedule it
-        // started from changes.
-        val drafts = mutableMapOf<Long, Pair<Schedule, Schedule>>()
-    }
 }
