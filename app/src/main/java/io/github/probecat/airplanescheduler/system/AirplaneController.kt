@@ -19,7 +19,10 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import rikka.shizuku.Shizuku
 
 object AirplaneController {
@@ -44,7 +47,15 @@ object AirplaneController {
     // [natural] is an end at its time rather than one that an edit or action caused, and is reported
     // even when it went as planned.
     fun run(context: Context, step: Boundary.Step, natural: Boolean = false, done: () -> Unit) {
-        val app = App.from(context)
+        hold { release ->
+            step(App.from(context), step, natural) {
+                release()
+                done()
+            }
+        }
+    }
+
+    private fun step(app: App, step: Boundary.Step, natural: Boolean, done: () -> Unit) {
         when (step) {
             is Boundary.Step.Start -> {
                 val window = step.window
@@ -129,9 +140,18 @@ object AirplaneController {
 
     fun wifiOn(context: Context): Boolean = context.getSystemService(WifiManager::class.java).isWifiEnabled
 
-    private val inFlight = AtomicInteger()
+    private val inFlight = MutableStateFlow(0)
 
-    val switching: Boolean get() = inFlight.get() > 0
+    val inFlightCount: StateFlow<Int> = inFlight.asStateFlow()
+
+    val switching: Boolean get() = inFlight.value > 0
+
+    // Counts as switching until [block] releases, so states on the way to a switch don't read as a missed start.
+    fun hold(block: (release: () -> Unit) -> Unit) {
+        inFlight.update { it + 1 }
+        val released = AtomicBoolean()
+        block { if (released.compareAndSet(false, true)) inFlight.update { it - 1 } }
+    }
 
     // Reports the changes that worked; none when Shizuku can't be reached.
     private fun set(app: Context, enabled: Boolean, changes: Changes, done: (Changes) -> Unit) {
@@ -139,12 +159,12 @@ object AirplaneController {
             done(Changes.NONE)
             return
         }
-        inFlight.incrementAndGet()
+        inFlight.update { it + 1 }
         val main = Handler(Looper.getMainLooper())
         val completed = AtomicBoolean()
         val finish = { made: Changes ->
             if (completed.compareAndSet(false, true)) {
-                inFlight.decrementAndGet()
+                inFlight.update { it - 1 }
                 done(made)
             }
         }

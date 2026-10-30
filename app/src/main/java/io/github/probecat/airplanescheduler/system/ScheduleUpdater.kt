@@ -18,11 +18,15 @@ object ScheduleUpdater {
             return
         }
         val step = Boundary.atEdit(app.schedules.all, schedules, LocalDateTime.now(), app.settings.started)
-        app.schedules.replaceAll(schedules)
-        AlarmScheduler.scheduleAll(app)
-        AirplaneController.run(app, step) {
-            Notifier.refresh(app)
-            done()
+        // Released before the refresh, so a start that failed still gets its notice.
+        AirplaneController.hold { release ->
+            app.schedules.replaceAll(schedules)
+            AlarmScheduler.scheduleAll(app)
+            AirplaneController.run(app, step) {
+                release()
+                Notifier.refresh(app)
+                done()
+            }
         }
     }
 

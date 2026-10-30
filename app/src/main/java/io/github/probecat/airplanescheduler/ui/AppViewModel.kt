@@ -53,7 +53,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     ) { _, _ -> Mock.now() }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Mock.now())
 
     // The running window's schedule when the app missed its start.
-    val missed: StateFlow<Long?> = combine(schedules, now, app.settings.startedWindow, app.airplane, ::missed)
+    val missed: StateFlow<Long?> = combine(
+        schedules,
+        now,
+        app.settings.startedWindow,
+        app.airplane,
+        AirplaneController.inFlightCount,
+    ) { schedules, now, started, airplane, _ -> missed(schedules, now, started, airplane) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // Notices tell whether Shizuku is ready, which a fresh process may not know yet.
