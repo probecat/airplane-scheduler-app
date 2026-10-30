@@ -61,7 +61,8 @@ object AirplaneController {
                 val window = step.window
                 val airplane = airplaneOn(app)
                 val wifi = wifiOn(app)
-                val wanted = ConnectivityPlan.start(airplane, wifi, window.disableWifi)
+                val disableWifi = window.disableWifi && !keptWifi(app)
+                val wanted = ConnectivityPlan.start(airplane, wifi, disableWifi)
                 // A start caught up by hand keeps what the missed one changed and found, so the end still
                 // undoes and reports it.
                 val started = app.settings.started?.takeIf { it.window == window.start }
@@ -70,7 +71,7 @@ object AirplaneController {
                         window.start,
                         Changes.NONE,
                         wanted,
-                        ConnectivityPlan.already(airplane, wifi, window.disableWifi),
+                        ConnectivityPlan.already(airplane, wifi, disableWifi),
                     )
                 // Saved before Shizuku answers, so an alarm in the meantime doesn't start the window twice.
                 app.settings.started = started
@@ -90,6 +91,7 @@ object AirplaneController {
                 app.settings.started = null
                 val airplane = airplaneOn(app)
                 val wifi = wifiOn(app)
+                app.settings.wifiKeptUntil = Boundary.keptWifi(started, wifi, step.until, keptWifi(app))
                 set(app, false, step.changes) { made ->
                     val schedule = step.schedule
                     when {
@@ -133,6 +135,8 @@ object AirplaneController {
         val left = Changes(undo.airplane && airplaneOn(app), undo.wifi && !wifiOn(app))
         if (!left.isEmpty) Notifier.missedEnd(app, schedule, left)
     }
+
+    private fun keptWifi(app: App): Boolean = app.settings.wifiKeptUntil?.isAfter(LocalDateTime.now()) == true
 
     // Any app can read both states; only changing them needs Shizuku.
     fun airplaneOn(context: Context): Boolean =

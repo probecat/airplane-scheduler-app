@@ -18,6 +18,7 @@ class BoundaryTest {
     private val night = Schedule(id = 1, start = at(23), end = at(7))
     private val morning = Schedule(id = 2, start = at(7), end = at(9))
     private val both = Changes(airplane = true, wifi = true)
+    private val wifiOnly = Changes(airplane = false, wifi = true)
 
     @Test
     fun alarmAtTheStartStartsTheWindow() {
@@ -57,7 +58,6 @@ class BoundaryTest {
             Step.End(Changes(airplane = true, wifi = false), keepsWifiOff),
             Boundary.atAlarm(listOf(keepsWifiOff), friday(7), Started(thursdayNight, both)),
         )
-        val wifiOnly = Changes(airplane = false, wifi = true)
         assertEquals(
             Step.End(wifiOnly, night),
             Boundary.atAlarm(listOf(night), friday(7), Started(thursdayNight, wifiOnly)),
@@ -94,7 +94,7 @@ class BoundaryTest {
         // The edited schedule's Wi-Fi option wins over the saved one.
         val off = night.copy(enabled = false, enableWifi = false)
         assertEquals(
-            Step.End(Changes(airplane = true, wifi = false), off),
+            Step.End(Changes(airplane = true, wifi = false), off, friday(7).plusDays(1)),
             Boundary.atEdit(
                 listOf(night),
                 listOf(off),
@@ -107,7 +107,7 @@ class BoundaryTest {
     @Test
     fun deletingTheRunningWindowUsesItsLastWifiOption() {
         assertEquals(
-            Step.End(Changes(airplane = true, wifi = false), night.copy(enableWifi = false)),
+            Step.End(Changes(airplane = true, wifi = false), night.copy(enableWifi = false), friday(7).plusDays(1)),
             Boundary.atEdit(
                 listOf(night.copy(enableWifi = false)),
                 emptyList(),
@@ -120,7 +120,7 @@ class BoundaryTest {
     @Test
     fun switchingOffAWindowWhoseStartWasMissedChangesNothing() {
         assertEquals(
-            Step.End(Changes.NONE, night),
+            Step.End(Changes.NONE, night, friday(7).plusDays(1)),
             Boundary.atEdit(listOf(night), emptyList(), friday(23, 30), started = null),
         )
     }
@@ -165,7 +165,10 @@ class BoundaryTest {
     fun endingEarlyEndsTheRunningWindow() {
         val started = Started(thursdayNight, both)
         val ended = ScheduleResolver.skip(night, friday(3))
-        assertEquals(Step.End(both, ended), Boundary.atEdit(listOf(night), listOf(ended), friday(3), started))
+        assertEquals(
+            Step.End(both, ended, friday(7)),
+            Boundary.atEdit(listOf(night), listOf(ended), friday(3), started),
+        )
     }
 
     @Test
@@ -212,7 +215,10 @@ class BoundaryTest {
         val started = Started(friday(23), both)
         val paused = ScheduleResolver.postpone(night, friday(23, 40), 30)
         val resumes = friday(23, 40).plusMinutes(30)
-        assertEquals(Step.End(both, paused), Boundary.atEdit(listOf(night), listOf(paused), friday(23, 40), started))
+        assertEquals(
+            Step.End(both, paused, friday(7).plusDays(1)),
+            Boundary.atEdit(listOf(night), listOf(paused), friday(23, 40), started),
+        )
         assertEquals(Step.None, Boundary.atAlarm(listOf(paused), friday(23, 50), started = null))
         val restarted = Window(resumes, inFirst = true, disableWifi = true)
         assertEquals(Step.Start(restarted), Boundary.atAlarm(listOf(paused), resumes, started = null))
@@ -227,5 +233,28 @@ class BoundaryTest {
         val postponed = ScheduleResolver.postpone(night, friday(22, 30), 30)
         assertEquals(Step.None, Boundary.atEdit(listOf(night), listOf(postponed), friday(22, 30), started = null))
         assertEquals(Step.None, Boundary.atAlarm(listOf(postponed), friday(23), started = null))
+    }
+
+    @Test
+    fun wifiTurnedOnAgainstTheStartStaysOnUntilTheWindowEnds() {
+        val until = friday(7).plusDays(1)
+        val turnedOff = Started(friday(23), both)
+        assertEquals(until, Boundary.keptWifi(turnedOff, wifiOn = true, until, kept = false))
+        val wasOff = Started(friday(23), Changes(airplane = true, wifi = false), already = wifiOnly)
+        assertEquals(until, Boundary.keptWifi(wasOff, wifiOn = true, until, kept = false))
+        val restarted = Started(friday(23, 30), Changes(airplane = true, wifi = false))
+        assertEquals(until, Boundary.keptWifi(restarted, wifiOn = true, until, kept = true))
+    }
+
+    @Test
+    fun wifiIsNotKeptWithoutSomeoneTurningItOnAgainstTheStart() {
+        val until = friday(7).plusDays(1)
+        val started = Started(friday(23), both)
+        assertEquals(null, Boundary.keptWifi(started, wifiOn = false, until, kept = true))
+        assertEquals(null, Boundary.keptWifi(started, wifiOn = true, until = null, kept = false))
+        assertEquals(null, Boundary.keptWifi(started = null, wifiOn = true, until, kept = true))
+        // The app couldn't turn Wi-Fi off.
+        val untouched = Started(friday(23), Changes(airplane = true, wifi = false), wanted = both)
+        assertEquals(null, Boundary.keptWifi(untouched, wifiOn = true, until, kept = false))
     }
 }

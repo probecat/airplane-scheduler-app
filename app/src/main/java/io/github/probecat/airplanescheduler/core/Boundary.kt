@@ -19,8 +19,8 @@ object Boundary {
     sealed interface Step {
         data class Start(val window: ScheduleResolver.Window) : Step
 
-        // [schedule] is null when the end was missed.
-        data class End(val changes: Changes, val schedule: Schedule?) : Step
+        // [schedule] is null when the end was missed. [until] is the window's own end when an edit stopped it early.
+        data class End(val changes: Changes, val schedule: Schedule?, val until: LocalDateTime? = null) : Step
 
         data class Move(val started: Started) : Step
 
@@ -72,10 +72,16 @@ object Boundary {
                         ConnectivityPlan.end(it.changes, schedule.enableWifi)
                     } ?: Changes.NONE,
                     schedule,
+                    ScheduleResolver.windowEnd(active, ScheduleResolver.nextDate(active, now)!!),
                 )
             }
             running != null && after.start != before.start -> Step.Move(running.copy(window = after.start))
             else -> Step.None
         }
     }
+
+    // Wi-Fi turned on against the start option stays on if the window starts again before [until]. [kept]
+    // when it already stayed on at the last start.
+    fun keptWifi(started: Started?, wifiOn: Boolean, until: LocalDateTime?, kept: Boolean): LocalDateTime? =
+        until?.takeIf { started != null && wifiOn && (kept || started.changes.wifi || started.already.wifi) }
 }

@@ -67,6 +67,12 @@ class SettingsRepository(private val context: Context) {
             }
         }
 
+    var wifiKeptUntil: LocalDateTime?
+        get() = prefs.getString("wifiKeptUntil", null)?.let(LocalDateTime::parse)
+        set(value) = prefs.edit {
+            if (value == null) remove("wifiKeptUntil") else putString("wifiKeptUntil", value.toString())
+        }
+
     // A window started before 2.0 kept only its changes.
     private fun readStarted() = prefs.getString("startedWindow", null)?.let { window ->
         val changes = prefs.getInt("startedChanges", 0)
