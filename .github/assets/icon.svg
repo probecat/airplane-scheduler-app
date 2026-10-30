@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-<defs><clipPath id="c"><rect width="512" height="512" rx="256"/></clipPath>
+<defs>
 <clipPath id="k"><circle cx="354" cy="252" r="78"/></clipPath></defs>
-<g clip-path="url(#c)">
+<g>
 <rect width="512" height="512" fill="#FFD23F"/>
 <g transform="translate(256 256) scale(1.02) translate(-256 -260)">
 <rect x="64" y="174" width="384" height="188" rx="94" fill="#E0B21F"/>
