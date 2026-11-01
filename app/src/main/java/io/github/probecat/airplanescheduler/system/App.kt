@@ -1,16 +1,22 @@
 package io.github.probecat.airplanescheduler.system
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import io.github.probecat.airplanescheduler.data.EngineRepository
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 
 class App : Application() {
@@ -18,6 +24,13 @@ class App : Application() {
         private set
     lateinit var settings: SettingsRepository
         private set
+    lateinit var engine: EngineRepository
+        private set
+    lateinit var switcher: Switcher
+        private set
+
+    // Outlives screens, so what a tap started finishes after it closes.
+    private val scope = MainScope()
 
     private val shizukuState = MutableStateFlow(ShizukuStatus.current())
     val shizuku: StateFlow<ShizukuState> = shizukuState.asStateFlow()
@@ -32,6 +45,8 @@ class App : Application() {
         super.onCreate()
         schedules = ScheduleRepository(this)
         settings = SettingsRepository(this)
+        engine = EngineRepository(this)
+        switcher = ShizukuSwitcher(this)
         Notifier.createChannels(this)
         // Restores alarms that a force stop removed.
         AlarmScheduler.scheduleAll(this)
@@ -50,6 +65,20 @@ class App : Application() {
                 }
             },
         )
+    }
+
+    fun launch(block: suspend CoroutineScope.() -> Unit): Job = scope.launch(block = block)
+
+    // Keeps a broadcast alive until [block] is done.
+    fun finishAfter(receiver: BroadcastReceiver, block: suspend CoroutineScope.() -> Unit) {
+        val result = receiver.goAsync()
+        launch {
+            try {
+                block()
+            } finally {
+                result.finish()
+            }
+        }
     }
 
     fun refreshShizuku() {

@@ -4,12 +4,14 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
-import io.github.probecat.airplanescheduler.core.ScheduleResolver
+import io.github.probecat.airplanescheduler.core.ScheduleEdits
+import io.github.probecat.airplanescheduler.core.ScheduleStatus
+import io.github.probecat.airplanescheduler.core.ScheduleStatus.Action
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-// Notification actions. Each acts only on the window its notification was about, so a tap on one that
-// is out of date just brings it up to date.
+// Notification actions. Each acts only on the window and state its notification was about, so a tap on
+// one that is out of date just brings it up to date.
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = App.from(context)
@@ -18,48 +20,42 @@ class NotificationReceiver : BroadcastReceiver() {
             intent.getStringExtra(Notifier.KEY)?.let { Notifier.dismissed(app, id, it) }
             return
         }
-        val result = goAsync()
-        val done = {
-            Notifier.refresh(app)
-            result.finish()
-        }
-        if (intent.action == Notifier.RETRY) {
-            val report = Notifier.Report(id, intent.getStringExtra(Notifier.TITLE).orEmpty())
-            val changes = Changes.of(intent.getIntExtra(Notifier.CHANGES, 0))
-            AirplaneController.awaitBinder(tap = true) { AirplaneController.undo(app, changes, report, result::finish) }
-            return
-        }
-        val schedule = app.schedules.get(id)
-        val date = intent.getStringExtra(Notifier.DATE)?.let(LocalDate::parse)
-        if (schedule == null || date == null) return done()
-        val now = LocalDateTime.now()
-        AirplaneController.awaitBinder(tap = true) {
-            app.refreshShizuku()
-            when (intent.action) {
-                // Skipping and ending leave nothing to act on but Undo, which only the app has.
-                Notifier.SKIP, Notifier.END ->
-                    if (ScheduleResolver.nextDate(schedule, now) == date) {
-                        ScheduleUpdater.skip(app, schedule) {
-                            Notifier.dismiss(app, id)
-                            done()
-                        }
-                    } else {
-                        done()
-                    }
-                Notifier.POSTPONE ->
-                    if (ScheduleResolver.nextDate(schedule, now) == date) {
-                        ScheduleUpdater.postpone(app, schedule, intent.getIntExtra(Notifier.MINUTES, 0), done)
-                    } else {
-                        done()
-                    }
-                Notifier.UNDO -> {
-                    val pending = date in ScheduleResolver.pendingSkips(schedule, now) ||
-                        ScheduleResolver.delay(schedule, now)?.date == date
-                    if (pending) ScheduleUpdater.unskip(app, id, done) else done()
-                }
-                Notifier.TURN_ON -> ScheduleUpdater.catchUp(app) { done() }
-                else -> done()
+        app.finishAfter(this) {
+            app.switcher.connect(tap = true)
+            if (intent.action == Notifier.RETRY) {
+                val report = Notifier.Report(id, intent.getStringExtra(Notifier.TITLE).orEmpty())
+                AirplaneController.undo(app, Changes.of(intent.getIntExtra(Notifier.CHANGES, 0)), report)
+                return@finishAfter
             }
+            app.refreshShizuku()
+            act(app, id, intent)
+            Notifier.refresh(app)
+        }
+    }
+
+    private suspend fun act(app: App, id: Long, intent: Intent) {
+        val schedule = app.schedules.get(id) ?: return
+        val date = intent.getStringExtra(Notifier.DATE)?.let(LocalDate::parse) ?: return
+        val now = LocalDateTime.now()
+        val status = ScheduleUpdater.status(app, schedule, now)
+        val all = app.schedules.all
+        when (intent.action) {
+            // Skipping and ending leave nothing to act on but Undo, which only the app has.
+            Notifier.SKIP, Notifier.END -> if (status?.allows(Action.SKIP, date) == true) {
+                val missed = (status as? ScheduleStatus.Running)?.missed == true
+                ScheduleUpdater.commit(app, ScheduleEdits.skip(all, schedule, now, missed))
+                Notifier.dismiss(app, id)
+            }
+            Notifier.POSTPONE -> if (status?.allows(Action.POSTPONE, date) == true) {
+                ScheduleUpdater.commit(
+                    app,
+                    ScheduleEdits.postpone(all, schedule, now, intent.getIntExtra(Notifier.MINUTES, 0)),
+                )
+            }
+            Notifier.UNDO -> if (status?.allows(Action.UNDO, date) == true) {
+                ScheduleUpdater.commit(app, ScheduleEdits.unskip(all, schedule, now))
+            }
+            Notifier.TURN_ON -> if (status?.allows(Action.TURN_ON, date) == true) ScheduleUpdater.catchUp(app)
         }
     }
 }

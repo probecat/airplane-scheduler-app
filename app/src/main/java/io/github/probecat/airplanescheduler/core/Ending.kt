@@ -38,5 +38,9 @@ data class Ending(
             wifiWasOff = started.already.wifi && enableWifi && !wifiOn,
             wifiBackOn = made.wifi,
         )
+
+        // A retry of what an end couldn't undo. [airplaneOn] is read just after it.
+        fun retried(changes: Changes, made: Changes, airplaneOn: Boolean) =
+            Ending(changes - made, airplaneStaysOn = airplaneOn && !made.airplane, wifiBackOn = made.wifi)
     }
 }

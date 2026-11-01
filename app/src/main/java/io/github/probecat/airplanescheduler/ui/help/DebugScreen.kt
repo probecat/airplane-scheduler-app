@@ -84,7 +84,7 @@ private fun details(
     val zoned = ZonedDateTime.now()
     val active = ScheduleResolver.activeSchedule(schedules, now)
     val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
-    val started = app.settings.started
+    val started = app.engine.state.started
     return buildString {
         appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         appendLine("Package: ${context.packageName}")
@@ -119,6 +119,7 @@ private fun details(
             appendLine("  Meant to change: ${changed(started.wanted)}")
             appendLine("  Already switched: ${changed(started.already)}")
         }
+        app.engine.state.wifiKeptUntil?.let { appendLine("Wi-Fi kept on until: ${moment.format(it)}") }
         appendLine("Active now: ${active?.let { "#${it.id}" } ?: "none"}")
         appendLine()
         append("Schedules: ${schedules.size}")

@@ -85,7 +85,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
+import io.github.probecat.airplanescheduler.core.ScheduleEdits
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
+import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.batteryOptimizationOff
@@ -162,23 +164,28 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         show(resources.getString(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())))
     }
 
-    fun unskip(id: Long) {
-        val conflict = viewModel.unskip(id)
-        if (conflict != null) showConflict(conflict) else showStart(id)
+    fun unskip(id: Long, offered: ScheduleStatus) {
+        when (val result = viewModel.unskip(id, offered)) {
+            is ScheduleEdits.Result.Overlaps -> showConflict(result.schedule)
+            is ScheduleEdits.Result.Saved -> showStart(id)
+            null -> {}
+        }
     }
 
-    fun skip(schedule: Schedule, ending: Boolean) {
-        viewModel.skip(schedule)
+    fun skip(id: Long, offered: ScheduleStatus) {
+        if (!viewModel.skip(id, offered)) return
+        val ending = offered is ScheduleStatus.Running && !offered.missed
         show(resources.getString(if (ending) R.string.schedules_ended_early else R.string.schedules_skipped))
     }
 
-    fun postpone(schedule: Schedule, pausing: Boolean) {
-        viewModel.postpone(schedule)
+    fun postpone(id: Long, offered: ScheduleStatus) {
+        if (!viewModel.postpone(id, offered)) return
+        val pausing = offered is ScheduleStatus.Running
         show(resources.getString(if (pausing) R.string.schedules_paused else R.string.schedules_postponed))
     }
 
-    fun catchUp(id: Long) {
-        viewModel.catchUp { on ->
+    fun catchUp(id: Long, offered: ScheduleStatus) {
+        viewModel.catchUp(id, offered) { on ->
             if (on) showStart(id) else show(resources.getString(R.string.schedules_turn_on_failed))
         }
     }
@@ -294,38 +301,29 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                 items(schedules, key = { it.id }) { schedule ->
                     val isActive = schedule.id == active?.id
                     val isMissed = isActive && schedule.id == missed
-                    val action =
-                        cardAction(schedule, isActive, isMissed, isMissed && shizuku == ShizukuState.READY, now)
+                    val status = ScheduleStatus.of(schedule, schedules, now, isMissed)
+                    val action = cardAction(status, canCatchUp = isMissed && shizuku == ShizukuState.READY)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
                             missed = shizuku.takeIf { isMissed },
                             sui = sui,
-                            note = if (action?.undoes == true) {
-                                note(schedule, now, format)
-                            } else {
-                                null
-                            },
+                            note = status?.takeIf { action?.undoes == true }?.let { note(it, schedule, now, format) },
                             action = action,
                             today = now.toLocalDate(),
                             format = format,
                             onClick = { editing = schedule },
-                            onAction = {
+                            onAction = onAction@{
+                                if (status == null) return@onAction
+                                val postponable = ScheduleStatus.Action.POSTPONE in status.actions &&
+                                    ScheduleResolver.postponedTo(schedule, now, settings.postponeMinutes) != null
                                 when (action) {
-                                    // A missed start has nothing to pause.
                                     CardAction.SKIP, CardAction.END ->
-                                        if (!isMissed &&
-                                            ScheduleResolver.postponedTo(schedule, now, settings.postponeMinutes) !=
-                                            null
-                                        ) {
-                                            choosing = schedule.id
-                                        } else {
-                                            skip(schedule, ending = action == CardAction.END)
-                                        }
+                                        if (postponable) choosing = schedule.id else skip(schedule.id, status)
                                     CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME, CardAction.START ->
-                                        unskip(schedule.id)
-                                    CardAction.TURN_ON -> catchUp(schedule.id)
+                                        unskip(schedule.id, status)
+                                    CardAction.TURN_ON -> catchUp(schedule.id, status)
                                     null -> {}
                                 }
                             },
@@ -360,28 +358,31 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
 
     choosing?.let { id ->
         val schedule = schedules.find { it.id == id }
+        val status = schedule?.let { ScheduleStatus.of(it, schedules, now, missed = it.id == missed) }
+        // The status the dialog opened for. Its choices are for that one only.
+        val offered = remember(id) { status }
         val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
-        // Gone, or nothing left to postpone, since the dialog opened.
-        if (schedule == null || to == null) {
+        // Gone, changed, as by its notification, or with nothing left to postpone since the dialog opened.
+        if (schedule == null || offered == null || status != offered || to == null) {
             SideEffect { choosing = null }
             return@let
         }
-        val ending = schedule.id == active?.id
+        val ending = offered is ScheduleStatus.Running
         PostponeDialog(
             schedule = schedule,
             ending = ending,
             minutes = settings.postponeMinutes,
             to = to,
-            breaksAt = if (ending) null else breaksAt(schedule, schedules, now),
+            breaksAt = (offered as? ScheduleStatus.Upcoming)?.takeIf { it.after != null }?.start,
             now = now,
             format = format,
             onPostpone = {
                 choosing = null
-                postpone(schedule, pausing = ending)
+                postpone(id, offered)
             },
             onSkip = {
                 choosing = null
-                skip(schedule, ending)
+                skip(id, offered)
             },
             onDismiss = { choosing = null },
         )
@@ -696,44 +697,38 @@ private enum class CardAction(@StringRes val label: Int, val undoes: Boolean = f
     TURN_ON(R.string.action_turn_on),
 }
 
-// A missed start was never running, so it's skipped rather than ended.
-private fun cardAction(
-    schedule: Schedule,
-    isActive: Boolean,
-    isMissed: Boolean,
-    canCatchUp: Boolean,
-    now: LocalDateTime,
-): CardAction? {
-    if (!schedule.enabled) return null
-    if (canCatchUp) return CardAction.TURN_ON
-    if (isActive) return if (isMissed) CardAction.SKIP else CardAction.END
-    ScheduleResolver.delay(schedule, now)?.let { return if (it.due) CardAction.RESUME else CardAction.RESTORE }
-    val skips = ScheduleResolver.pendingSkips(schedule, now)
-    return when {
-        // Undoing a skip whose window is under way turns airplane mode on now.
-        skips.any { it in schedule.endedEarly } -> CardAction.RESUME
-        skips.any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.START
-        skips.isNotEmpty() -> CardAction.UNSKIP
-        ScheduleResolver.nextWindow(schedule, now)
-            ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
+// A missed start was never running, so it's skipped rather than ended. Undoing a skip whose window is
+// under way turns airplane mode on now.
+private fun cardAction(status: ScheduleStatus?, canCatchUp: Boolean): CardAction? = when (status) {
+    is ScheduleStatus.Running -> when {
+        canCatchUp -> CardAction.TURN_ON
+        status.missed -> CardAction.SKIP
+        else -> CardAction.END
+    }
+    is ScheduleStatus.Paused -> CardAction.RESUME
+    is ScheduleStatus.Upcoming -> when {
+        status.postponed -> CardAction.RESTORE
+        status.soon -> CardAction.SKIP
         else -> null
     }
-}
-
-private fun note(schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? {
-    ScheduleResolver.delay(schedule, now)?.let {
-        return (if (it.due) format.resumes(it.start) else format.delayed(it.start)) to R.drawable.ic_snooze
+    is ScheduleStatus.Skipped -> when {
+        status.endedEarly -> CardAction.RESUME
+        status.underway -> CardAction.START
+        else -> CardAction.UNSKIP
     }
-    val skipped = ScheduleResolver.pendingSkips(schedule, now).minOrNull() ?: return null
-    return format.skipped(schedule, skipped, now) to R.drawable.ic_skip_next
+    null -> null
 }
 
-// The start of the next window when it continues one that runs until then.
-private fun breaksAt(schedule: Schedule, schedules: List<Schedule>, now: LocalDateTime): LocalDateTime? {
-    val date = ScheduleResolver.nextDate(schedule, now) ?: return null
-    ScheduleResolver.preceding(schedule, date, schedules) ?: return null
-    return ScheduleResolver.startOf(schedule, date)
-}
+private fun note(status: ScheduleStatus, schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? =
+    when (status) {
+        is ScheduleStatus.Paused -> format.resumes(status.until) to R.drawable.ic_snooze
+        is ScheduleStatus.Upcoming -> format.delayed(status.start).takeIf { status.postponed }?.let {
+            it to
+                R.drawable.ic_snooze
+        }
+        is ScheduleStatus.Skipped -> format.skipped(schedule, status.date, now) to R.drawable.ic_skip_next
+        is ScheduleStatus.Running -> null
+    }
 
 @Composable
 private fun PostponeDialog(

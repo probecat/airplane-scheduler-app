@@ -2,9 +2,6 @@ package io.github.probecat.airplanescheduler.data
 
 import android.content.Context
 import androidx.core.content.edit
-import io.github.probecat.airplanescheduler.core.Boundary
-import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
-import java.time.LocalDateTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,17 +15,13 @@ data class Settings(
     val askedNotifications: Boolean = false,
 )
 
-class SettingsRepository(private val context: Context) {
-    private var prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+class SettingsRepository(context: Context) {
+    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val state = MutableStateFlow(read())
 
     val settings: StateFlow<Settings> = state.asStateFlow()
 
     val current: Settings get() = state.value
-
-    private val startedState = MutableStateFlow(readStarted())
-
-    val startedWindow: StateFlow<Boundary.Started?> = startedState.asStateFlow()
 
     fun update(transform: (Settings) -> Settings) {
         val settings = transform(state.value)
@@ -40,42 +33,6 @@ class SettingsRepository(private val context: Context) {
             putInt("postponeMinutes", settings.postponeMinutes)
             putBoolean("askedNotifications", settings.askedNotifications)
         }
-    }
-
-    var started: Boundary.Started?
-        get() = startedState.value
-        set(value) {
-            startedState.value = value
-            prefs.edit {
-                if (value == null) {
-                    remove("startedWindow")
-                    remove("startedChanges")
-                    remove("startedWanted")
-                    remove("startedAlready")
-                } else {
-                    putString("startedWindow", value.window.toString())
-                    putInt("startedChanges", value.changes.bits)
-                    putInt("startedWanted", value.wanted.bits)
-                    putInt("startedAlready", value.already.bits)
-                }
-            }
-        }
-
-    var wifiKeptUntil: LocalDateTime?
-        get() = prefs.getString("wifiKeptUntil", null)?.let(LocalDateTime::parse)
-        set(value) = prefs.edit {
-            if (value == null) remove("wifiKeptUntil") else putString("wifiKeptUntil", value.toString())
-        }
-
-    // A window started before 2.0 kept only its changes.
-    private fun readStarted() = prefs.getString("startedWindow", null)?.let { window ->
-        val changes = prefs.getInt("startedChanges", 0)
-        Boundary.Started(
-            LocalDateTime.parse(window),
-            Changes.of(changes),
-            wanted = Changes.of(prefs.getInt("startedWanted", changes)),
-            already = Changes.of(prefs.getInt("startedAlready", 0)),
-        )
     }
 
     private fun read() = Settings().let { default ->

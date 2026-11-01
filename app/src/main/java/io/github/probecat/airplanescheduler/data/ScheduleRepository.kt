@@ -9,8 +9,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
 // All schedules as one JSON list in SharedPreferences: tiny, and synchronous for receivers.
-class ScheduleRepository(private val context: Context) {
-    private var prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+class ScheduleRepository(context: Context) {
+    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val state = MutableStateFlow(decode(prefs.getString(KEY, null)))
 
     val schedules: StateFlow<List<Schedule>> = state.asStateFlow()

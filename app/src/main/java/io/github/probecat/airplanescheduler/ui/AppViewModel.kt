@@ -3,6 +3,8 @@ package io.github.probecat.airplanescheduler.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.probecat.airplanescheduler.core.ScheduleEdits
+import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
@@ -50,7 +52,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val missed: StateFlow<Long?> = combine(
         app.schedules.schedules,
         now,
-        app.settings.startedWindow,
+        app.engine.states,
         app.airplane,
         AirplaneController.inFlightCount,
     ) { _, now, _, _, _ -> AirplaneController.missedSchedule(app, now)?.id }
@@ -58,13 +60,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // Notices tell whether Shizuku is ready, which a fresh process may not know yet.
     fun refresh() {
-        AirplaneController.awaitBinder(tap = true) {
+        viewModelScope.launch {
+            app.switcher.connect(tap = true)
             app.refreshShizuku()
             Notifier.refresh(app)
         }
     }
-
-    fun catchUp(done: (Boolean) -> Unit) = ScheduleUpdater.catchUp(app, done)
 
     fun requestShizuku(): Boolean = ShizukuStatus.request()
 
@@ -88,26 +89,46 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isNew(schedule: Schedule): Boolean = app.schedules.get(schedule.id) == null
 
-    fun conflict(schedule: Schedule): Schedule? = ScheduleUpdater.conflict(app, schedule)
+    fun conflict(schedule: Schedule): Schedule? =
+        ScheduleEdits.conflict(app.schedules.all, schedule, LocalDateTime.now())
 
     // Returns the overlapping schedule instead of switching on.
-    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? = ScheduleUpdater.setEnabled(app, schedule, enabled)
+    fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
+        ScheduleUpdater.launch(app, ScheduleEdits.setEnabled(app.schedules.all, schedule, enabled, LocalDateTime.now()))
 
-    fun skip(schedule: Schedule) = ScheduleUpdater.skip(app, schedule)
+    // These taps act only while the schedule's status is still the one they were [offered] for, so a card
+    // or dialog shown before the same tap on its notification does nothing, and says so with null or false.
 
-    fun postpone(schedule: Schedule) = ScheduleUpdater.postpone(app, schedule, settings.value.postponeMinutes)
-
-    fun unskip(id: Long): Schedule? = ScheduleUpdater.unskip(app, id)
-
-    // The sheet doesn't edit whether a schedule is on, nor its skips and delays, which a notification may
-    // have changed while it was open.
-    fun save(edited: Schedule): Schedule? {
-        val stored = app.schedules.get(edited.id)
-        val schedule = stored?.let {
-            edited.copy(enabled = it.enabled, skipped = it.skipped, endedEarly = it.endedEarly, delayed = it.delayed)
-        } ?: edited
-        return ScheduleUpdater.save(app, schedule)
+    fun skip(id: Long, offered: ScheduleStatus): Boolean {
+        val schedule = offered(id, offered) ?: return false
+        val missed = (offered as? ScheduleStatus.Running)?.missed == true
+        commit(ScheduleEdits.skip(app.schedules.all, schedule, LocalDateTime.now(), missed))
+        return true
     }
+
+    fun postpone(id: Long, offered: ScheduleStatus): Boolean {
+        val schedule = offered(id, offered) ?: return false
+        commit(ScheduleEdits.postpone(app.schedules.all, schedule, LocalDateTime.now(), settings.value.postponeMinutes))
+        return true
+    }
+
+    fun unskip(id: Long, offered: ScheduleStatus): ScheduleEdits.Result? {
+        val schedule = offered(id, offered) ?: return null
+        return ScheduleEdits.unskip(app.schedules.all, schedule, LocalDateTime.now()).also(::commit)
+    }
+
+    // [done] says whether airplane mode came on.
+    fun catchUp(id: Long, offered: ScheduleStatus, done: (Boolean) -> Unit): Boolean {
+        offered(id, offered) ?: return false
+        app.launch { done(ScheduleUpdater.catchUp(app)) }
+        return true
+    }
+
+    private fun offered(id: Long, offered: ScheduleStatus): Schedule? =
+        app.schedules.get(id)?.takeIf { ScheduleUpdater.status(app, it, LocalDateTime.now()) == offered }
+
+    fun save(edited: Schedule): Schedule? =
+        ScheduleUpdater.launch(app, ScheduleEdits.saveSheet(app.schedules.all, edited, LocalDateTime.now()))
 
     // True once, when the first schedule is saved and notifications aren't allowed yet.
     fun asksNotifications(): Boolean {
@@ -116,17 +137,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return !notificationsAllowed(app)
     }
 
-    fun delete(schedule: Schedule) {
-        commit(app.schedules.all.filterNot { it.id == schedule.id })
-    }
+    fun delete(schedule: Schedule) = commit(ScheduleEdits.delete(app.schedules.all, schedule.id))
 
-    // Undoes a delete. It takes a new id if its old one was reused, and comes back switched off if it
-    // now overlaps another schedule.
-    fun restore(schedule: Schedule) {
-        val id = if (app.schedules.get(schedule.id) == null) schedule.id else app.schedules.nextId()
-        val restored = schedule.copy(id = id).let { if (conflict(it) != null) it.copy(enabled = false) else it }
-        commit(app.schedules.all + restored)
-    }
+    fun restore(schedule: Schedule) =
+        commit(ScheduleEdits.restore(app.schedules.all, schedule, app.schedules.nextId(), LocalDateTime.now()))
 
     fun updateSettings(transform: (Settings) -> Settings) {
         val before = app.settings.current
@@ -136,7 +150,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resetSettings() = updateSettings { Settings() }
 
-    private fun commit(schedules: List<Schedule>) = ScheduleUpdater.update(app, schedules)
+    private fun commit(result: ScheduleEdits.Result) {
+        ScheduleUpdater.launch(app, result)
+    }
 
     private fun sorted(schedules: List<Schedule>) = schedules.sortedWith(compareBy({ it.start }, { it.end }, { it.id }))
 }
