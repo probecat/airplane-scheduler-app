@@ -55,11 +55,7 @@ object ScheduleEdits {
         save(all, ScheduleResolver.postpone(schedule, now, minutes), now)
 
     fun unskip(all: List<Schedule>, schedule: Schedule, now: LocalDateTime): Result =
-        if (schedule.once && !schedule.enabled) {
-            setEnabled(all, schedule, true, now)
-        } else {
-            save(all, ScheduleResolver.unskip(schedule, now), now)
-        }
+        save(all, ScheduleResolver.unskip(schedule, now), now)
 
     fun delete(all: List<Schedule>, id: Long): Result = Result.Saved(all.filterNot { it.id == id })
 
