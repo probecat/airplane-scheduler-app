@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import java.time.ZonedDateTime
+import java.util.concurrent.ConcurrentHashMap
 
 object AlarmScheduler {
     const val CHANGE = "io.github.probecat.airplanescheduler.CHANGE"
@@ -22,17 +23,23 @@ object AlarmScheduler {
         set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, ScheduleResolver.AHEAD_MINUTES))
     }
 
+    // What this process last set for each kind. Only a force stop or update drops alarms, and both end the
+    // process, so the same alarm isn't set again, as when an alarm starts the process and then reschedules.
+    private val last = ConcurrentHashMap<String, Pair<Long?, Boolean>>()
+
     // Setting the same intent again replaces its alarm; no time cancels it. Without exact alarms, Android may
     // run it late, which beats not at all.
     @SuppressLint("MissingPermission") // Checked by exactAlarmsAllowed.
     private fun set(context: Context, action: String, time: ZonedDateTime?) {
+        val millis = time?.toInstant()?.toEpochMilli()
+        val exact = exactAlarmsAllowed(context)
+        if (last.put(action, millis to exact) == (millis to exact)) return
         val alarms = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java).setAction(action)
         val pending = PendingIntent.getBroadcast(context, 0, intent, FLAGS)
-        val millis = time?.toInstant()?.toEpochMilli()
         when {
             millis == null -> alarms.cancel(pending)
-            exactAlarmsAllowed(context) -> alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
+            exact -> alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
             else -> alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
         }
         // Denying exact alarms on Android 12 drops them, so an inexact twin keeps changes coming. The first
