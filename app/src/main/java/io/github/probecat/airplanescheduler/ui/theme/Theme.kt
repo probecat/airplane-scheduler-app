@@ -47,7 +47,7 @@ fun AppTheme(theme: ThemeMode, dynamicColor: Boolean, content: @Composable () ->
     }
 }
 
-// Pure black behind everything; containers keep their dark tones so cards stay visible.
+// Pure black behind everything. Containers keep their dark tones, so cards stay visible.
 private fun ColorScheme.black(): ColorScheme = copy(
     background = Color.Black,
     surface = Color.Black,

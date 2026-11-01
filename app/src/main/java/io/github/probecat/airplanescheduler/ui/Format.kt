@@ -92,7 +92,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
     fun repeats(schedule: Schedule, today: LocalDate): String =
         if (schedule.once) onceDate(schedule, today).replaceFirstChar { it.titlecase(locale) } else days(schedule.days)
 
-    // Nothing is scheduled while it's off, since switching on picks a new date.
+    // Nothing is scheduled while it is off, because switching on picks a new date.
     private fun onceDate(schedule: Schedule, today: LocalDate): String {
         val start = schedule.date?.takeIf { schedule.enabled } ?: return strings.get(R.string.once_not_scheduled)
         return when (start) {
@@ -103,7 +103,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         }
     }
 
-    // A weekday only within the coming week, since a week ahead would read as today.
+    // Names the weekday only for the next six days, because a date one week ahead has the weekday of today.
     fun upcomingDay(date: LocalDate, today: LocalDate): String = when {
         date == today -> strings.get(R.string.day_today)
         date == today.plusDays(1) -> strings.get(R.string.day_tomorrow)
@@ -143,7 +143,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         return strings.get(R.string.schedule_label_unnamed, window(schedule), days)
     }
 
-    // Minutes are left out once it's a day or more.
+    // Minutes are left out once it is a day or more.
     fun duration(minutes: Int): String {
         val days = minutes / ScheduleTime.DAY
         val hours = minutes % ScheduleTime.DAY / 60

@@ -37,7 +37,7 @@ val batteryOptimizationDelays: Boolean
 fun batteryOptimizationOff(context: Context): Boolean = !batteryOptimizationDelays ||
     context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
 
-@SuppressLint("BatteryLife") // Alarms on time are the app's purpose, and it isn't on Google Play.
+@SuppressLint("BatteryLife") // Alarms on time are the app's purpose, and it is not on Google Play.
 fun stopBatteryOptimization(context: Context) {
     context.startActivity(
         Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri()),

@@ -1,6 +1,6 @@
 name: Release
 
-# Releases when main gets a new version. The tag is created with the release.
+# Releases when main gets a new version. The release step also creates the tag.
 on:
   push:
     branches: [main]
@@ -87,7 +87,7 @@ jobs:
           NOTES: "${{ needs.check.outputs.notes }}"
           PREVIOUS: "${{ needs.check.outputs.previous }}"
         run: |
-          # Fixed name for the README's releases/latest/download link.
+          # The README links to releases/latest/download with this fixed name.
           mv app-release.apk airplane-scheduler.apk
           {
             cat "$NOTES"

@@ -63,8 +63,8 @@ fdroid lint "$appid"
 fdroid rewritemeta "$appid"
 cp "$recipe" "$out/"
 
-# Builds from the local checkout without Binaries, whose release may not exist yet. rewritemeta wraps Binaries, so
-# edit the earlier copy.
+# Builds from the local checkout without Binaries, because the release that Binaries points to can be missing.
+# rewritemeta wraps the Binaries line, so the edit uses the copy from before rewritemeta.
 sed -e "s|^Repo: .*|Repo: file://$src|" -e '/^Binaries: /d' "$work/recipe.yml" > "$recipe"
 fdroid fetch_repo "$appid:$code"
 fdroid build --test --no-tarball "$appid:$code"

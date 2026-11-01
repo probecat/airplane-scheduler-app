@@ -7,8 +7,8 @@ import java.time.LocalDateTime
 // What the app does when a window starts or ends. It undoes only what it changed itself, and it
 // skips a start or end that it missed instead of catching up later.
 object Boundary {
-    // The last window the app started, keyed by its chain's start: what it changed then, what it
-    // meant to change, and what was already as the start wanted it.
+    // The last window that the app started. [window] is the start of its chain. [changes] is what the start
+    // changed, [wanted] is what it meant to change, and [already] is what was already as the start wanted it.
     data class Started(
         val window: LocalDateTime,
         val changes: Changes,
@@ -42,8 +42,8 @@ object Boundary {
 
     // Returns the schedule of the running window when airplane mode is off and the app did not turn it on, for example
     // because Shizuku was not ready at the start. Returns null when airplane mode was already on at the start and the
-    // user turned it off later. Also null while the start is still switching, and in the first minute before the start
-    // alarm runs.
+    // user turned it off later. Also returns null while the start is still switching, and in the first minute of the
+    // window, before the start alarm runs.
     fun missed(
         schedules: List<Schedule>,
         now: LocalDateTime,
@@ -59,8 +59,8 @@ object Boundary {
     }
 
     // Returns what a start saves before it switches, and what it switches. When the user turns on a missed start, the
-    // record keeps what the missed start changed and found, so the end still undoes and reports it. [wifiKept] means
-    // that the user turned Wi-Fi on against an earlier start, so this start leaves Wi-Fi on.
+    // saved [Started] keeps what the missed start changed and found, so the end still undoes and reports it.
+    // [wifiKept] means that the user turned Wi-Fi on against an earlier start, so this start leaves Wi-Fi on.
     fun begin(
         window: ScheduleResolver.Window,
         started: Started?,
@@ -103,8 +103,8 @@ object Boundary {
         }
     }
 
-    // Wi-Fi turned on against the start option stays on if the window starts again before [until]. [kept]
-    // when it already stayed on at the last start.
+    // If the user turned Wi-Fi on against the start option, Wi-Fi stays on when the window starts again before
+    // [until]. [kept] is true when Wi-Fi already stayed on at the last start.
     fun keptWifi(started: Started?, wifiOn: Boolean, until: LocalDateTime?, kept: Boolean): LocalDateTime? =
         until?.takeIf { started != null && wifiOn && (kept || started.changes.wifi || started.already.wifi) }
 }

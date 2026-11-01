@@ -144,7 +144,7 @@ fun ScheduleSheet(
         sheetState = sheetState,
         contentWindowInsets = { WindowInsets.navigationBars },
     ) {
-        // The sheet's own back handling hides it without asking the sheet state, so this takes back first.
+        // The sheet handles back itself and hides without asking its state, so this handler takes back first.
         BackHandler(enabled = dirty && !closing) { discarding = true }
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -195,8 +195,8 @@ fun ScheduleSheet(
                 checked = schedule.disableWifi,
             ) { draft = schedule.copy(disableWifi = it) }
             // Only Wi-Fi that the start turned off comes back, so the end option needs the start one.
-            // It grays out instead of hiding: the sheet grows from the bottom, so a hidden row would
-            // move the switch above it out from under the finger.
+            // It grays out instead of hiding. The sheet grows from the bottom, so hiding the row moves
+            // the switch above it out from under the finger.
             SwitchRow(
                 icon = R.drawable.ic_wifi,
                 title = stringResource(R.string.sheet_wifi_on),

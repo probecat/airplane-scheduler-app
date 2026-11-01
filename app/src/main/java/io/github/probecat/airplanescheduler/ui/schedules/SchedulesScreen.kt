@@ -152,7 +152,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         }
     }
 
-    // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
+    // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it is already on.
     fun showStart(id: Long) {
         val schedule = viewModel.schedules.value.find { it.id == id }?.takeIf { it.enabled } ?: return
         val message = if (ScheduleResolver.isActive(schedule, now)) {
@@ -361,8 +361,8 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         val status = schedule?.let { ScheduleStatus.of(it, schedules, now, missed = it.id == missed) }
         val offered = remember(id) { status }
         val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
-        // The schedule is gone or changed, for example by its notification, or nothing is left to postpone since the
-        // dialog opened.
+        // Since the dialog opened, the schedule was deleted or changed, for example by its notification, or nothing
+        // is left to postpone.
         if (schedule == null || offered == null || status != offered || to == null) {
             SideEffect { choosing = null }
             return@let
@@ -395,8 +395,8 @@ private fun statusStrip(shizuku: ShizukuState, sui: Boolean): Int = when (shizuk
     ShizukuState.PERMISSION_NEEDED -> if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission
 }
 
-// A line above the schedules about what the app needs. An error one stays until it's fixed; others can
-// be dismissed.
+// A line above the schedules about what the app needs. An error stays until it is fixed. The user can
+// dismiss the others.
 @Composable
 private fun Strip(
     label: String,
@@ -474,8 +474,8 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    // Not saveable: undo and app restarts can reuse an id, and a saved dismissed state would delete the
-    // next schedule with it.
+    // Not saveable. Undo and app restarts can reuse an id, and a saved dismissed state then deletes the next
+    // schedule with that id.
     val threshold = SwipeToDismissBoxDefaults.positionalThreshold
     val state = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, threshold) }
     SwipeToDismissBox(
@@ -514,10 +514,10 @@ private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, c
 private fun ScheduleCard(
     schedule: Schedule,
     endsIn: Int?,
-    // Why airplane mode is off while it's active.
+    // Why airplane mode is off while it is active.
     missed: ShizukuState?,
     sui: Boolean,
-    // Why the next window won't run as planned.
+    // Why the next window will not run as planned.
     note: Pair<String, Int>?,
     action: CardAction?,
     today: LocalDate,
@@ -546,7 +546,7 @@ private fun ScheduleCard(
                         if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
                     ),
                 ) {
-                    // Like Clock, a name that doesn't fit beside the days moves to a line of its own.
+                    // Like Clock, a name that does not fit beside the days moves to a line of its own.
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
                         if (schedule.name.isNotBlank()) {
@@ -758,7 +758,7 @@ private fun DialogChoice(icon: Int, title: String, text: String, onClick: () -> 
 private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =
     minutesUntil(now) { ScheduleResolver.nextEnd(schedule, it) }
 
-// Whole minutes from the start of the current one, so a window that starts or ends on the minute shows
+// Whole minutes from the start of the current minute, so a window that starts or ends on the minute shows
 // its full length.
 private fun minutesUntil(now: LocalDateTime, next: (ZonedDateTime) -> ZonedDateTime?): Int? {
     val minute = now.truncatedTo(ChronoUnit.MINUTES).atZone(ZoneId.systemDefault())

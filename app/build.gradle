@@ -27,7 +27,7 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        // Installs beside the signed release instead of clashing with its signature.
+        // Installs beside the signed release, so the two signatures do not clash.
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'

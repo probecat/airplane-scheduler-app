@@ -4,14 +4,14 @@ import io.github.probecat.airplanescheduler.core.Boundary.Started
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 
 data class Ending(
-    // What the end meant to undo but couldn't.
+    // What the end meant to undo but could not.
     val failed: Changes,
     // Airplane mode never turned on and is off, so there was nothing to undo.
     val missedStart: Boolean = false,
     // Airplane mode was on before the start, so it stays on.
     val airplaneWasOn: Boolean = false,
     val airplaneTurnedOff: Boolean = false,
-    // The end didn't turn airplane mode off, and it's on, as when it was on before the start.
+    // The end did not turn airplane mode off, and it is on. For example, it was on before the start.
     val airplaneStaysOn: Boolean = false,
     // Wi-Fi was off before the start, so it stays off although the schedule turns it back on.
     val wifiWasOff: Boolean = false,

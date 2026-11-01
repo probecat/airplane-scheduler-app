@@ -9,7 +9,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 
-// All schedules as one JSON list in SharedPreferences: tiny, and synchronous for receivers.
+// All schedules as one JSON list in SharedPreferences. The list is small, and receivers can read it synchronously.
 class ScheduleRepository(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val state = MutableStateFlow(load())
@@ -20,7 +20,7 @@ class ScheduleRepository(context: Context) {
 
     fun get(id: Long): Schedule? = all.find { it.id == id }
 
-    // Not lowered by deletes, so ids aren't reused while the app runs.
+    // A delete does not lower it, so the app does not reuse an id while it runs.
     private var highestId = all.maxOfOrNull { it.id } ?: 0
 
     fun nextId(): Long = highestId + 1

@@ -57,7 +57,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     ) { _, now, _, _, _ -> AirplaneController.missedSchedule(app, now)?.id }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    // Notices tell whether Shizuku is ready, which a fresh process may not know yet.
+    // Notices tell whether Shizuku is ready. A new process learns this only after a short time.
     fun refresh() {
         viewModelScope.launch {
             app.switcher.connect(tap = true)
@@ -95,8 +95,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
         ScheduleUpdater.launch(app, ScheduleEdits.setEnabled(app.schedules.all, schedule, enabled, LocalDateTime.now()))
 
-    // These taps act only while the schedule status is still the one they were [offered] for. So a card or dialog shown
-    // before the same tap on its notification does nothing, and returns null or false to tell this.
+    // These taps act only while the schedule status is still the one they were [offered] for. If the user already did
+    // the same tap on the notification, an older card or dialog does nothing and returns null or false.
 
     fun skip(id: Long, offered: ScheduleStatus): Boolean {
         val schedule = offered(id, offered) ?: return false
@@ -128,7 +128,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun save(edited: Schedule): Schedule? =
         ScheduleUpdater.launch(app, ScheduleEdits.saveSheet(app.schedules.all, edited, LocalDateTime.now()))
 
-    // True once, when the first schedule is saved and notifications aren't allowed yet.
+    // True once, when the first schedule is saved and notifications are not allowed yet.
     fun asksNotifications(): Boolean {
         if (app.settings.current.askedNotifications) return false
         updateSettings { it.copy(askedNotifications = true) }

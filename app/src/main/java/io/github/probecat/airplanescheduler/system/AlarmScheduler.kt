@@ -14,8 +14,8 @@ object AlarmScheduler {
     const val NOTICE = "io.github.probecat.airplanescheduler.NOTICE"
     private const val FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
-    // Only the next alarm of each kind is set, recomputed in local time on every alarm so clock and
-    // time-zone changes stay correct.
+    // Sets only the next alarm of each kind. Every alarm computes it again in local time, so clock and time-zone
+    // changes stay correct.
     fun scheduleAll(context: Context) {
         val schedules = App.from(context).schedules.all
         val now = ZonedDateTime.now()
@@ -28,8 +28,8 @@ object AlarmScheduler {
     // the process then reschedules.
     private val last = ConcurrentHashMap<String, Pair<Long?, Boolean>>()
 
-    // Setting the same intent again replaces its alarm; no time cancels it. Without exact alarms, Android may
-    // run it late, which beats not at all.
+    // Setting the same intent again replaces its alarm, and a null time cancels it. Without exact alarms, Android
+    // can run the alarm late, which is better than not at all.
     @SuppressLint("MissingPermission") // Checked by exactAlarmsAllowed.
     private fun set(context: Context, action: String, time: ZonedDateTime?) {
         val millis = time?.toInstant()?.toEpochMilli()
@@ -43,8 +43,8 @@ object AlarmScheduler {
             exact -> alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
             else -> alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, millis, pending)
         }
-        // Denying exact alarms on Android 12 drops them, so an inexact twin keeps changes coming. The first
-        // to fire sets both again, which replaces the other.
+        // On Android 12, denying exact alarms drops them, so a second, inexact alarm keeps the changes coming.
+        // The first alarm to fire sets both again, which replaces the other one.
         if (action == CHANGE && exactAlarmsDeniable) {
             val backup = PendingIntent.getBroadcast(context, 1, intent, FLAGS)
             if (millis == null) {

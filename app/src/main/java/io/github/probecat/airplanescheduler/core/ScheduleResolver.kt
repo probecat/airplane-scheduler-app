@@ -14,7 +14,7 @@ object ScheduleResolver {
     private const val WEEK = 7 * ScheduleTime.DAY
     private const val SKIP_KEPT_DAYS = 10L
 
-    // How close a start is before it can be skipped or postponed, and its notification shows.
+    // How many minutes before a start the user can skip or postpone it, and its notification shows.
     const val AHEAD_MINUTES = 60L
 
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
@@ -24,14 +24,14 @@ object ScheduleResolver {
     // The chain that ended most recently: where it began, and its last window's schedule.
     data class Ended(val window: LocalDateTime, val schedule: Schedule)
 
-    // A postponed window that hasn't started yet. [due] once its planned start has passed, as after a pause.
+    // A postponed window that has not started yet. [due] is true when its planned start passed, as after a pause.
     data class Delay(val date: LocalDate, val start: LocalDateTime, val due: Boolean)
 
     fun isValid(schedule: Schedule): Boolean =
         schedule.start != schedule.end && (!schedule.once || schedule.date != null)
 
     // A schedule that runs once keeps its date until that window ends. Otherwise it takes the first
-    // window that hasn't ended, which may be running already.
+    // window that has not ended, which can already be running.
     fun dated(schedule: Schedule, now: LocalDateTime): Schedule {
         if (!schedule.once) return schedule.copy(date = null)
         if (schedule.date != null && windowEnd(schedule, schedule.date).isAfter(now)) return schedule
@@ -85,8 +85,8 @@ object ScheduleResolver {
         return Delay(date, start, due = !plannedStart(schedule, date).isAfter(now))
     }
 
-    // Leaves out the window that is running, or else the next one. [running] when the app had started it,
-    // so it ends early. Skips stay while [lastEnd] can still look back at their windows.
+    // Leaves out the window that is running, or else the next one. [running] is true when the app
+    // started it, so it ends early. Skips stay while [lastEnd] can still look back at their windows.
     fun skip(schedule: Schedule, now: LocalDateTime, running: Boolean = false): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
         return schedule.copy(
@@ -96,8 +96,8 @@ object ScheduleResolver {
         )
     }
 
-    // Moves the start of the next window [minutes] later, or pauses the running one until then. A window
-    // that this leaves nothing of is skipped instead.
+    // Moves the start of the next window [minutes] later, or pauses the running one until then. If no part
+    // of the window is left, this skips it instead.
     fun postpone(schedule: Schedule, now: LocalDateTime, minutes: Int): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
         val start = postponedStart(schedule, date, now, minutes)
@@ -113,7 +113,7 @@ object ScheduleResolver {
         return postponedStart(schedule, date, now, minutes).takeIf { it.isBefore(windowEnd(schedule, date)) }
     }
 
-    // Undoes [skip] and [postpone] for windows that haven't ended.
+    // Undoes [skip] and [postpone] for windows that have not ended.
     fun unskip(schedule: Schedule, now: LocalDateTime): Schedule = schedule.copy(
         skipped = schedule.skipped - pendingSkips(schedule, now),
         endedEarly = schedule.endedEarly - pendingSkips(schedule, now),
@@ -136,7 +136,7 @@ object ScheduleResolver {
         return Window(start, inFirst = first.id == active.id, disableWifi = first.disableWifi)
     }
 
-    // Asked outside a window, so the most recent end closes a chain.
+    // Callers ask outside a window, so the most recent end closes a chain.
     fun lastEnded(schedules: List<Schedule>, now: LocalDateTime): Ended? {
         val live = live(schedules)
         val (last, end) = lastEnd(live, now) ?: return null
@@ -157,12 +157,12 @@ object ScheduleResolver {
             val bStart = b.date!!.toEpochDay() * ScheduleTime.DAY + b.start
             return bStart - aStart in 0L until aLength || aStart - bStart in 0L until bLength
         }
-        // A window that runs once overlaps a weekly one when its weekday's window would.
+        // A schedule that runs once is checked as if it ran every week on its weekday.
         return weekdays(a).any { aDay ->
             val aStart = aDay.ordinal * ScheduleTime.DAY + a.start
             weekdays(b).any { bDay ->
                 val bStart = bDay.ordinal * ScheduleTime.DAY + b.start
-                // Half-open windows on a circular week, so touching ends don't overlap.
+                // Half-open windows on a circular week, so touching ends do not overlap.
                 Math.floorMod(bStart - aStart, WEEK) < aLength || Math.floorMod(aStart - bStart, WEEK) < bLength
             }
         }

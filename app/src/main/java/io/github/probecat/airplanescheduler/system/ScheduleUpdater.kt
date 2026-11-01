@@ -50,8 +50,8 @@ object ScheduleUpdater {
         return AirplaneController.airplaneOn(app)
     }
 
-    // Only safe once nothing needs the end of a schedule that ran once, since a switched-off
-    // schedule doesn't end.
+    // Call this only when nothing needs the end of a schedule that ran once, because a switched-off
+    // schedule does not end.
     fun expire(app: App, now: LocalDateTime) {
         val schedules = ScheduleResolver.expire(app.schedules.all, now)
         if (schedules != app.schedules.all) app.schedules.replaceAll(schedules)

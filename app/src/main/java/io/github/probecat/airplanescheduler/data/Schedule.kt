@@ -15,7 +15,7 @@ import kotlinx.serialization.encoding.Encoder
 data class Schedule(
     val id: Long,
     val name: String = "",
-    // Minutes since midnight. An end before the start is on the next day; an equal one is invalid.
+    // Minutes since midnight. An end before the start is on the next day. An end equal to the start is invalid.
     val start: Int,
     val end: Int,
     // Days the window starts on. None means it runs once, starting on [date].

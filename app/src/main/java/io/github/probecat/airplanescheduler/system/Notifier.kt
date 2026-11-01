@@ -26,10 +26,10 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.ConcurrentHashMap
 
-// One notification per schedule, replaced as its window comes up, runs and ends. Notices before and
-// during a window follow the schedules and are worked out again on every change. Reports of how a
-// window ended are posted once and stay until dismissed, or until the schedule's next notice. A
-// report of what an end left switched has a place of its own, and goes once nothing is left.
+// One notification per schedule, replaced as its window comes up, runs and ends. Notices before and during a window
+// follow the schedules, and every change computes them again. A report of how a window ended is posted once. It
+// stays until the user dismisses it, or until the next notice of the schedule. A report of what an end left switched
+// has its own notification, which goes away when nothing is left switched.
 object Notifier {
     const val SKIP = "io.github.probecat.airplanescheduler.SKIP"
     const val END = "io.github.probecat.airplanescheduler.END"
@@ -57,18 +57,18 @@ object Notifier {
     private enum class Kind { NOTICE, REPORT, PROBLEM }
 
     // Android applies posts and cancels a moment later, so its list can still show a notice that a report
-    // just replaced. For a few seconds, what this process last did with a notification wins over the list;
-    // a cancel leaves an empty bundle.
+    // just replaced. For a few seconds, what this process last did with a notification wins over the list.
+    // A cancel leaves an empty bundle.
     private class Latest(val extras: Bundle, val at: Long = SystemClock.elapsedRealtime())
 
     private val latest = ConcurrentHashMap<Long, Latest>()
 
-    // Who a report is about. The schedule may be gone by the time it's retried.
+    // Who a report is about. The schedule can be deleted before the user taps Retry.
     data class Report(val id: Long, val title: String)
 
     private data class Action(val action: String, val label: String)
 
-    // Everything a notification shows, so an unchanged one isn't posted again.
+    // Everything a notification shows, so an unchanged one is not posted again.
     private data class Content(
         val kind: Kind,
         val channel: String,
@@ -130,7 +130,7 @@ object Notifier {
         for ((id, content) in wanted) {
             val key = content.toString()
             if (posted[id]?.getString(KEY) == key || dismissed.getString(id.toString(), null) == key) continue
-            // A notice that turns into a problem alerts, though updates otherwise don't.
+            // A notice that turns into a problem alerts the user. Other updates are silent.
             val alert = content.channel == PROBLEMS && posted[id]?.getString(CHANNEL) != PROBLEMS
             post(app, id, content, now, alert)
         }
@@ -149,7 +149,7 @@ object Notifier {
         }
     }
 
-    // Takes down a schedule's notification as if swiped away, so what it shows now doesn't come back.
+    // Takes down a schedule's notification as if swiped away, so what it shows now does not come back.
     fun dismiss(context: Context, id: Long) {
         val app = App.from(context)
         if (!canPost(app)) return
@@ -228,7 +228,7 @@ object Notifier {
         if (shows(app, content.channel)) post(app, report.id, content, LocalDateTime.now())
     }
 
-    // The app wasn't running when a window ended, so what it switched stays switched.
+    // The app was not running when a window ended, so what it switched stays switched.
     fun missedEnd(context: Context, schedule: Schedule?, left: Changes) {
         val app = App.from(context)
         if (!canPost(app)) return
@@ -257,7 +257,7 @@ object Notifier {
         val postpone = ScheduleResolver.postponedTo(schedule, now, minutes) != null
         return when (notice) {
             is Notice.Upcoming -> {
-                // Postponing is once, as in the app.
+                // A window can be postponed only once, as in the app.
                 val postponable = postpone && !notice.postponed
                 val start = when {
                     notice.after != null -> app.getString(
@@ -344,7 +344,7 @@ object Notifier {
         }
     }
 
-    // Whole sentences in a row. A notice's first line is a phrase with no period, unless more follow.
+    // Joins whole sentences. A notice's first line is a phrase with no period, unless more follow.
     private fun sentences(context: Context, first: String, vararg more: String?, phrase: Boolean = false): String {
         val rest = more.filterNotNull()
         if (rest.isEmpty()) return first
@@ -352,7 +352,7 @@ object Notifier {
         return rest.fold(lead) { text, next -> context.getString(R.string.sentences, text, next) }
     }
 
-    // Android drops posts to a blocked channel, which would leave up the notice they replace.
+    // Android drops posts to a blocked channel. The notice that a post replaces then stays up.
     private fun shows(context: Context, channel: String): Boolean =
         NotificationManagerCompat.from(context).getNotificationChannelCompat(channel)?.importance !=
             NotificationManagerCompat.IMPORTANCE_NONE

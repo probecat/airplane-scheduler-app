@@ -1,2 +1,2 @@
-# Shizuku instantiates the user service by class name in its own process.
+# Shizuku creates the user service from its class name, in the Shizuku process.
 -keep class io.github.probecat.airplanescheduler.system.AirplaneService { <init>(); }

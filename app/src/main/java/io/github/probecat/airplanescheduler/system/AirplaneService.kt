@@ -22,7 +22,7 @@ class AirplaneService : IAirplaneService.Stub() {
     private fun airplane(on: Boolean) =
         listOf("/system/bin/cmd", "connectivity", "airplane-mode", if (on) "enable" else "disable")
 
-    // Before Android 11, cmd can't switch Wi-Fi.
+    // Before Android 11, cmd cannot switch Wi-Fi.
     private fun wifi(on: Boolean) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         listOf("/system/bin/cmd", "wifi", "set-wifi-enabled", if (on) "enabled" else "disabled")
     } else {
