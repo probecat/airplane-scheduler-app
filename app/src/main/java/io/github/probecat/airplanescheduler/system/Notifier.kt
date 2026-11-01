@@ -13,7 +13,6 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import io.github.probecat.airplanescheduler.R
-import io.github.probecat.airplanescheduler.core.Boundary
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.core.Notice
@@ -119,7 +118,8 @@ object Notifier {
         val manager = NotificationManagerCompat.from(app)
         val now = Mock.now()
         val wanted = wanted(app, now)
-        val posted = manager.activeNotifications.filter { it.tag == TAG }
+        val active = manager.activeNotifications
+        val posted = active.filter { it.tag == TAG }
             .associate { it.id.toLong() to it.notification.extras } +
             latest.filterValues { SystemClock.elapsedRealtime() - it.at < 5_000 }.mapValues { it.value.extras }
         val dismissed = dismissed(app)
@@ -145,7 +145,7 @@ object Notifier {
         if (Mock.active) return
         val airplane = AirplaneController.airplaneOn(app)
         val wifi = AirplaneController.wifiOn(app)
-        for (problem in manager.activeNotifications.filter { it.tag == PROBLEM_TAG }) {
+        for (problem in active.filter { it.tag == PROBLEM_TAG }) {
             val left = Changes.of(problem.notification.extras.getInt(CHANGES))
             if ((!left.airplane || !airplane) && (!left.wifi || wifi)) manager.cancel(PROBLEM_TAG, problem.id)
         }
@@ -162,16 +162,14 @@ object Notifier {
 
     private fun wanted(app: App, now: LocalDateTime): Map<Long, Content> {
         val schedules = app.schedules.all
-        // Mock data reads airplane mode as off, so only the started window decides.
-        val airplane = AirplaneController.airplaneOn(app) && !Mock.active
-        val started = app.settings.started
-        val missed = Boundary.missed(schedules, now, started, airplane, AirplaneController.switching)
-            ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
+        val missed = AirplaneController.missedSchedule(app, now)?.id
         val format = format(app)
+        val problem = shizukuProblem(app)
+        val shown = listOf(SCHEDULES, PROBLEMS).filter { shows(app, it) }
         return schedules.mapNotNull { schedule ->
             Notice.of(schedule, schedules, now, schedule.id == missed)
-                ?.let { notice(app, schedule, it, now, format) }
-                ?.takeIf { shows(app, it.channel) }
+                ?.let { notice(app, schedule, it, now, format, problem) }
+                ?.takeIf { it.channel in shown }
                 ?.let { schedule.id to it }
         }.toMap()
     }
@@ -179,9 +177,7 @@ object Notifier {
     // Notices come back after mock data turns on or off, and reports of the other data go.
     fun reset(context: Context) {
         val manager = NotificationManagerCompat.from(context)
-        for (id in manager.activeNotifications.filter { it.tag == TAG }.map { it.id.toLong() } + latest.keys) {
-            latest[id] = Latest(Bundle())
-        }
+        for (id in postedIds(manager)) latest[id] = Latest(Bundle())
         manager.cancelAll()
         refresh(context)
     }
@@ -192,13 +188,16 @@ object Notifier {
         if (!canPost(app)) return false
         dismissed(app).edit { clear() }
         val manager = NotificationManagerCompat.from(app)
-        for (id in manager.activeNotifications.filter { it.tag == TAG }.map { it.id.toLong() } + latest.keys) {
+        for (id in postedIds(manager)) {
             manager.cancel(TAG, id.toInt())
             latest[id] = Latest(Bundle())
         }
         refresh(app)
         return wanted(app, Mock.now()).isNotEmpty()
     }
+
+    private fun postedIds(manager: NotificationManagerCompat): List<Long> =
+        manager.activeNotifications.filter { it.tag == TAG }.map { it.id.toLong() } + latest.keys
 
     fun dismissed(context: Context, id: Long, key: String) {
         dismissed(context).edit { putString(id.toString(), key) }
@@ -272,15 +271,22 @@ object Notifier {
         post(app, schedule?.id ?: 0, content, Mock.now())
     }
 
-    private fun notice(app: App, schedule: Schedule, notice: Notice, now: LocalDateTime, format: Format): Content {
+    // [problem] is what keeps Shizuku from switching, if anything.
+    private fun notice(
+        app: App,
+        schedule: Schedule,
+        notice: Notice,
+        now: LocalDateTime,
+        format: Format,
+        problem: String?,
+    ): Content {
         val title = format.title(schedule)
         val minutes = app.settings.current.postponeMinutes
-        val postpone = minutes > 0 && ScheduleResolver.postponedTo(schedule, now, minutes) != null
+        val postpone = ScheduleResolver.postponedTo(schedule, now, minutes) != null
         return when (notice) {
             is Notice.Upcoming -> {
                 // Postponing is once, as in the app.
                 val postponable = postpone && !notice.postponed
-                val problem = shizukuProblem(app)
                 val start = when {
                     notice.after != null -> app.getString(
                         R.string.notification_continues_from,
@@ -327,7 +333,6 @@ object Notifier {
                 ),
             )
             is Notice.Active -> if (notice.missed) {
-                val problem = shizukuProblem(app)
                 Content(
                     Kind.NOTICE,
                     PROBLEMS,

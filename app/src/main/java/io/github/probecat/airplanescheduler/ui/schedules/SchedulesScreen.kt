@@ -147,6 +147,13 @@ fun SchedulesScreen(
     }
     val requestNotifications = rememberNotificationRequest(fallback = false) {}
 
+    fun show(message: String) {
+        scope.launch {
+            snackbar.currentSnackbarData?.dismiss()
+            snackbar.showSnackbar(message)
+        }
+    }
+
     // Like an alarm clock, says when airplane mode comes on, or how long it stays on if it already has.
     fun showStart(id: Long) {
         val schedule = viewModel.schedules.value.find { it.id == id }?.takeIf { it.enabled } ?: return
@@ -156,19 +163,11 @@ fun SchedulesScreen(
             minutesUntil(now) { ScheduleResolver.nextStart(schedule, it) }
                 ?.let { resources.getString(R.string.schedules_set_for, format.duration(it)) }
         } ?: return
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(message)
-        }
+        show(message)
     }
 
     fun showConflict(conflict: Schedule) {
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(
-                resources.getString(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())),
-            )
-        }
+        show(resources.getString(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())))
     }
 
     fun unskip(id: Long) {
@@ -178,34 +177,17 @@ fun SchedulesScreen(
 
     fun skip(schedule: Schedule, ending: Boolean) {
         viewModel.skip(schedule)
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(
-                resources.getString(if (ending) R.string.schedules_ended_early else R.string.schedules_skipped),
-            )
-        }
+        show(resources.getString(if (ending) R.string.schedules_ended_early else R.string.schedules_skipped))
     }
 
     fun postpone(schedule: Schedule, pausing: Boolean) {
         viewModel.postpone(schedule)
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            snackbar.showSnackbar(
-                resources.getString(if (pausing) R.string.schedules_paused else R.string.schedules_postponed),
-            )
-        }
+        show(resources.getString(if (pausing) R.string.schedules_paused else R.string.schedules_postponed))
     }
 
     fun catchUp(id: Long) {
         viewModel.catchUp { on ->
-            if (on) {
-                showStart(id)
-            } else {
-                scope.launch {
-                    snackbar.currentSnackbarData?.dismiss()
-                    snackbar.showSnackbar(resources.getString(R.string.schedules_turn_on_failed))
-                }
-            }
+            if (on) showStart(id) else show(resources.getString(R.string.schedules_turn_on_failed))
         }
     }
 
@@ -341,7 +323,10 @@ fun SchedulesScreen(
                                 when (action) {
                                     // A missed start has nothing to pause.
                                     CardAction.SKIP, CardAction.END ->
-                                        if (!isMissed && postponedTo(schedule, now, settings.postponeMinutes) != null) {
+                                        if (!isMissed &&
+                                            ScheduleResolver.postponedTo(schedule, now, settings.postponeMinutes) !=
+                                            null
+                                        ) {
                                             choosing = schedule.id
                                         } else {
                                             skip(schedule, ending = action == CardAction.END)
@@ -383,7 +368,7 @@ fun SchedulesScreen(
 
     choosing?.let { id ->
         val schedule = schedules.find { it.id == id }
-        val to = schedule?.let { postponedTo(it, now, settings.postponeMinutes) }
+        val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
         // Gone, or nothing left to postpone, since the dialog opened.
         if (schedule == null || to == null) {
             SideEffect { choosing = null }
@@ -727,20 +712,21 @@ private fun cardAction(
     isMissed: Boolean,
     canCatchUp: Boolean,
     now: LocalDateTime,
-): CardAction? = when {
-    !schedule.enabled -> null
-    canCatchUp -> CardAction.TURN_ON
-    isActive -> if (isMissed) CardAction.SKIP else CardAction.END
-    ScheduleResolver.delay(schedule, now)?.due == true -> CardAction.RESUME
-    ScheduleResolver.delay(schedule, now) != null -> CardAction.RESTORE
-    // Undoing a skip whose window is under way turns airplane mode on now.
-    ScheduleResolver.pendingSkips(schedule, now).any { it in schedule.endedEarly } -> CardAction.RESUME
-    ScheduleResolver.pendingSkips(schedule, now)
-        .any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.START
-    ScheduleResolver.pendingSkips(schedule, now).isNotEmpty() -> CardAction.UNSKIP
-    ScheduleResolver.nextWindow(schedule, now)
-        ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
-    else -> null
+): CardAction? {
+    if (!schedule.enabled) return null
+    if (canCatchUp) return CardAction.TURN_ON
+    if (isActive) return if (isMissed) CardAction.SKIP else CardAction.END
+    ScheduleResolver.delay(schedule, now)?.let { return if (it.due) CardAction.RESUME else CardAction.RESTORE }
+    val skips = ScheduleResolver.pendingSkips(schedule, now)
+    return when {
+        // Undoing a skip whose window is under way turns airplane mode on now.
+        skips.any { it in schedule.endedEarly } -> CardAction.RESUME
+        skips.any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) } -> CardAction.START
+        skips.isNotEmpty() -> CardAction.UNSKIP
+        ScheduleResolver.nextWindow(schedule, now)
+            ?.let { Duration.between(now, it).toMinutes() <= ScheduleResolver.AHEAD_MINUTES } == true -> CardAction.SKIP
+        else -> null
+    }
 }
 
 private fun note(schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? {
@@ -757,10 +743,6 @@ private fun breaksAt(schedule: Schedule, schedules: List<Schedule>, now: LocalDa
     ScheduleResolver.preceding(schedule, date, schedules) ?: return null
     return ScheduleResolver.startOf(schedule, date)
 }
-
-// Where Postpone or Pause would start the window, or null when they're off or would leave nothing of it.
-private fun postponedTo(schedule: Schedule, now: LocalDateTime, minutes: Int): LocalDateTime? =
-    if (minutes > 0) ScheduleResolver.postponedTo(schedule, now, minutes) else null
 
 @Composable
 private fun PostponeDialog(

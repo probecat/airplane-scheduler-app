@@ -12,20 +12,11 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScheduleResolverTest {
-    private fun at(hour: Int, minute: Int = 0) = hour * 60 + minute
-
-    private fun friday(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, 9, hour, minute)
-
-    private val night = Schedule(id = 1, name = "Night", start = at(23), end = at(7))
-
-    private val thursdayNight = friday(23).minusDays(1)
-
     @Test
     fun emptyListHasNoWindowAndNoConflict() {
         assertNull(ScheduleResolver.window(emptyList(), friday(12)))
@@ -158,7 +149,10 @@ class ScheduleResolverTest {
     fun windowsCoveringTheWholeDayDoNotLoop() {
         val day = Schedule(id = 1, start = at(7), end = at(19), disableWifi = false)
         val night = Schedule(id = 2, start = at(19), end = at(7), disableWifi = true)
-        assertNotNull(ScheduleResolver.window(listOf(day, night), friday(12)))
+        assertEquals(
+            Window(friday(19).minusDays(1), inFirst = false, disableWifi = true),
+            ScheduleResolver.window(listOf(day, night), friday(12)),
+        )
     }
 
     @Test
@@ -398,6 +392,11 @@ class ScheduleResolverTest {
         assertNull(ScheduleResolver.delay(paused, resumes))
         val zone = ZoneId.of("UTC")
         assertEquals(resumes.atZone(zone), ScheduleResolver.nextChange(listOf(paused), friday(23, 50).atZone(zone)))
+    }
+
+    @Test
+    fun postponingForNoTimeIsOff() {
+        assertNull(ScheduleResolver.postponedTo(night, friday(22, 30), 0))
     }
 
     @Test

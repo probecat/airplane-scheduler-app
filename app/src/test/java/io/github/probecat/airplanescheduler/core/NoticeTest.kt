@@ -1,16 +1,12 @@
 package io.github.probecat.airplanescheduler.core
 
 import io.github.probecat.airplanescheduler.data.Schedule
-import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class NoticeTest {
-    private fun friday(hour: Int, minute: Int = 0) = LocalDateTime.of(2026, 10, 9, hour, minute)
-
     private val today = friday(0).toLocalDate()
-    private val night = Schedule(id = 1, start = 23 * 60, end = 7 * 60)
 
     @Test
     fun upcomingOnlyWithinTheHourBeforeTheStart() {
@@ -68,7 +64,7 @@ class NoticeTest {
 
     @Test
     fun touchingWindowsReadAsOne() {
-        val morning = Schedule(id = 2, start = 7 * 60, end = 8 * 60)
+        val morning = Schedule(id = 2, start = at(7), end = at(8))
         val both = listOf(night, morning)
         val saturday = today.plusDays(1)
         val seven = friday(7).plusDays(1)

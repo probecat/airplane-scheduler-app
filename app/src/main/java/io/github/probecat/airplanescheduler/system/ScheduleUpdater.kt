@@ -71,14 +71,7 @@ object ScheduleUpdater {
             return
         }
         val now = Mock.now()
-        val missed = Boundary.missed(
-            app.schedules.all,
-            now,
-            app.settings.started,
-            AirplaneController.airplaneOn(app) && !Mock.active,
-            AirplaneController.switching,
-        ) != null
-        val running = ScheduleResolver.isActive(schedule, now) && !missed
+        val running = ScheduleResolver.isActive(schedule, now) && AirplaneController.missedSchedule(app, now) == null
         save(app, ScheduleResolver.skip(schedule, now, running), done)
     }
 

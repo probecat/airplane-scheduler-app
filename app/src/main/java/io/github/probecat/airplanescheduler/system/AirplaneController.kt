@@ -12,10 +12,10 @@ import android.os.SystemClock
 import android.provider.Settings
 import io.github.probecat.airplanescheduler.IAirplaneService
 import io.github.probecat.airplanescheduler.core.Boundary
-import io.github.probecat.airplanescheduler.core.ConnectivityPlan
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
+import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,21 +58,8 @@ object AirplaneController {
     private fun step(app: App, step: Boundary.Step, natural: Boolean, done: () -> Unit) {
         when (step) {
             is Boundary.Step.Start -> {
-                val window = step.window
-                val airplane = airplaneOn(app)
-                val wifi = wifiOn(app)
-                val disableWifi = window.disableWifi && !keptWifi(app)
-                val wanted = ConnectivityPlan.start(airplane, wifi, disableWifi)
-                // A start caught up by hand keeps what the missed one changed and found, so the end still
-                // undoes and reports it.
-                val started = app.settings.started?.takeIf { it.window == window.start }
-                    ?.let { it.copy(wanted = it.wanted + wanted) }
-                    ?: Boundary.Started(
-                        window.start,
-                        Changes.NONE,
-                        wanted,
-                        ConnectivityPlan.already(airplane, wifi, disableWifi),
-                    )
+                val (started, wanted) =
+                    Boundary.begin(step.window, app.settings.started, airplaneOn(app), wifiOn(app), keptWifi(app))
                 // Saved before Shizuku answers, so an alarm in the meantime doesn't start the window twice.
                 app.settings.started = started
                 // An end while it was switching, as from a notification's End, undoes what it made.
@@ -117,7 +104,7 @@ object AirplaneController {
     fun undo(context: Context, changes: Changes, report: Notifier.Report, done: () -> Unit) {
         val app = App.from(context)
         val finish = { made: Changes ->
-            val staysOn = airplaneOn(app) && !Mock.active && !made.airplane
+            val staysOn = airplaneOn(app) && !made.airplane
             Notifier.ended(app, report, Ending(changes - made, airplaneStaysOn = staysOn, wifiBackOn = made.wifi))
             done()
         }
@@ -131,16 +118,19 @@ object AirplaneController {
     // What the forgotten window left switched is reported, not undone.
     private fun missedEnd(app: App, started: Boundary.Started) {
         val schedule = ScheduleResolver.activeSchedule(app.schedules.all, started.window)
-        val undo = ConnectivityPlan.end(started.changes, schedule?.enableWifi ?: true)
-        val left = Changes(undo.airplane && airplaneOn(app), undo.wifi && !wifiOn(app))
+        val left = Boundary.leftSwitched(started, schedule?.enableWifi ?: true, airplaneOn(app), wifiOn(app))
         if (!left.isEmpty) Notifier.missedEnd(app, schedule, left)
     }
 
     private fun keptWifi(app: App): Boolean = app.settings.wifiKeptUntil?.isAfter(LocalDateTime.now()) == true
 
-    // Any app can read both states; only changing them needs Shizuku.
+    // Any app can read both states; only changing them needs Shizuku. Mock data reads airplane mode as off,
+    // so only the started window decides.
     fun airplaneOn(context: Context): Boolean =
-        Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+        !Mock.active && Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+
+    fun missedSchedule(app: App, now: LocalDateTime): Schedule? =
+        Boundary.missed(app.schedules.all, now, app.settings.started, airplaneOn(app), switching)
 
     fun wifiOn(context: Context): Boolean = context.getSystemService(WifiManager::class.java).isWifiEnabled
 

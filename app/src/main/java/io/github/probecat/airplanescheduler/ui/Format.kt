@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
+import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.mock.activeMock
@@ -55,7 +56,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun time(minute: Int): String = time(minute, markerSize = TextUnit.Unspecified).text
 
-    fun time(time: LocalDateTime): String = time(time.hour * 60 + time.minute)
+    fun time(time: LocalDateTime): String = time(ScheduleTime.minuteOf(time))
 
     fun time(minute: Int, markerSize: TextUnit): AnnotatedString {
         val time = LocalTime.of(minute / 60, minute % 60)
@@ -146,8 +147,8 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     // Minutes are left out once it's a day or more.
     fun duration(minutes: Int): String {
-        val days = minutes / DAY
-        val hours = minutes % DAY / 60
+        val days = minutes / ScheduleTime.DAY
+        val hours = minutes % ScheduleTime.DAY / 60
         val rest = minutes % 60
         fun days() = strings.plural(R.plurals.duration_days, days, days)
         fun hours() = strings.plural(R.plurals.duration_hours, hours, hours)
@@ -162,8 +163,6 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
     }
 
     companion object {
-        private const val DAY = 24 * 60
-
         val SMALL = 0.5.em
         val MARKER = 0.35.em
 

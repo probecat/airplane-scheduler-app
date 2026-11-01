@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.core
 
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -11,6 +12,10 @@ object ScheduleTime {
 
     // A time in a DST gap shifts later by the length of the gap.
     fun at(time: LocalDateTime, zone: ZoneId): ZonedDateTime = ZonedDateTime.of(time, zone)
+
+    fun on(date: LocalDate, minute: Int): LocalDateTime = date.atTime(minute / HOUR, minute % HOUR)
+
+    fun minuteOf(time: LocalDateTime): Int = time.hour * HOUR + time.minute
 
     fun duration(start: Int, end: Int): Int = Math.floorMod(end - start, DAY)
 

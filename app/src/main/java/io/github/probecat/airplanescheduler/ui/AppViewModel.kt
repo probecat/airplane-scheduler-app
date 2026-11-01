@@ -3,8 +3,6 @@ package io.github.probecat.airplanescheduler.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.probecat.airplanescheduler.core.Boundary
-import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
@@ -53,14 +51,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         Mock.config,
     ) { _, _ -> Mock.now() }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Mock.now())
 
-    // The running window's schedule when the app missed its start.
+    // The running window's schedule when the app missed its start. The other flows only say when to look again.
     val missed: StateFlow<Long?> = combine(
-        schedules,
+        app.schedules.schedules,
         now,
         app.settings.startedWindow,
         app.airplane,
         AirplaneController.inFlightCount,
-    ) { schedules, now, started, airplane, _ -> missed(schedules, now, started, airplane) }
+    ) { _, now, _, _, _ -> AirplaneController.missedSchedule(app, now)?.id }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     // Notices tell whether Shizuku is ready, which a fresh process may not know yet.
@@ -84,8 +82,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             disableWifi = false,
             enableWifi = false,
         )
-        val now = Mock.now()
-        val start = ScheduleTime.freeSlot(now.hour * 60 + now.minute, ScheduleTime.HOUR, 30) { start, end ->
+        val start = ScheduleTime.freeSlot(ScheduleTime.minuteOf(Mock.now()), ScheduleTime.HOUR, 30) { start, end ->
             conflict(base.copy(start = start, end = end)) == null
         }
         return base.copy(start = start, end = (start + ScheduleTime.HOUR) % ScheduleTime.DAY)
@@ -142,11 +139,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun resetSettings() = updateSettings { Settings() }
 
     private fun commit(schedules: List<Schedule>) = ScheduleUpdater.update(app, schedules)
-
-    // Mock data reads airplane mode as off, so only the started window decides.
-    private fun missed(schedules: List<Schedule>, now: LocalDateTime, started: Boundary.Started?, airplane: Boolean) =
-        Boundary.missed(schedules, now, started, airplane && !Mock.active, AirplaneController.switching)
-            ?.let { ScheduleResolver.activeSchedule(schedules, now)?.id }
 
     private fun sorted(schedules: List<Schedule>) = schedules.sortedWith(compareBy({ it.start }, { it.end }, { it.id }))
 }

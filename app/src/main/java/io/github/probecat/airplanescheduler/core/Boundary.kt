@@ -40,22 +40,44 @@ object Boundary {
         return Step.End(ConnectivityPlan.end(started.changes, ended.schedule.enableWifi), ended.schedule)
     }
 
-    // The running window when airplane mode is off and the app didn't turn it on, such as when Shizuku
-    // wasn't ready at the start. Not when it was already on at the start and someone turned it off since,
-    // nor while the start is still switching or before its alarm had a minute to.
+    // The running window's schedule when airplane mode is off and the app didn't turn it on, such as when
+    // Shizuku wasn't ready at the start. Not when it was already on at the start and someone turned it off
+    // since, nor while the start is still switching or before its alarm had a minute to.
     fun missed(
         schedules: List<Schedule>,
         now: LocalDateTime,
         started: Started?,
         airplaneOn: Boolean,
         switching: Boolean = false,
-    ): ScheduleResolver.Window? {
+    ): Schedule? {
         if (airplaneOn || switching) return null
         val window = ScheduleResolver.window(schedules, now) ?: return null
         if (started?.window != window.start && now < window.start.plusMinutes(1)) return null
-        return window.takeIf {
-            started?.window != it.start || !(started.changes.airplane || started.already.airplane)
-        }
+        if (started?.window == window.start && (started.changes.airplane || started.already.airplane)) return null
+        return ScheduleResolver.activeSchedule(schedules, now)
+    }
+
+    // What a start saves before it switches, and what it switches. A start caught up by hand keeps what the
+    // missed one changed and found, so the end still undoes and reports it. [wifiKept] while Wi-Fi turned on
+    // against an earlier start stays on.
+    fun begin(
+        window: ScheduleResolver.Window,
+        started: Started?,
+        airplaneOn: Boolean,
+        wifiOn: Boolean,
+        wifiKept: Boolean,
+    ): Pair<Started, Changes> {
+        val disableWifi = window.disableWifi && !wifiKept
+        val wanted = ConnectivityPlan.start(airplaneOn, wifiOn, disableWifi)
+        val record = started?.takeIf { it.window == window.start }?.let { it.copy(wanted = it.wanted + wanted) }
+            ?: Started(window.start, Changes.NONE, wanted, ConnectivityPlan.already(airplaneOn, wifiOn, disableWifi))
+        return record to wanted
+    }
+
+    // What a forgotten window left switched, which is reported rather than undone.
+    fun leftSwitched(started: Started, enableWifi: Boolean, airplaneOn: Boolean, wifiOn: Boolean): Changes {
+        val undo = ConnectivityPlan.end(started.changes, enableWifi)
+        return Changes(undo.airplane && airplaneOn, undo.wifi && !wifiOn)
     }
 
     fun atEdit(old: List<Schedule>, new: List<Schedule>, now: LocalDateTime, started: Started?): Step {

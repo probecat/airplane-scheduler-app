@@ -84,14 +84,16 @@ class SettingsRepository(private val context: Context) {
         )
     }
 
-    private fun read() = Settings(
-        theme = prefs.getString("theme", null)
-            ?.let { name -> ThemeMode.entries.find { it.name == name } } ?: ThemeMode.SYSTEM,
-        dynamicColor = prefs.getBoolean("dynamicColor", true),
-        hideShizukuReady = prefs.getBoolean("hideShizukuReady", false),
-        postponeMinutes = prefs.getInt("postponeMinutes", 30),
-        askedNotifications = prefs.getBoolean("askedNotifications", false),
-    )
+    private fun read() = Settings().let { default ->
+        Settings(
+            theme = prefs.getString("theme", null)
+                ?.let { name -> ThemeMode.entries.find { it.name == name } } ?: default.theme,
+            dynamicColor = prefs.getBoolean("dynamicColor", default.dynamicColor),
+            hideShizukuReady = prefs.getBoolean("hideShizukuReady", default.hideShizukuReady),
+            postponeMinutes = prefs.getInt("postponeMinutes", default.postponeMinutes),
+            askedNotifications = prefs.getBoolean("askedNotifications", default.askedNotifications),
+        )
+    }
 
     private companion object {
         const val PREFS = "settings"

@@ -52,8 +52,7 @@ object ScheduleResolver {
     fun nextWindow(schedule: Schedule, now: LocalDateTime): LocalDateTime? =
         nextDate(schedule, now)?.let { startOf(schedule, it) }
 
-    fun plannedStart(schedule: Schedule, date: LocalDate): LocalDateTime =
-        date.atTime(schedule.start / 60, schedule.start % 60)
+    fun plannedStart(schedule: Schedule, date: LocalDate): LocalDateTime = ScheduleTime.on(date, schedule.start)
 
     fun startOf(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(schedule.delayed[date]?.toLong() ?: 0)
@@ -107,8 +106,9 @@ object ScheduleResolver {
         return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
     }
 
-    // Where [postpone] would start the window, or null when it would skip it.
+    // Where [postpone] would start the window, or null when it would skip it or [minutes] turns postponing off.
     fun postponedTo(schedule: Schedule, now: LocalDateTime, minutes: Int): LocalDateTime? {
+        if (minutes <= 0) return null
         val date = nextDate(schedule, now) ?: return null
         return postponedStart(schedule, date, now, minutes).takeIf { it.isBefore(windowEnd(schedule, date)) }
     }
@@ -131,7 +131,7 @@ object ScheduleResolver {
 
     fun window(schedules: List<Schedule>, now: LocalDateTime): Window? {
         val live = live(schedules)
-        val active = live.firstOrNull { isActive(it, now) } ?: return null
+        val active = activeSchedule(live, now) ?: return null
         val (first, start) = firstOfChain(active, live, now) ?: return null
         return Window(start, inFirst = first.id == active.id, disableWifi = first.disableWifi)
     }
@@ -168,23 +168,9 @@ object ScheduleResolver {
         }
     }
 
-    fun nextStart(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? {
-        if (!isValid(schedule)) return null
-        return (-1L..7L).firstNotNullOfOrNull { offset ->
-            val date = now.toLocalDate().plusDays(offset)
-            val trigger = ScheduleTime.at(startOf(schedule, date), now.zone)
-            trigger.takeIf { it.isAfter(now) && startsOn(schedule, date) }
-        }
-    }
+    fun nextStart(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? = nextAt(schedule, now, ::startOf)
 
-    fun nextEnd(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? {
-        if (!isValid(schedule)) return null
-        return (-1L..7L).firstNotNullOfOrNull { offset ->
-            val date = now.toLocalDate().plusDays(offset)
-            val trigger = ScheduleTime.at(windowEnd(schedule, date), now.zone)
-            trigger.takeIf { it.isAfter(now) && startsOn(schedule, date) }
-        }
-    }
+    fun nextEnd(schedule: Schedule, now: ZonedDateTime): ZonedDateTime? = nextAt(schedule, now, ::windowEnd)
 
     fun nextStart(schedules: List<Schedule>, now: ZonedDateTime): ZonedDateTime? =
         live(schedules).mapNotNull { nextStart(it, now) }.minOrNull()
@@ -194,6 +180,18 @@ object ScheduleResolver {
 
     fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
         nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes)
+
+    private fun nextAt(
+        schedule: Schedule,
+        now: ZonedDateTime,
+        at: (Schedule, LocalDate) -> LocalDateTime,
+    ): ZonedDateTime? {
+        if (!isValid(schedule)) return null
+        return (-1L..7L).firstNotNullOfOrNull { offset ->
+            val date = now.toLocalDate().plusDays(offset)
+            ScheduleTime.at(at(schedule, date), now.zone).takeIf { it.isAfter(now) && startsOn(schedule, date) }
+        }
+    }
 
     private fun live(schedules: List<Schedule>) = schedules.filter { it.enabled && isValid(it) }
 
@@ -238,7 +236,7 @@ object ScheduleResolver {
         while (true) {
             val boundary = start
             val previous = live.firstOrNull {
-                it.id !in seen && it.end == boundary.hour * 60 + boundary.minute &&
+                it.id !in seen && it.end == ScheduleTime.minuteOf(boundary) &&
                     startsOn(it, startDate(it, boundary.toLocalDate()))
             } ?: return current to start
             seen += previous.id
@@ -251,7 +249,7 @@ object ScheduleResolver {
         live.mapNotNull { schedule ->
             (0L..8L).firstNotNullOfOrNull { offset ->
                 val endDate = now.toLocalDate().minusDays(offset)
-                val end = endDate.atTime(schedule.end / 60, schedule.end % 60)
+                val end = ScheduleTime.on(endDate, schedule.end)
                 end.takeIf { !it.isAfter(now) && startsOn(schedule, startDate(schedule, endDate)) }
             }?.let { schedule to it }
         }.maxByOrNull { it.second }
