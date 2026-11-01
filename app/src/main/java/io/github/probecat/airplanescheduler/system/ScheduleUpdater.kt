@@ -5,18 +5,11 @@ import io.github.probecat.airplanescheduler.core.Boundary
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDateTime
 
 object ScheduleUpdater {
     fun update(context: Context, schedules: List<Schedule>, done: () -> Unit = {}) {
         val app = App.from(context)
-        if (Mock.active) {
-            app.schedules.replaceAll(schedules)
-            Notifier.refresh(app)
-            done()
-            return
-        }
         val step = Boundary.atEdit(app.schedules.all, schedules, LocalDateTime.now(), app.settings.started)
         // Released before the refresh, so a start that failed still gets its notice.
         AirplaneController.hold { release ->
@@ -34,7 +27,7 @@ object ScheduleUpdater {
     // that ran once and is over.
     fun conflict(context: Context, schedule: Schedule): Schedule? {
         if (!schedule.enabled) return null
-        val now = Mock.now()
+        val now = LocalDateTime.now()
         val others = App.from(context).schedules.all.filterNot { ScheduleResolver.hasEnded(it, now) }
         return ScheduleResolver.conflict(ScheduleResolver.dated(schedule, now), others)
     }
@@ -45,7 +38,10 @@ object ScheduleUpdater {
         val app = App.from(context)
         val old = app.schedules.get(edited.id)
         val retimed = old != null && (old.start != edited.start || old.end != edited.end)
-        val schedule = ScheduleResolver.dated(if (retimed) edited.copy(delayed = emptyMap()) else edited, Mock.now())
+        val schedule = ScheduleResolver.dated(
+            if (retimed) edited.copy(delayed = emptyMap()) else edited,
+            LocalDateTime.now(),
+        )
         conflict(app, schedule)?.let {
             done()
             return it
@@ -57,7 +53,7 @@ object ScheduleUpdater {
     }
 
     fun setEnabled(context: Context, schedule: Schedule, enabled: Boolean, done: () -> Unit = {}): Schedule? {
-        val base = if (enabled) ScheduleResolver.unskip(schedule, Mock.now()) else schedule
+        val base = if (enabled) ScheduleResolver.unskip(schedule, LocalDateTime.now()) else schedule
         return save(context, base.copy(enabled = enabled), done)
     }
 
@@ -70,13 +66,13 @@ object ScheduleUpdater {
             setEnabled(app, schedule, false, done)
             return
         }
-        val now = Mock.now()
+        val now = LocalDateTime.now()
         val running = ScheduleResolver.isActive(schedule, now) && AirplaneController.missedSchedule(app, now) == null
         save(app, ScheduleResolver.skip(schedule, now, running), done)
     }
 
     fun postpone(context: Context, schedule: Schedule, minutes: Int, done: () -> Unit = {}) {
-        save(context, ScheduleResolver.postpone(schedule, Mock.now(), minutes), done)
+        save(context, ScheduleResolver.postpone(schedule, LocalDateTime.now(), minutes), done)
     }
 
     // Undoes [skip] and [postpone], which starts the window again if it's still running.
@@ -85,21 +81,14 @@ object ScheduleUpdater {
         return if (schedule.once && !schedule.enabled) {
             setEnabled(context, schedule, true, done)
         } else {
-            save(context, ScheduleResolver.unskip(schedule, Mock.now()), done)
+            save(context, ScheduleResolver.unskip(schedule, LocalDateTime.now()), done)
         }
     }
 
     // Starts the running window that the app missed and reports whether airplane mode came on.
     fun catchUp(context: Context, done: (Boolean) -> Unit) {
         val app = App.from(context)
-        val window = ScheduleResolver.window(app.schedules.all, Mock.now()) ?: return done(false)
-        if (Mock.active) {
-            val ready = ShizukuStatus.current() == ShizukuState.READY
-            if (ready) app.settings.started = Boundary.Started(window.start, Changes(true, window.disableWifi))
-            Notifier.refresh(app)
-            done(ready)
-            return
-        }
+        val window = ScheduleResolver.window(app.schedules.all, LocalDateTime.now()) ?: return done(false)
         AirplaneController.run(app, Boundary.Step.Start(window)) {
             Notifier.refresh(app)
             done(AirplaneController.airplaneOn(app))

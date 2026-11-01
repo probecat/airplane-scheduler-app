@@ -6,7 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
-import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.ZonedDateTime
 
 object AlarmScheduler {
@@ -17,11 +16,6 @@ object AlarmScheduler {
     // Only the next alarm of each kind is set, recomputed in local time on every alarm so clock and
     // time-zone changes stay correct.
     fun scheduleAll(context: Context) {
-        if (Mock.active) {
-            set(context, CHANGE, null)
-            set(context, NOTICE, null)
-            return
-        }
         val schedules = App.from(context).schedules.all
         val now = ZonedDateTime.now()
         set(context, CHANGE, ScheduleResolver.nextChange(schedules, now))

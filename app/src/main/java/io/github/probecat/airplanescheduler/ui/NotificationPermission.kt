@@ -15,16 +15,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import io.github.probecat.airplanescheduler.mock.Mock
-import io.github.probecat.airplanescheduler.system.App
 
 // Asks for notifications, or opens their settings when Android no longer shows its dialog, as after
-// repeated denials or before Android 13. Mock data acts as if they were allowed, since Android's dialog
-// can't be mocked, unless [real] asks for the actual permission. Without [fallback], only Android's dialog asks.
+// repeated denials or before Android 13. Without [fallback], only Android's dialog asks.
 @SuppressLint("InlinedApi") // Asks only on Android 13 and later.
 @Composable
 fun rememberNotificationRequest(
-    real: Boolean = false,
     fallback: Boolean = true,
     onResult: (Boolean) -> Unit,
 ): () -> Unit {
@@ -39,10 +35,7 @@ fun rememberNotificationRequest(
         onResult(granted)
     }
     return {
-        if (Mock.active && !real) {
-            Mock.update(App.from(context)) { it.copy(notifications = true) }
-            onResult(true)
-        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             if (fallback) context.startActivity(notificationSettings(context))
         } else {
             rationaleBefore = rationale()

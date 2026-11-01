@@ -16,7 +16,6 @@ import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,7 +99,7 @@ object AirplaneController {
         }
     }
 
-    // Tries again what an end couldn't undo. Mock data reads airplane mode as off.
+    // Tries again what an end couldn't undo.
     fun undo(context: Context, changes: Changes, report: Notifier.Report, done: () -> Unit) {
         val app = App.from(context)
         val finish = { made: Changes ->
@@ -108,11 +107,7 @@ object AirplaneController {
             Notifier.ended(app, report, Ending(changes - made, airplaneStaysOn = staysOn, wifiBackOn = made.wifi))
             done()
         }
-        if (Mock.active) {
-            finish(if (ShizukuStatus.current() == ShizukuState.READY) changes else Changes.NONE)
-        } else {
-            set(app, false, changes, finish)
-        }
+        set(app, false, changes, finish)
     }
 
     // What the forgotten window left switched is reported, not undone.
@@ -124,10 +119,9 @@ object AirplaneController {
 
     private fun keptWifi(app: App): Boolean = app.settings.wifiKeptUntil?.isAfter(LocalDateTime.now()) == true
 
-    // Any app can read both states; only changing them needs Shizuku. Mock data reads airplane mode as off,
-    // so only the started window decides.
+    // Any app can read both states; only changing them needs Shizuku.
     fun airplaneOn(context: Context): Boolean =
-        !Mock.active && Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+        Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
     fun missedSchedule(app: App, now: LocalDateTime): Schedule? =
         Boundary.missed(app.schedules.all, now, app.settings.started, airplaneOn(app), switching)
@@ -202,11 +196,10 @@ object AirplaneController {
 
     // A freshly started process receives the Shizuku binder asynchronously, so wait up to 7 s. Right
     // after a wait ran out, Shizuku isn't running, so the next steps of the same alarm don't wait again.
-    // A tap waits regardless, since Shizuku sends the binder only once the app becomes active. Mock data
-    // doesn't need it.
+    // A tap waits regardless, since Shizuku sends the binder only once the app becomes active.
     fun awaitBinder(tap: Boolean = false, done: (Boolean) -> Unit) {
         val waitedRecently = !tap && SystemClock.elapsedRealtime() - timedOutAt < 30_000
-        if (Mock.active || Shizuku.pingBinder() || waitedRecently) {
+        if (Shizuku.pingBinder() || waitedRecently) {
             done(Shizuku.pingBinder())
             return
         }

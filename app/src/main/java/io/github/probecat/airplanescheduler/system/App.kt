@@ -8,7 +8,6 @@ import android.os.Looper
 import android.provider.Settings
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
-import io.github.probecat.airplanescheduler.mock.Mock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +33,6 @@ class App : Application() {
         schedules = ScheduleRepository(this)
         settings = SettingsRepository(this)
         Notifier.createChannels(this)
-        Mock.init(this)
         // Restores alarms that a force stop removed.
         AlarmScheduler.scheduleAll(this)
         // Only the state follows Shizuku. A start or end that it missed is not caught up.

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
-import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.system.AirplaneController
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.Notifier
@@ -38,18 +37,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val sui: StateFlow<Boolean> = app.sui
 
-    // Ticks on each minute so the active schedule and its time left follow the clock, and when debug builds
-    // move the mock clock.
-    val now: StateFlow<LocalDateTime> = combine(
-        flow {
-            while (true) {
-                val now = LocalDateTime.now()
-                emit(Unit)
-                delay(60_000L - now.second * 1000L - now.nano / 1_000_000L + 50)
-            }
-        },
-        Mock.config,
-    ) { _, _ -> Mock.now() }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Mock.now())
+    // Ticks on each minute so the active schedule and its time left follow the clock.
+    val now: StateFlow<LocalDateTime> = flow {
+        while (true) {
+            val now = LocalDateTime.now()
+            emit(now)
+            delay(60_000L - now.second * 1000L - now.nano / 1_000_000L + 50)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDateTime.now())
 
     // The running window's schedule when the app missed its start. The other flows only say when to look again.
     val missed: StateFlow<Long?> = combine(
@@ -82,7 +77,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             disableWifi = false,
             enableWifi = false,
         )
-        val start = ScheduleTime.freeSlot(ScheduleTime.minuteOf(Mock.now()), ScheduleTime.HOUR, 30) { start, end ->
+        val start = ScheduleTime.freeSlot(ScheduleTime.minuteOf(LocalDateTime.now()), ScheduleTime.HOUR, 30) {
+                start,
+                end,
+            ->
             conflict(base.copy(start = start, end = end)) == null
         }
         return base.copy(start = start, end = (start + ScheduleTime.HOUR) % ScheduleTime.DAY)

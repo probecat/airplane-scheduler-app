@@ -18,7 +18,6 @@ import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.core.Notice
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.MainActivity
 import io.github.probecat.airplanescheduler.ui.format
@@ -116,7 +115,7 @@ object Notifier {
         val app = App.from(context)
         if (!canPost(app)) return
         val manager = NotificationManagerCompat.from(app)
-        val now = Mock.now()
+        val now = LocalDateTime.now()
         val wanted = wanted(app, now)
         val active = manager.activeNotifications
         val posted = active.filter { it.tag == TAG }
@@ -141,8 +140,7 @@ object Notifier {
                 latest[id] = Latest(Bundle())
             }
         }
-        // Mock data doesn't switch anything, so its problems stay until dismissed.
-        if (Mock.active) return
+
         val airplane = AirplaneController.airplaneOn(app)
         val wifi = AirplaneController.wifiOn(app)
         for (problem in active.filter { it.tag == PROBLEM_TAG }) {
@@ -155,7 +153,7 @@ object Notifier {
     fun dismiss(context: Context, id: Long) {
         val app = App.from(context)
         if (!canPost(app)) return
-        wanted(app, Mock.now())[id]?.let { dismissed(app, id, it.toString()) }
+        wanted(app, LocalDateTime.now())[id]?.let { dismissed(app, id, it.toString()) }
         NotificationManagerCompat.from(app).cancel(TAG, id.toInt())
         latest[id] = Latest(Bundle())
     }
@@ -173,31 +171,6 @@ object Notifier {
                 ?.let { schedule.id to it }
         }.toMap()
     }
-
-    // Notices come back after mock data turns on or off, and reports of the other data go.
-    fun reset(context: Context) {
-        val manager = NotificationManagerCompat.from(context)
-        for (id in postedIds(manager)) latest[id] = Latest(Bundle())
-        manager.cancelAll()
-        refresh(context)
-    }
-
-    // Posts every notice again, even swiped away ones, for the mock screen. False when there are none.
-    fun repost(context: Context): Boolean {
-        val app = App.from(context)
-        if (!canPost(app)) return false
-        dismissed(app).edit { clear() }
-        val manager = NotificationManagerCompat.from(app)
-        for (id in postedIds(manager)) {
-            manager.cancel(TAG, id.toInt())
-            latest[id] = Latest(Bundle())
-        }
-        refresh(app)
-        return wanted(app, Mock.now()).isNotEmpty()
-    }
-
-    private fun postedIds(manager: NotificationManagerCompat): List<Long> =
-        manager.activeNotifications.filter { it.tag == TAG }.map { it.id.toLong() } + latest.keys
 
     fun dismissed(context: Context, id: Long, key: String) {
         dismissed(context).edit { putString(id.toString(), key) }
@@ -238,7 +211,7 @@ object Notifier {
                 ending.wifiBackOn -> R.string.notification_wifi_back_on
                 else -> null
             }
-            val now = Mock.now()
+            val now = LocalDateTime.now()
             Content(
                 Kind.REPORT,
                 SCHEDULES,
@@ -252,7 +225,7 @@ object Notifier {
             )
         }
         if (content.kind != Kind.PROBLEM) NotificationManagerCompat.from(app).cancel(PROBLEM_TAG, report.id.toInt())
-        if (shows(app, content.channel)) post(app, report.id, content, Mock.now())
+        if (shows(app, content.channel)) post(app, report.id, content, LocalDateTime.now())
     }
 
     // The app wasn't running when a window ended, so what it switched stays switched.
@@ -268,7 +241,7 @@ object Notifier {
             actions = listOf(Action(RETRY, app.getString(retry))),
             changes = left,
         )
-        post(app, schedule?.id ?: 0, content, Mock.now())
+        post(app, schedule?.id ?: 0, content, LocalDateTime.now())
     }
 
     // [problem] is what keeps Shizuku from switching, if anything.
@@ -456,10 +429,7 @@ object Notifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    // Mock times are moved back to the real clock that notifications count with.
-    private fun millis(time: LocalDateTime): Long =
-        Mock.real(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private fun millis(time: LocalDateTime): Long = time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    private fun dismissed(context: Context) =
-        context.getSharedPreferences(if (Mock.active) "mock_notifications" else "notifications", Context.MODE_PRIVATE)
+    private fun dismissed(context: Context) = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
 }

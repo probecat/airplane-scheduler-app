@@ -11,11 +11,9 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
-import io.github.probecat.airplanescheduler.mock.Mock
 
 // Before Android 13, notifications need no permission, but can be switched off for the app.
 fun notificationsAllowed(context: Context): Boolean = when {
-    Mock.active -> Mock.config.value.notifications
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     else -> NotificationManagerCompat.from(context).areNotificationsEnabled()
@@ -34,22 +32,14 @@ fun exactAlarmSettings(context: Context): Intent =
 // Before Android 12, App Standby can hold alarms back for hours when the app is rarely opened. Apps exempt
 // from battery optimization are left alone.
 val batteryOptimizationDelays: Boolean
-    get() = if (Mock.active) Mock.config.value.batteryOptimized else Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+    get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
 
-fun batteryOptimizationOff(context: Context): Boolean = when {
-    Mock.active -> !Mock.config.value.batteryOptimized
-    !batteryOptimizationDelays -> true
-    else -> context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
-}
+fun batteryOptimizationOff(context: Context): Boolean = !batteryOptimizationDelays ||
+    context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
 
-// Mock data acts as if it were turned off, since Android's dialog would change the real app.
 @SuppressLint("BatteryLife") // Alarms on time are the app's purpose, and it isn't on Google Play.
 fun stopBatteryOptimization(context: Context) {
-    if (Mock.active) {
-        Mock.update(App.from(context)) { it.copy(batteryOptimized = false) }
-    } else {
-        context.startActivity(
-            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri()),
-        )
-    }
+    context.startActivity(
+        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri()),
+    )
 }

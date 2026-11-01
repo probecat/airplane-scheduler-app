@@ -21,8 +21,6 @@ import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.mock.Mock
-import io.github.probecat.airplanescheduler.mock.activeMock
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -172,9 +170,8 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 }
 
 fun format(context: Context): Format = Format(
-    (if (Mock.active) Mock.config.value.is24Hour else null) ?: DateFormat.is24HourFormat(context),
-    (if (Mock.active) Mock.config.value.locale?.let(Locale::forLanguageTag) else null)
-        ?: context.resources.configuration.locales[0],
+    DateFormat.is24HourFormat(context),
+    context.resources.configuration.locales[0],
     ResourceStrings(context.resources),
 )
 
@@ -182,7 +179,7 @@ fun format(context: Context): Format = Format(
 fun rememberFormat(): Format {
     // Reading the configuration recomposes when the locale changes.
     val locale = LocalConfiguration.current.locales[0]
-    val is24Hour = activeMock()?.is24Hour ?: DateFormat.is24HourFormat(LocalContext.current)
+    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     val resources = LocalResources.current
     return remember(is24Hour, locale, resources) { Format(is24Hour, locale, ResourceStrings(resources)) }
 }

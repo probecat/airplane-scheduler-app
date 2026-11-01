@@ -87,7 +87,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.mock.activeMock
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.batteryOptimizationOff
 import io.github.probecat.airplanescheduler.system.exactAlarmSettings
@@ -114,13 +113,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SchedulesScreen(
-    viewModel: AppViewModel,
-    onSettings: () -> Unit,
-    onHelp: () -> Unit,
-    // Debug builds only.
-    onMock: (() -> Unit)? = null,
-) {
+fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () -> Unit) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
@@ -139,8 +132,7 @@ fun SchedulesScreen(
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
-    val mock = activeMock()
-    var batteryOff by remember(mock) { mutableStateOf(batteryOptimizationOff(context)) }
+    var batteryOff by remember { mutableStateOf(batteryOptimizationOff(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         exactAlarms = exactAlarmsAllowed(context)
         batteryOff = batteryOptimizationOff(context)
@@ -211,7 +203,7 @@ fun SchedulesScreen(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
-                actions = { OverflowMenu(onSettings, onHelp, onMock) },
+                actions = { OverflowMenu(onSettings, onHelp) },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -408,17 +400,16 @@ fun SchedulesScreen(
 }
 
 @Composable
-private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit, onMock: (() -> Unit)?) {
+private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            listOfNotNull(
+            listOf(
                 Triple(stringResource(R.string.settings), R.drawable.ic_settings, onSettings),
                 Triple(stringResource(R.string.help), R.drawable.ic_help, onHelp),
-                onMock?.let { Triple("UI states", R.drawable.ic_code, it) },
             ).forEach { (label, icon, action) ->
                 DropdownMenuItem(
                     text = { Text(label) },

@@ -24,12 +24,6 @@ class ScheduleRepository(private val context: Context) {
 
     fun nextId(): Long = highestId + 1
 
-    fun useStore(mock: Boolean) {
-        prefs = context.getSharedPreferences(if (mock) "mock_$PREFS" else PREFS, Context.MODE_PRIVATE)
-        state.value = decode(prefs.getString(KEY, null))
-        highestId = maxOf(highestId, all.maxOfOrNull { it.id } ?: 0)
-    }
-
     fun replaceAll(schedules: List<Schedule>) {
         highestId = maxOf(highestId, schedules.maxOfOrNull { it.id } ?: 0)
         state.value = schedules

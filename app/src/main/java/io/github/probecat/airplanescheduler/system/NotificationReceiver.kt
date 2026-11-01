@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
-import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 // Notification actions. Each acts only on the window its notification was about, so a tap on one that
 // is out of date just brings it up to date.
@@ -32,7 +32,7 @@ class NotificationReceiver : BroadcastReceiver() {
         val schedule = app.schedules.get(id)
         val date = intent.getStringExtra(Notifier.DATE)?.let(LocalDate::parse)
         if (schedule == null || date == null) return done()
-        val now = Mock.now()
+        val now = LocalDateTime.now()
         AirplaneController.awaitBinder(tap = true) {
             app.refreshShizuku()
             when (intent.action) {

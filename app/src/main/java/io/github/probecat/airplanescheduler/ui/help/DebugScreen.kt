@@ -25,7 +25,6 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
-import io.github.probecat.airplanescheduler.mock.Mock
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
@@ -82,13 +81,12 @@ private fun details(
     now: LocalDateTime,
 ): String {
     val app = App.from(context)
-    val zoned = Mock.zonedNow()
+    val zoned = ZonedDateTime.now()
     val active = ScheduleResolver.activeSchedule(schedules, now)
     val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
     val started = app.settings.started
     return buildString {
         appendLine("Version: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
-        if (Mock.active) appendLine("Mock data: on")
         appendLine("Package: ${context.packageName}")
         appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         appendLine("Time zone: ${zoned.zone}")

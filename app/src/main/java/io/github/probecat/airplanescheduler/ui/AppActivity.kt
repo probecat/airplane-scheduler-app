@@ -12,8 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.probecat.airplanescheduler.mock.MockDisplay
-import io.github.probecat.airplanescheduler.mock.mockCompositionContext
 import io.github.probecat.airplanescheduler.ui.theme.AppTheme
 import io.github.probecat.airplanescheduler.ui.theme.isDark
 
@@ -21,13 +19,11 @@ abstract class AppActivity : ComponentActivity() {
     protected val viewModel: AppViewModel by viewModels()
 
     protected fun setScreen(content: @Composable () -> Unit) {
-        setContent(mockCompositionContext()) {
+        setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
             SystemBars(isDark(settings.theme))
             LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refresh() }
-            AppTheme(settings.theme, settings.dynamicColor) {
-                MockDisplay(content)
-            }
+            AppTheme(settings.theme, settings.dynamicColor, content)
         }
     }
 

@@ -42,12 +42,6 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    fun useStore(mock: Boolean) {
-        prefs = context.getSharedPreferences(if (mock) "mock_$PREFS" else PREFS, Context.MODE_PRIVATE)
-        state.value = read()
-        startedState.value = readStarted()
-    }
-
     var started: Boundary.Started?
         get() = startedState.value
         set(value) {

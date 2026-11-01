@@ -3,14 +3,11 @@ package io.github.probecat.airplanescheduler.system
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import io.github.probecat.airplanescheduler.mock.Mock
 import java.time.LocalDateTime
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         AlarmScheduler.scheduleAll(context)
-        // An alarm set before mock data came on mustn't act on it.
-        if (Mock.active) return
         val app = App.from(context)
         val result = goAsync()
         // Notices say whether Shizuku is ready, which a fresh process learns only after a moment.
