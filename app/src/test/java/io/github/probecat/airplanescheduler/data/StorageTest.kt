@@ -38,16 +38,27 @@ class StorageTest {
             endedEarly = setOf(date),
             delayed = mapOf(date.plusDays(1) to 30),
         )
-        assertEquals(listOf(schedule), ScheduleRepository.decode(stored))
-        assertEquals(listOf(schedule), ScheduleRepository.decode(ScheduleRepository.encode(listOf(schedule))))
+        assertEquals(ScheduleRepository.Read(listOf(schedule), lost = false), ScheduleRepository.read(stored))
+        assertEquals(listOf(schedule), ScheduleRepository.read(ScheduleRepository.encode(listOf(schedule))).schedules)
     }
 
     @Test
     fun `schedules from older versions load with defaults for newer fields`() {
         assertEquals(
-            listOf(Schedule(id = 3, start = 60, end = 120)),
-            ScheduleRepository.decode("""[{"id":3,"start":60,"end":120,"future":1}]"""),
+            ScheduleRepository.Read(listOf(Schedule(id = 3, start = 60, end = 120)), lost = false),
+            ScheduleRepository.read("""[{"id":3,"start":60,"end":120,"future":1}]"""),
         )
+    }
+
+    @Test
+    fun `a schedule that can't be read doesn't take the others with it`() {
+        // The result marks the loss, so the app keeps a copy of the saved text before anything overwrites it.
+        val read = ScheduleRepository.read(
+            """[{"id":1,"start":60,"end":120},{"id":2,"start":60,"end":120,"days":["FUNDAY"]}]""",
+        )
+        assertEquals(ScheduleRepository.Read(listOf(Schedule(id = 1, start = 60, end = 120)), lost = true), read)
+        assertEquals(ScheduleRepository.Read(emptyList(), lost = true), ScheduleRepository.read("not json"))
+        assertEquals(ScheduleRepository.Read(emptyList(), lost = false), ScheduleRepository.read("[]"))
     }
 
     @Test
