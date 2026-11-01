@@ -23,8 +23,9 @@ object AlarmScheduler {
         set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, ScheduleResolver.AHEAD_MINUTES))
     }
 
-    // What this process last set for each kind. Only a force stop or update drops alarms, and both end the
-    // process, so the same alarm isn't set again, as when an alarm starts the process and then reschedules.
+    // The last alarm that this process set for each kind. Only a force stop or an update removes alarms, and both end
+    // the process. So the process does not set the same alarm again, for example when an alarm starts the process and
+    // the process then reschedules.
     private val last = ConcurrentHashMap<String, Pair<Long?, Boolean>>()
 
     // Setting the same intent again replaces its alarm; no time cancels it. Without exact alarms, Android may

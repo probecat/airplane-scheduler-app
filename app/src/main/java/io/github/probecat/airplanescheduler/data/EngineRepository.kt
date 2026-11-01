@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
-// The engine's state as one JSON value, so it's never saved half changed.
+// The engine state is one JSON value, so a save never writes half of a change.
 class EngineRepository(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val flow = MutableStateFlow(read(prefs))
@@ -73,7 +73,6 @@ class EngineRepository(context: Context) {
             Engine.State()
         }
 
-        // Older versions kept each part under a key of its own, and before 2.0 a window kept only its changes.
         fun legacy(get: (String) -> Any?): Engine.State {
             val changes = get("startedChanges") as? Int ?: 0
             return Engine.State(

@@ -4,8 +4,6 @@ import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-// A schedule's notification, for the part of its [ScheduleStatus] that is near. [date] is the window's
-// start date.
 sealed interface Notice {
     val date: LocalDate
 

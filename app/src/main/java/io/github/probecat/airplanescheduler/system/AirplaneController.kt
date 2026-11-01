@@ -14,8 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-// Feeds [Engine] its events with the device state, saves what it decides, and carries out its effects.
-// Everything runs on the main thread, so events take turns between switches.
+// All work runs on the main thread, so events take turns between switches.
 object AirplaneController {
     suspend fun onAlarm(app: App) {
         val now = LocalDateTime.now()
@@ -44,7 +43,6 @@ object AirplaneController {
         }
     }
 
-    // Tries again what an end couldn't undo.
     suspend fun undo(app: App, changes: Changes, report: Notifier.Report) {
         val made = holding { app.switcher.set(false, changes) }
         Notifier.ended(app, report, Ending.retried(changes, made, airplaneOn(app)))
@@ -52,7 +50,7 @@ object AirplaneController {
 
     fun device(context: Context) = Engine.Device(airplaneOn(context), wifiOn(context))
 
-    // Any app can read both states; only changing them needs privileges.
+    // Any app can read both states. Only a change needs privileges.
     fun airplaneOn(context: Context): Boolean =
         Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
 
@@ -67,7 +65,7 @@ object AirplaneController {
 
     val switching: Boolean get() = inFlight.value > 0
 
-    // Counts as switching while [block] runs, so states on the way to a switch don't read as a missed start.
+    // Counts as switching while [block] runs, so states during a switch do not look like a missed start.
     suspend fun <T> holding(block: suspend () -> T): T {
         inFlight.update { it + 1 }
         try {

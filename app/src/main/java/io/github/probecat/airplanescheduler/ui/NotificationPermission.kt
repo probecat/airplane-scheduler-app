@@ -16,8 +16,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
-// Asks for notifications, or opens their settings when Android no longer shows its dialog, as after
-// repeated denials or before Android 13. Without [fallback], only Android's dialog asks.
+// Asks for permission to post notifications. If Android no longer shows its dialog, it opens the notification settings
+// instead, for example after repeated denials or before Android 13. Without [fallback], only the Android dialog asks.
 @SuppressLint("InlinedApi") // Asks only on Android 13 and later.
 @Composable
 fun rememberNotificationRequest(

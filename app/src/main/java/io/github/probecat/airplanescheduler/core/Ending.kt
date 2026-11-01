@@ -39,7 +39,7 @@ data class Ending(
             wifiBackOn = made.wifi,
         )
 
-        // A retry of what an end couldn't undo. [airplaneOn] is read just after it.
+        // [airplaneOn] is the state read right after the retry.
         fun retried(changes: Changes, made: Changes, airplaneOn: Boolean) =
             Ending(changes - made, airplaneStaysOn = airplaneOn && !made.airplane, wifiBackOn = made.wifi)
     }

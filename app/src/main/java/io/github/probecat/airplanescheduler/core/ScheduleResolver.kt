@@ -106,7 +106,7 @@ object ScheduleResolver {
         return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
     }
 
-    // Where [postpone] would start the window, or null when it would skip it or [minutes] turns postponing off.
+    // Null if a postpone skips the window, or if [minutes] turns postponing off.
     fun postponedTo(schedule: Schedule, now: LocalDateTime, minutes: Int): LocalDateTime? {
         if (minutes <= 0) return null
         val date = nextDate(schedule, now) ?: return null

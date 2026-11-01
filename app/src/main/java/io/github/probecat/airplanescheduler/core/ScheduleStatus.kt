@@ -4,13 +4,11 @@ import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-// Where a schedule's window stands. Its notice, its card's action and which taps still apply all follow
-// from it, so a tap offered for one state doesn't act on the next. [date] is the window's start date.
+// A tap offered for one status must not act on the next status. [date] is the start date of the window.
 sealed interface ScheduleStatus {
     val date: LocalDate
 
-    // [soon] once its start is close enough to skip or postpone it and show its notice. [after] is the
-    // schedule that is running until then, so airplane mode just stays on.
+    // [after] is the schedule that runs until the start, so airplane mode stays on.
     data class Upcoming(
         override val date: LocalDate,
         val start: LocalDateTime,
@@ -19,11 +17,9 @@ sealed interface ScheduleStatus {
         val after: Schedule? = null,
     ) : ScheduleStatus
 
-    // Postponed past its planned start, as when paused, so it can be resumed.
     data class Paused(override val date: LocalDate, val until: LocalDateTime) : ScheduleStatus
 
-    // [missed] when airplane mode didn't turn on at the start. [next] is the schedule that starts at its end,
-    // so airplane mode stays on.
+    // [next] starts at the end of this window, so airplane mode stays on.
     data class Running(
         override val date: LocalDate,
         val end: LocalDateTime,
@@ -31,8 +27,7 @@ sealed interface ScheduleStatus {
         val next: Schedule? = null,
     ) : ScheduleStatus
 
-    // Skipped, or ended early once it was running, until the window would have ended. [underway] once its
-    // planned start has passed. [soon] as for [Upcoming].
+    // [underway] is true after the planned start passed.
     data class Skipped(
         override val date: LocalDate,
         val until: LocalDateTime,
@@ -41,8 +36,6 @@ sealed interface ScheduleStatus {
         val soon: Boolean,
     ) : ScheduleStatus
 
-    // Skip also ends a running or paused window. Postponing a running window pauses it, and Undo takes
-    // back a skip or postpone.
     enum class Action { SKIP, POSTPONE, UNDO, TURN_ON }
 
     val actions: Set<Action>
@@ -60,8 +53,6 @@ sealed interface ScheduleStatus {
     fun allows(action: Action, date: LocalDate): Boolean = date == this.date && action in actions
 
     companion object {
-        // Null when the schedule is off or has no window coming. [missed] says whether the running window's
-        // start was missed. [schedules] are all of them, for the ones that touch it.
         fun of(schedule: Schedule, schedules: List<Schedule>, now: LocalDateTime, missed: Boolean): ScheduleStatus? {
             if (!schedule.enabled) return null
             val ahead = now.plusMinutes(ScheduleResolver.AHEAD_MINUTES)

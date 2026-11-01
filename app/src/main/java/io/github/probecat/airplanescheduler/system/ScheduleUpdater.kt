@@ -8,8 +8,7 @@ import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
 
 object ScheduleUpdater {
-    // Saves the schedules and starts or ends what the edit changed. The hold is released before the
-    // refresh, so a start that failed still gets its notice.
+    // The hold ends before the refresh, so a failed start still gets its notice.
     suspend fun update(app: App, schedules: List<Schedule>) {
         AirplaneController.holding {
             val event = Engine.Event.Edit(app.schedules.all, schedules, LocalDateTime.now())
@@ -20,7 +19,6 @@ object ScheduleUpdater {
         Notifier.refresh(app)
     }
 
-    // Returns the overlapping schedule instead of saving.
     suspend fun commit(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
         is ScheduleEdits.Result.Overlaps -> result.schedule
         is ScheduleEdits.Result.Saved -> {
@@ -29,7 +27,7 @@ object ScheduleUpdater {
         }
     }
 
-    // Saves in the background, which outlasts the screen, and returns the overlapping schedule instead.
+    // Runs in the app scope, so it continues after the screen closes.
     fun launch(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
         is ScheduleEdits.Result.Overlaps -> result.schedule
         is ScheduleEdits.Result.Saved -> {

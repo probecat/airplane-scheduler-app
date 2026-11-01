@@ -29,7 +29,7 @@ class App : Application() {
     lateinit var switcher: Switcher
         private set
 
-    // Outlives screens, so what a tap started finishes after it closes.
+    // Lives longer than the screens, so work that a tap started finishes after the screen closes.
     private val scope = MainScope()
 
     private val shizukuState = MutableStateFlow(ShizukuStatus.current())
@@ -69,7 +69,6 @@ class App : Application() {
 
     fun launch(block: suspend CoroutineScope.() -> Unit): Job = scope.launch(block = block)
 
-    // Keeps a broadcast alive until [block] is done.
     fun finishAfter(receiver: BroadcastReceiver, block: suspend CoroutineScope.() -> Unit) {
         val result = receiver.goAsync()
         launch {

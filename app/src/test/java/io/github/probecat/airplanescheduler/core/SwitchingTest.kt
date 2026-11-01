@@ -8,15 +8,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// What the app switches at a window's start and end, and what it reports. It undoes only what it changed
-// itself, and never catches up a start or end it missed on its own.
+// What the app switches at the start and the end of a window, and what it reports. The app undoes only what it changed
+// itself. It never catches up a missed start or end by itself.
 class SwitchingTest {
     private val both = Changes(airplane = true, wifi = true)
     private val airplaneOnly = Changes(airplane = true, wifi = false)
 
     @Test
     fun `a window turns airplane mode on and Wi-Fi off, then both back`() {
-        // The plain case: the end reports what it turned back, and the report is clean so it clears itself.
+        // The plain case: the end reports what it turned back. The report is clean, so it clears itself.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23))
         assertTrue(phone.airplaneOn)
@@ -40,7 +40,8 @@ class SwitchingTest {
 
     @Test
     fun `Wi-Fi that was already off at the start stays off at the end`() {
-        // Even with "turn Wi-Fi back on" set, the app didn't turn it off, so it doesn't turn it on, and says why.
+        // Even with "turn Wi-Fi back on" set, the app did not turn Wi-Fi off, so it does not turn it on. The report
+        // says why.
         val phone = Phone(night, now = friday(22), wifiOn = false)
         phone.passTo(friday(23))
         phone.passTo(saturday(7))
@@ -50,7 +51,7 @@ class SwitchingTest {
 
     @Test
     fun `airplane mode that was already on at the start stays on at the end`() {
-        // It isn't a missed start either, so the card doesn't ask to turn it on.
+        // It is also not a missed start, so the card does not ask to turn it on.
         val phone = Phone(night, now = friday(22), airplaneOn = true)
         phone.passTo(friday(23, 5))
         assertNull(phone.missedStart())
@@ -71,7 +72,8 @@ class SwitchingTest {
 
     @Test
     fun `airplane mode turned off during the window is reported, not a missed start`() {
-        // The user's choice wins: the card doesn't nag, and the end report says it was turned off.
+        // The choice of the user wins. The card does not ask again, and the end report says that the user turned it
+        // off.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23))
         phone.airplaneOn = false
@@ -83,8 +85,8 @@ class SwitchingTest {
 
     @Test
     fun `Wi-Fi switches while airplane mode is off`() {
-        // Android keeps Wi-Fi's state across airplane mode, so Wi-Fi goes off before airplane mode turns on,
-        // and comes back on only after airplane mode turns off.
+        // Android keeps the Wi-Fi state across airplane mode. So Wi-Fi goes off before airplane mode turns on, and
+        // comes back on only after airplane mode turns off.
         assertEquals(
             listOf(ConnectivityPlan.WIFI, ConnectivityPlan.AIRPLANE),
             ConnectivityPlan.order(enabled = true, both),
@@ -97,7 +99,7 @@ class SwitchingTest {
 
     @Test
     fun `a start Shizuku couldn't make is a missed start`() {
-        // The card offers Turn on, and the end reports the missed start without switching anything.
+        // The card offers Turn on, and the end reports the missed start and switches nothing.
         val phone = Phone(night, now = friday(22))
         phone.shizukuWorks = false
         phone.passTo(friday(23))
@@ -111,7 +113,7 @@ class SwitchingTest {
 
     @Test
     fun `a start that is still switching, or whose alarm is due, is not a missed start`() {
-        // Shizuku can take seconds and alarms can come late, and the card mustn't flash "missed" meanwhile.
+        // Shizuku can take seconds and alarms can come late. In that time, the card must not flash "missed".
         val late = Phone(night, now = friday(23))
         assertNull(late.missedStart())
         late.now = friday(23, 1)
@@ -143,7 +145,7 @@ class SwitchingTest {
 
     @Test
     fun `an edit doesn't catch up a missed start`() {
-        // Only Turn on does, so saving an unrelated change can't switch airplane mode on by surprise.
+        // Only Turn on does, so a save of an unrelated change cannot turn airplane mode on unexpectedly.
         val phone = Phone(night, now = friday(22))
         phone.shizukuWorks = false
         phone.passTo(friday(23, 30))
@@ -154,7 +156,7 @@ class SwitchingTest {
 
     @Test
     fun `an end Shizuku couldn't make is reported with what failed, and Retry fixes it`() {
-        // Reported even when ending early caused it, since airplane mode is still on.
+        // The app reports it even when an early end caused it, because airplane mode is still on.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 30))
         phone.shizukuWorks = false
@@ -179,7 +181,7 @@ class SwitchingTest {
 
     @Test
     fun `a window whose end passed while the phone was off is forgotten, not undone`() {
-        // Turning airplane mode off hours late would surprise, so the app only reports what is still switched.
+        // Airplane mode that turns off hours late surprises the user, so the app only reports what is still switched.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23))
         phone.rebootAt(saturday(12))
@@ -212,7 +214,7 @@ class SwitchingTest {
 
     @Test
     fun `a window whose end alarm never came is forgotten at the next alarm`() {
-        // As when Android held alarms back: a later alarm for another schedule doesn't undo it either.
+        // As when Android holds alarms back: a later alarm for another schedule does not undo it either.
         val lunch = Schedule(id = 2, start = at(12), end = at(13))
         val phone = Phone(night, lunch, now = friday(22))
         phone.passTo(friday(23))
@@ -234,8 +236,8 @@ class SwitchingTest {
 
     @Test
     fun `touching windows run as one`() {
-        // Nothing switches where they meet. Wi-Fi follows the first window's start option and the last
-        // window's end option.
+        // Nothing switches where the windows meet. Wi-Fi follows the start option of the first window and the end
+        // option of the last window.
         val morning =
             Schedule(id = 2, name = "Morning", start = at(7), end = at(9), disableWifi = false, enableWifi = false)
         val phone = Phone(night, morning, now = friday(22))
@@ -316,7 +318,7 @@ class SwitchingTest {
 
     @Test
     fun `ending a window while its start is still switching turns back what the start made`() {
-        // Otherwise the late answer from Shizuku would leave airplane mode on after the window ended.
+        // Without this, the late answer from Shizuku leaves airplane mode on after the window ended.
         val phone = Phone(night, now = friday(22))
         phone.holdSwitches = true
         phone.passTo(friday(23))
@@ -353,7 +355,7 @@ class SwitchingTest {
 
     @Test
     fun `Wi-Fi turned on during a window stays on when it starts again before its end`() {
-        // Someone wanted Wi-Fi, so resuming a pause or undoing an early end doesn't take it away again.
+        // Someone wanted Wi-Fi, so a resumed pause or an undone early end does not turn it off again.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 30))
         phone.wifiOn = true

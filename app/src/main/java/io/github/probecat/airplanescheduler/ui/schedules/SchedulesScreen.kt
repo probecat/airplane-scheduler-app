@@ -359,10 +359,10 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     choosing?.let { id ->
         val schedule = schedules.find { it.id == id }
         val status = schedule?.let { ScheduleStatus.of(it, schedules, now, missed = it.id == missed) }
-        // The status the dialog opened for. Its choices are for that one only.
         val offered = remember(id) { status }
         val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
-        // Gone, changed, as by its notification, or with nothing left to postpone since the dialog opened.
+        // The schedule is gone or changed, for example by its notification, or nothing is left to postpone since the
+        // dialog opened.
         if (schedule == null || offered == null || status != offered || to == null) {
             SideEffect { choosing = null }
             return@let
@@ -604,7 +604,6 @@ private fun Missed(shizuku: ShizukuState, sui: Boolean) {
         ShizukuState.PERMISSION_NEEDED ->
             if (sui) R.string.card_missed_permission_sui else R.string.card_missed_permission
     }
-    // Ready to turn on, but the start was still missed.
     val icon = if (shizuku == ShizukuState.READY) R.drawable.ic_error else shizuku.icon
     val label = stringResource(text)
     Status(
@@ -661,7 +660,7 @@ private enum class CardAction(@StringRes val label: Int, val undoes: Boolean = f
     TURN_ON(R.string.action_turn_on),
 }
 
-// A missed start was never running, so it's skipped rather than ended. Undoing a skip whose window is
+// The app never ran a missed start, so it skips the window and does not end it. An undo of a skip while the window is
 // under way turns airplane mode on now.
 private fun cardAction(status: ScheduleStatus?, canCatchUp: Boolean): CardAction? = when (status) {
     is ScheduleStatus.Running -> when {

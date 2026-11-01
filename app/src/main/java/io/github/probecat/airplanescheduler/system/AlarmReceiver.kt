@@ -10,7 +10,7 @@ class AlarmReceiver : BroadcastReceiver() {
         AlarmScheduler.scheduleAll(context)
         val app = App.from(context)
         app.finishAfter(this) {
-            // Notices say whether Shizuku is ready, which a fresh process learns only after a moment.
+            // Notices tell whether Shizuku is ready. A new process learns this only after a short time.
             app.switcher.connect()
             app.refreshShizuku()
             when (intent.action) {

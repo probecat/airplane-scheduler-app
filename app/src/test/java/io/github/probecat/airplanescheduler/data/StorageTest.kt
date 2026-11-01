@@ -9,8 +9,8 @@ import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-// What the app saved stays readable after an update, since losing someone's schedules or what a running
-// window switched is worse than any crash.
+// What the app saved must stay readable after an update. Lost schedules, or a lost record of what a running window
+// switched, are worse than any crash.
 class StorageTest {
     private val window = LocalDateTime.of(2026, 10, 9, 23, 0)
     private val both = Changes(airplane = true, wifi = true)
@@ -18,7 +18,8 @@ class StorageTest {
 
     @Test
     fun `saved schedules still load`() {
-        // Written as the app stores them. Changing a field's name or format breaks this, and existing users.
+        // Written in the format that the app stores. A change to the name or format of a field breaks this test, and
+        // existing users.
         val stored = """[{"id":1,"name":"Night","start":1380,"end":420,"days":["MONDAY"],"date":"2026-10-09",""" +
             """"enabled":false,"disableWifi":false,"enableWifi":false,"skipped":["2026-10-09"],""" +
             """"endedEarly":["2026-10-09"],"delayed":{"2026-10-10":30}}]"""
@@ -60,7 +61,7 @@ class StorageTest {
 
     @Test
     fun `the running window's state moves from the older separate keys`() {
-        // Before 2.0 a window kept only what it changed, so it counts as having wanted just that.
+        // Before 2.0, a window kept only what it changed, so the migration treats it as if it wanted only that.
         val keys = mapOf(
             "startedWindow" to "2026-10-09T23:00",
             "startedChanges" to 1,

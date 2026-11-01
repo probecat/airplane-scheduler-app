@@ -6,48 +6,43 @@ import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
 
-// The app's one state machine. Each event gives the next state and what to do about it. A switch
-// finishes later with [Event.Switched], and other events may come first, as when a window is ended
+// A switch finishes later with [Event.Switched]. Other events can come first, for example when the user ends a window
 // while its start is still switching.
 object Engine {
-    // The window the app started, and until when Wi-Fi turned on against a start stays on.
+    // [started] is the window that the app started. [wifiKeptUntil] is the time until which Wi-Fi stays on after the
+    // user turned it on against a start.
     data class State(val started: Started? = null, val wifiKeptUntil: LocalDateTime? = null)
 
-    // Read just before each event.
     data class Device(val airplaneOn: Boolean, val wifiOn: Boolean)
 
     sealed interface Event {
-        // A start or end at its time. Its end is reported even when it went as planned.
+        // A start or an end at its planned time. The engine reports the end even when it went as planned.
         data class Alarm(val schedules: List<Schedule>, val now: LocalDateTime) : Event
 
         data class Edit(val old: List<Schedule>, val new: List<Schedule>, val now: LocalDateTime) : Event
 
-        // Starts the running window by hand after the app missed its start.
         data class CatchUp(val schedules: List<Schedule>, val now: LocalDateTime) : Event
 
-        // After a boot or clock change, a window whose end passed meanwhile is forgotten.
+        // After a boot or a clock change, the engine forgets a window whose end passed in the meantime.
         data class Reset(val schedules: List<Schedule>, val now: LocalDateTime) : Event
 
         data class Switched(val switch: Effect.Switch, val made: Changes) : Event
     }
 
     sealed interface Effect {
-        // Answered with [Event.Switched] and what worked.
         data class Switch(val enabled: Boolean, val changes: Changes, val then: Then) : Effect
 
         data class Report(val schedule: Schedule, val ending: Ending) : Effect
 
-        // What a forgotten window left switched, which is reported rather than undone.
         data class MissedEnd(val schedule: Schedule?, val left: Changes) : Effect
     }
 
-    // What a switch finishes.
     sealed interface Then {
         data object Start : Then
 
         data class End(val started: Started, val schedule: Schedule, val before: Device, val natural: Boolean) : Then
 
-        // Turns back what a start made after its window ended.
+        // Undoes what a start switched when the switch finished after its window ended.
         data object Undo : Then
     }
 

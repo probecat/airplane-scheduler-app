@@ -39,7 +39,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val sui: StateFlow<Boolean> = app.sui
 
-    // Ticks on each minute so the active schedule and its time left follow the clock.
     val now: StateFlow<LocalDateTime> = flow {
         while (true) {
             val now = LocalDateTime.now()
@@ -48,7 +47,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDateTime.now())
 
-    // The running window's schedule when the app missed its start. The other flows only say when to look again.
+    // The schedule of the running window when the app missed its start. The other flows only tell when to look again.
     val missed: StateFlow<Long?> = combine(
         app.schedules.schedules,
         now,
@@ -96,8 +95,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
         ScheduleUpdater.launch(app, ScheduleEdits.setEnabled(app.schedules.all, schedule, enabled, LocalDateTime.now()))
 
-    // These taps act only while the schedule's status is still the one they were [offered] for, so a card
-    // or dialog shown before the same tap on its notification does nothing, and says so with null or false.
+    // These taps act only while the schedule status is still the one they were [offered] for. So a card or dialog shown
+    // before the same tap on its notification does nothing, and returns null or false to tell this.
 
     fun skip(id: Long, offered: ScheduleStatus): Boolean {
         val schedule = offered(id, offered) ?: return false
@@ -117,7 +116,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return ScheduleEdits.unskip(app.schedules.all, schedule, LocalDateTime.now()).also(::commit)
     }
 
-    // [done] says whether airplane mode came on.
     fun catchUp(id: Long, offered: ScheduleStatus, done: (Boolean) -> Unit): Boolean {
         offered(id, offered) ?: return false
         app.launch { done(ScheduleUpdater.catchUp(app)) }

@@ -40,9 +40,10 @@ object Boundary {
         return Step.End(ConnectivityPlan.end(started.changes, ended.schedule.enableWifi), ended.schedule)
     }
 
-    // The running window's schedule when airplane mode is off and the app didn't turn it on, such as when
-    // Shizuku wasn't ready at the start. Not when it was already on at the start and someone turned it off
-    // since, nor while the start is still switching or before its alarm had a minute to.
+    // Returns the schedule of the running window when airplane mode is off and the app did not turn it on, for example
+    // because Shizuku was not ready at the start. Returns null when airplane mode was already on at the start and the
+    // user turned it off later. Also null while the start is still switching, and in the first minute before the start
+    // alarm runs.
     fun missed(
         schedules: List<Schedule>,
         now: LocalDateTime,
@@ -57,9 +58,9 @@ object Boundary {
         return ScheduleResolver.activeSchedule(schedules, now)
     }
 
-    // What a start saves before it switches, and what it switches. A start caught up by hand keeps what the
-    // missed one changed and found, so the end still undoes and reports it. [wifiKept] while Wi-Fi turned on
-    // against an earlier start stays on.
+    // Returns what a start saves before it switches, and what it switches. When the user turns on a missed start, the
+    // record keeps what the missed start changed and found, so the end still undoes and reports it. [wifiKept] means
+    // that the user turned Wi-Fi on against an earlier start, so this start leaves Wi-Fi on.
     fun begin(
         window: ScheduleResolver.Window,
         started: Started?,
@@ -74,7 +75,7 @@ object Boundary {
         return record to wanted
     }
 
-    // What a forgotten window left switched, which is reported rather than undone.
+    // What a forgotten window left switched. The app reports it and does not undo it.
     fun leftSwitched(started: Started, enableWifi: Boolean, airplaneOn: Boolean, wifiOn: Boolean): Changes {
         val undo = ConnectivityPlan.end(started.changes, enableWifi)
         return Changes(undo.airplane && airplaneOn, undo.wifi && !wifiOn)

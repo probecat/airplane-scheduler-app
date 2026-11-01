@@ -8,11 +8,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// What Skip, Postpone, Pause, Undo and Turn on do, and when the card and notification offer them.
+// What Skip, Postpone, Pause, Undo, and Turn on do, and when the card and the notification offer them.
 class ActionsTest {
     @Test
     fun `a window can be skipped or postponed only in the hour before it starts`() {
-        // That hour is also when its notification shows.
+        // Its notification also shows at that hour.
         val phone = Phone(night, now = friday(21, 59))
         assertEquals(emptySet<Action>(), phone.status()!!.actions)
         assertNull(Notice.of(phone.status()))
@@ -33,7 +33,7 @@ class ActionsTest {
 
     @Test
     fun `a skip can be undone until the window would have ended`() {
-        // Undo after the planned start turns airplane mode on right away.
+        // Undo after the planned start turns airplane mode on immediately.
         val phone = Phone(night, now = friday(22, 30))
         phone.skip()
         phone.passTo(friday(23, 30))
@@ -48,7 +48,7 @@ class ActionsTest {
 
     @Test
     fun `postponing moves only the start, and only once`() {
-        // The window still ends on time. After one postpone, the card and notification offer only Undo and Skip.
+        // The window still ends on time. After one postpone, the card and the notification offer only Undo and Skip.
         val phone = Phone(night, now = friday(22, 30))
         assertTrue(phone.postpone(minutes = 30))
         assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
@@ -63,7 +63,7 @@ class ActionsTest {
 
     @Test
     fun `Postpone isn't offered when it would leave nothing of the window`() {
-        // Postponing a short window past its end would only skip it, so the card skips without asking.
+        // A postpone past the end of a short window only skips it, so the card skips without a question.
         val short = night.copy(end = at(23, 20))
         assertNull(ScheduleResolver.postponedTo(short, friday(22, 30), 30))
         assertEquals(setOf(fridayDate), ScheduleResolver.postpone(short, friday(22, 30), 30).skipped)
@@ -86,8 +86,8 @@ class ActionsTest {
 
     @Test
     fun `a running window ends early, but one whose start was missed is skipped`() {
-        // The app never started a missed window, so there's nothing to end or pause: the card offers Skip and
-        // Turn on, and Undo later doesn't count it as ended early.
+        // The app never started a missed window, so there is nothing to end or pause. The card offers Skip and Turn on,
+        // and a later Undo does not count the window as ended early.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 30))
         assertEquals(setOf(Action.SKIP, Action.POSTPONE), phone.status()!!.actions)
@@ -104,7 +104,7 @@ class ActionsTest {
 
     @Test
     fun `skipping a schedule that runs once switches it off`() {
-        // Its only window is gone, so it stays off rather than waiting for a date that won't come.
+        // Its only window is gone, so it stays off and does not wait for a date that will not come.
         val phone = Phone(night.copy(days = emptySet(), date = fridayDate), now = friday(22, 30))
         phone.skip()
         assertFalse(phone.schedule().enabled)
@@ -114,8 +114,8 @@ class ActionsTest {
 
     @Test
     fun `a dialog left open doesn't postpone again after the notification did`() {
-        // The card's dialog was opened, then Postpone was tapped on the notification. The dialog's choices
-        // were for the earlier state, so they do nothing.
+        // The user opened the dialog on the card and then tapped Postpone on the notification. The choices in the
+        // dialog were for the earlier state, so they do nothing.
         val phone = Phone(night, now = friday(22, 30))
         val dialog = phone.status()
         assertTrue(phone.notificationTap(Action.POSTPONE, night.id, fridayDate))
@@ -135,7 +135,7 @@ class ActionsTest {
 
     @Test
     fun `a notification tap acts only on its own window and state`() {
-        // An old notification for yesterday's window, or one whose Postpone was already used, does nothing.
+        // A notification for the window of yesterday, or a notification with a used Postpone, does nothing.
         val phone = Phone(night, now = friday(22, 30))
         assertFalse(phone.notificationTap(Action.SKIP, night.id, fridayDate.minusDays(1)))
         phone.notificationTap(Action.POSTPONE, night.id, fridayDate)

@@ -25,7 +25,7 @@ object ShizukuStatus {
 
     val sui: Boolean get() = Sui.isSui()
 
-    // False when the dialog can't show, such as after "Deny and don't ask again".
+    // False when Android cannot show the dialog, for example after "Deny and don't ask again".
     fun request(): Boolean = try {
         when {
             !Shizuku.pingBinder() -> false

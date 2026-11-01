@@ -10,8 +10,8 @@ import io.github.probecat.airplanescheduler.core.ScheduleStatus.Action
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-// Notification actions. Each acts only on the window and state its notification was about, so a tap on
-// one that is out of date just brings it up to date.
+// Each action acts only on the window and state that its notification was about. A tap on an old notification only
+// updates the notification.
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = App.from(context)
@@ -40,7 +40,7 @@ class NotificationReceiver : BroadcastReceiver() {
         val status = ScheduleUpdater.status(app, schedule, now)
         val all = app.schedules.all
         when (intent.action) {
-            // Skipping and ending leave nothing to act on but Undo, which only the app has.
+            // After Skip or End, the only action left is Undo, and only the app has Undo.
             Notifier.SKIP, Notifier.END -> if (status?.allows(Action.SKIP, date) == true) {
                 val missed = (status as? ScheduleStatus.Running)?.missed == true
                 ScheduleUpdater.commit(app, ScheduleEdits.skip(all, schedule, now, missed))

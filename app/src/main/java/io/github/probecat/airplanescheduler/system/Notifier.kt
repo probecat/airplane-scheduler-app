@@ -244,7 +244,6 @@ object Notifier {
         post(app, schedule?.id ?: 0, content, LocalDateTime.now())
     }
 
-    // [problem] is what keeps Shizuku from switching, if anything.
     private fun notice(
         app: App,
         schedule: Schedule,

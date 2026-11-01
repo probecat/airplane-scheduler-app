@@ -15,13 +15,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 
-// Runs [AirplaneService] in a Shizuku process with shell privileges for each switch.
 class ShizukuSwitcher(private val context: Context) : Switcher {
     private var timedOutAt = Long.MIN_VALUE / 2
 
-    // A freshly started process receives the binder asynchronously, so this waits up to 7 s. Right after
-    // a wait ran out, Shizuku isn't running, so the next steps of the same alarm don't wait again. A tap
-    // waits regardless, since Shizuku sends the binder only once the app becomes active.
+    // A new process receives the binder asynchronously, so this waits up to 7 s. If a wait timed out recently, Shizuku
+    // is not running, so the next steps of the same alarm do not wait again. A tap always waits, because Shizuku sends
+    // the binder only after the app becomes active.
     override suspend fun connect(tap: Boolean): Boolean {
         val waitedRecently = !tap && SystemClock.elapsedRealtime() - timedOutAt < 30_000
         if (Shizuku.pingBinder() || waitedRecently) return Shizuku.pingBinder()
@@ -41,7 +40,6 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
         return received
     }
 
-    // None worked when Shizuku can't be reached.
     override suspend fun set(enabled: Boolean, changes: Changes): Changes {
         if (changes.isEmpty || !connect()) return Changes.NONE
         return try {
@@ -69,7 +67,7 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
         }
     }
 
-    // Null when the service disconnects before it connects. One that never connects is let go.
+    // Null when the service disconnects before it connects. A cancelled wait unbinds a service that never connects.
     private suspend fun bind(args: Shizuku.UserServiceArgs): Pair<IBinder, ServiceConnection>? =
         suspendCancellableCoroutine { continuation ->
             val connection = object : ServiceConnection {

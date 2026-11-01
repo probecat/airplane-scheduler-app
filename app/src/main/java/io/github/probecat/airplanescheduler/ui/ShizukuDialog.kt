@@ -46,7 +46,6 @@ fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> U
     )
 }
 
-// Asks for Shizuku's permission, or explains what keeps the app from it when Shizuku can't ask.
 @Composable
 fun rememberShizukuRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null): (ShizukuState) -> Unit {
     var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
