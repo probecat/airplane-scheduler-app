@@ -1,9 +1,14 @@
 package io.github.probecat.airplanescheduler.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import io.github.probecat.airplanescheduler.R
@@ -40,3 +45,35 @@ fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> U
         dismissButton = onHelp?.let { { TextButton(onClick = it) { Text(stringResource(R.string.help)) } } },
     )
 }
+
+// Asks for Shizuku's permission, or explains what keeps the app from it when Shizuku can't ask.
+@Composable
+fun rememberShizukuRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null): (ShizukuState) -> Unit {
+    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    explaining?.let { state ->
+        ShizukuDialog(
+            state,
+            onHelp = onHelp?.let { help ->
+                {
+                    explaining = null
+                    help()
+                }
+            },
+            onDismiss = { explaining = null },
+        )
+    }
+    return { state ->
+        when (state) {
+            ShizukuState.READY -> {}
+            ShizukuState.PERMISSION_NEEDED -> if (!viewModel.requestShizuku()) explaining = state
+            ShizukuState.OFFLINE -> explaining = state
+        }
+    }
+}
+
+val ShizukuState.icon: Int
+    @DrawableRes get() = when (this) {
+        ShizukuState.READY -> R.drawable.ic_check_circle
+        ShizukuState.OFFLINE -> R.drawable.ic_error
+        ShizukuState.PERMISSION_NEEDED -> R.drawable.ic_lock
+    }

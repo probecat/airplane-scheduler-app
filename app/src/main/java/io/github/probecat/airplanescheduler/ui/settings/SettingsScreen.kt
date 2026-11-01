@@ -45,15 +45,19 @@ import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.LinkRow
+import io.github.probecat.airplanescheduler.ui.MenuItem
+import io.github.probecat.airplanescheduler.ui.OverflowMenu
 import io.github.probecat.airplanescheduler.ui.SOURCE_URL
 import io.github.probecat.airplanescheduler.ui.SectionHeader
 import io.github.probecat.airplanescheduler.ui.SettingRow
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.SwitchRow
+import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.notificationSettings
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.rememberShizukuRequest
 import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
 @Composable
@@ -68,7 +72,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val sui by viewModel.sui.collectAsStateWithLifecycle()
     val shizukuApp = ShizukuStatus.launchIntent(context)
-    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    val requestShizuku = rememberShizukuRequest(viewModel)
     var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
@@ -76,7 +80,10 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     }
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
 
-    Subpage(stringResource(R.string.settings), onBack, actions = { SettingsMenu(onReset = { resetting = true }) }) {
+    val menu = listOf(
+        MenuItem(stringResource(R.string.settings_reset), R.drawable.ic_settings_backup_restore) { resetting = true },
+    )
+    Subpage(stringResource(R.string.settings), onBack, actions = { OverflowMenu(menu) }) {
         SectionHeader(stringResource(R.string.settings_appearance))
         SettingRow(
             icon = R.drawable.ic_contrast,
@@ -102,11 +109,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
 
         SectionHeader(stringResource(R.string.settings_permissions))
         SettingRow(
-            icon = when (shizuku) {
-                ShizukuState.READY -> R.drawable.ic_check_circle
-                ShizukuState.OFFLINE -> R.drawable.ic_error
-                ShizukuState.PERMISSION_NEEDED -> R.drawable.ic_lock
-            },
+            icon = shizuku.icon,
             title = stringResource(if (sui) R.string.settings_sui else R.string.settings_shizuku),
             text = stringResource(
                 when (shizuku) {
@@ -121,9 +124,9 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             } else {
                 {
                     when {
-                        shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = {
-                            if (!viewModel.requestShizuku()) explaining = shizuku
-                        }) { Text(stringResource(R.string.action_allow)) }
+                        shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = { requestShizuku(shizuku) }) {
+                            Text(stringResource(R.string.action_allow))
+                        }
                         shizukuApp != null -> TextButton(onClick = { context.startActivity(shizukuApp) }) {
                             Text(
                                 stringResource(
@@ -181,10 +184,6 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
         LinkRow(R.drawable.ic_code, stringResource(R.string.settings_source), SOURCE_URL)
     }
 
-    explaining?.let { state ->
-        ShizukuDialog(state, onHelp = null, onDismiss = { explaining = null })
-    }
-
     if (resetting) {
         AlertDialog(
             onDismissRequest = { resetting = false },
@@ -226,28 +225,6 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             },
             onDismiss = { choosingTheme = false },
         )
-    }
-}
-
-@Composable
-private fun SettingsMenu(onReset: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.settings_reset)) },
-                leadingIcon = {
-                    Icon(painterResource(R.drawable.ic_settings_backup_restore), contentDescription = null)
-                },
-                onClick = {
-                    open = false
-                    onReset()
-                },
-            )
-        }
     }
 }
 

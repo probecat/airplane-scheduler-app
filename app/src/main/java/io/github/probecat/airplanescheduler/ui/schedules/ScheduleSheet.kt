@@ -126,7 +126,8 @@ fun ScheduleSheet(
     }
 
     val sameTimes = schedule.start == schedule.end
-    val conflict = conflictOf(schedule)
+    // The name can't overlap anything, so typing doesn't check again.
+    val conflict = remember(schedule.copy(name = ""), now) { conflictOf(schedule) }
 
     fun close(then: () -> Unit = {}) {
         closing = true

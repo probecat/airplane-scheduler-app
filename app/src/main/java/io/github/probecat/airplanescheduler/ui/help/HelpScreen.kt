@@ -37,11 +37,15 @@ import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.ISSUES_URL
 import io.github.probecat.airplanescheduler.ui.LinkRow
+import io.github.probecat.airplanescheduler.ui.MenuItem
+import io.github.probecat.airplanescheduler.ui.OverflowMenu
 import io.github.probecat.airplanescheduler.ui.SectionHeader
 import io.github.probecat.airplanescheduler.ui.SettingRow
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
+import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.rememberFormat
+import io.github.probecat.airplanescheduler.ui.rememberShizukuRequest
 import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColor
 
 @Composable
@@ -105,7 +109,7 @@ private fun SetupSteps(viewModel: AppViewModel) {
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     var app by remember { mutableStateOf(ShizukuStatus.launchIntent(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { app = ShizukuStatus.launchIntent(context) }
-    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    val requestShizuku = rememberShizukuRequest(viewModel)
 
     val installed = app != null
     val running = installed && shizuku != ShizukuState.OFFLINE
@@ -137,19 +141,15 @@ private fun SetupSteps(viewModel: AppViewModel) {
         allowed,
     ) {
         if (running) {
-            TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) {
-                Text(stringResource(R.string.action_allow))
-            }
+            TextButton(onClick = { requestShizuku(shizuku) }) { Text(stringResource(R.string.action_allow)) }
         }
     }
-
-    explaining?.let { state -> ShizukuDialog(state, onHelp = null, onDismiss = { explaining = null }) }
 }
 
 @Composable
 private fun SuiSteps(viewModel: AppViewModel) {
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
-    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    val requestShizuku = rememberShizukuRequest(viewModel)
     val allowed = shizuku == ShizukuState.READY
     Step(R.drawable.ic_counter_1, R.string.help_install_sui, R.string.help_installed, done = true) {}
     Step(
@@ -158,12 +158,8 @@ private fun SuiSteps(viewModel: AppViewModel) {
         if (allowed) R.string.status_allowed else R.string.status_not_allowed,
         allowed,
     ) {
-        TextButton(onClick = { if (!viewModel.requestShizuku()) explaining = shizuku }) {
-            Text(stringResource(R.string.action_allow))
-        }
+        TextButton(onClick = { requestShizuku(shizuku) }) { Text(stringResource(R.string.action_allow)) }
     }
-
-    explaining?.let { state -> ShizukuDialog(state, onHelp = null, onDismiss = { explaining = null }) }
 }
 
 @Composable

@@ -1,6 +1,7 @@
 package io.github.probecat.airplanescheduler.ui
 
 import android.content.Intent
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,7 +34,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -210,6 +217,30 @@ fun Subpage(
                     .padding(bottom = 24.dp),
                 content = content,
             )
+        }
+    }
+}
+
+class MenuItem(val label: String, @param:DrawableRes val icon: Int, val onClick: () -> Unit)
+
+@Composable
+fun OverflowMenu(items: List<MenuItem>) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for (item in items) {
+                DropdownMenuItem(
+                    text = { Text(item.label) },
+                    leadingIcon = { Icon(painterResource(item.icon), contentDescription = null) },
+                    onClick = {
+                        open = false
+                        item.onClick()
+                    },
+                )
+            }
         }
     }
 }

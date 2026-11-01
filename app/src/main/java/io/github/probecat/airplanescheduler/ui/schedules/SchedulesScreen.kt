@@ -98,9 +98,13 @@ import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
+import io.github.probecat.airplanescheduler.ui.MenuItem
+import io.github.probecat.airplanescheduler.ui.OverflowMenu
 import io.github.probecat.airplanescheduler.ui.ShizukuDialog
+import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.rememberShizukuRequest
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
 import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
 import io.github.probecat.airplanescheduler.ui.theme.OnAddButton
@@ -129,7 +133,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
-    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+    val requestShizuku = rememberShizukuRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
@@ -210,7 +214,14 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
-                actions = { OverflowMenu(onSettings, onHelp) },
+                actions = {
+                    OverflowMenu(
+                        listOf(
+                            MenuItem(stringResource(R.string.settings), R.drawable.ic_settings, onSettings),
+                            MenuItem(stringResource(R.string.help), R.drawable.ic_help, onHelp),
+                        ),
+                    )
+                },
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -260,23 +271,12 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                                 )
                             }
                             if (showStatus) {
-                                val (label, icon) = statusStrip(shizuku, sui)
                                 val ready = shizuku == ShizukuState.READY
                                 Strip(
-                                    label = stringResource(label),
-                                    icon = icon,
+                                    label = stringResource(statusStrip(shizuku, sui)),
+                                    icon = shizuku.icon,
                                     error = !ready,
-                                    onClick = if (ready) {
-                                        null
-                                    } else {
-                                        {
-                                            if (shizuku != ShizukuState.PERMISSION_NEEDED ||
-                                                !viewModel.requestShizuku()
-                                            ) {
-                                                explaining = shizuku
-                                            }
-                                        }
-                                    },
+                                    onClick = if (ready) null else ({ requestShizuku(shizuku) }),
                                     onDismiss = if (ready) {
                                         { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
                                     } else {
@@ -387,50 +387,12 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
             onDismiss = { choosing = null },
         )
     }
-
-    explaining?.let { state ->
-        ShizukuDialog(
-            state,
-            onHelp = {
-                explaining = null
-                onHelp()
-            },
-            onDismiss = { explaining = null },
-        )
-    }
 }
 
-@Composable
-private fun OverflowMenu(onSettings: () -> Unit, onHelp: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            listOf(
-                Triple(stringResource(R.string.settings), R.drawable.ic_settings, onSettings),
-                Triple(stringResource(R.string.help), R.drawable.ic_help, onHelp),
-            ).forEach { (label, icon, action) ->
-                DropdownMenuItem(
-                    text = { Text(label) },
-                    leadingIcon = { Icon(painterResource(icon), contentDescription = null) },
-                    onClick = {
-                        open = false
-                        action()
-                    },
-                )
-            }
-        }
-    }
-}
-
-private fun statusStrip(shizuku: ShizukuState, sui: Boolean): Pair<Int, Int> = when (shizuku) {
-    ShizukuState.READY ->
-        (if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready) to R.drawable.ic_check_circle
-    ShizukuState.OFFLINE -> R.string.strip_shizuku_offline to R.drawable.ic_error
-    ShizukuState.PERMISSION_NEEDED ->
-        (if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission) to R.drawable.ic_lock
+private fun statusStrip(shizuku: ShizukuState, sui: Boolean): Int = when (shizuku) {
+    ShizukuState.READY -> if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready
+    ShizukuState.OFFLINE -> R.string.strip_shizuku_offline
+    ShizukuState.PERMISSION_NEEDED -> if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission
 }
 
 // A line above the schedules about what the app needs. An error one stays until it's fixed; others can
@@ -636,12 +598,14 @@ private fun EndsIn(duration: String) = Status(
 
 @Composable
 private fun Missed(shizuku: ShizukuState, sui: Boolean) {
-    val (text, icon) = when (shizuku) {
-        ShizukuState.READY -> R.string.card_missed to R.drawable.ic_error
-        ShizukuState.OFFLINE -> R.string.card_missed_offline to R.drawable.ic_error
+    val text = when (shizuku) {
+        ShizukuState.READY -> R.string.card_missed
+        ShizukuState.OFFLINE -> R.string.card_missed_offline
         ShizukuState.PERMISSION_NEEDED ->
-            (if (sui) R.string.card_missed_permission_sui else R.string.card_missed_permission) to R.drawable.ic_lock
+            if (sui) R.string.card_missed_permission_sui else R.string.card_missed_permission
     }
+    // Ready to turn on, but the start was still missed.
+    val icon = if (shizuku == ShizukuState.READY) R.drawable.ic_error else shizuku.icon
     val label = stringResource(text)
     Status(
         label,
