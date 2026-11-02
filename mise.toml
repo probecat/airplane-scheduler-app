@@ -4,10 +4,9 @@ android-sdk = "23.0"
 ktlint = "1.8.0"
 
 [tasks.setup]
-description = "Accept SDK licenses, install SDK packages (build-tools are fetched by Gradle), and use the repository's Git hooks"
+description = "Install SDK packages and set up Git hooks"
 run = [
-  "yes | sdkmanager --licenses > /dev/null",
-  "sdkmanager 'platform-tools' 'platforms;android-37.0'",
+  "android --no-metrics sdk install platform-tools platforms/android-37.0",
   "git config core.hooksPath .githooks",
 ]
 
@@ -20,19 +19,13 @@ description = "Fix Kotlin style"
 run = "ktlint --format"
 
 [tasks.check]
-description = "Check style, test, and lint, as CI does"
+description = "Check style, test, and lint"
 run = ["ktlint", "./gradlew testDebugUnitTest lintDebug"]
 
 [tasks.dev]
-description = "Build, install on the USB device, and launch the debug app"
+description = "Build and launch the debug app on USB device"
 run = [
   "./gradlew installDebug",
   "adb shell am start -n io.github.probecat.airplanescheduler.debug/io.github.probecat.airplanescheduler.ui.MainActivity",
 ]
 
-[tasks.dev-clean]
-description = "Uninstall the debug app (wiping its data and permissions), then run dev"
-run = [
-  "adb uninstall io.github.probecat.airplanescheduler.debug || true",
-  "mise run dev",
-]
