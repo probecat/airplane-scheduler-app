@@ -5,6 +5,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.VisibleForTesting
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import java.time.ZonedDateTime
 import java.util.concurrent.ConcurrentHashMap
@@ -26,7 +27,7 @@ object AlarmScheduler {
     // The last alarm that this process set for each kind. Only a force stop or an update removes alarms, and both end
     // the process. So the process does not set the same alarm again, for example when an alarm starts the process and
     // the process then reschedules.
-    private val last = ConcurrentHashMap<String, Pair<Long?, Boolean>>()
+    @VisibleForTesting internal val last = ConcurrentHashMap<String, Pair<Long?, Boolean>>()
 
     // Setting the same intent again replaces its alarm, and a null time cancels it. Without exact alarms, Android
     // can run the alarm late, which is better than not at all.

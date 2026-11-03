@@ -7,6 +7,7 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import androidx.annotation.VisibleForTesting
 import io.github.probecat.airplanescheduler.data.EngineRepository
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
@@ -27,7 +28,7 @@ class App : Application() {
     lateinit var engine: EngineRepository
         private set
     lateinit var switcher: Switcher
-        private set
+        @VisibleForTesting internal set
 
     // Lives longer than the screens, so work that a tap started finishes after the screen closes.
     private val scope = MainScope()

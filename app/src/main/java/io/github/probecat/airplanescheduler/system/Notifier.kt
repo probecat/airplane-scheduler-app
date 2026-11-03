@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.SystemClock
+import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -62,6 +63,9 @@ object Notifier {
     private class Latest(val extras: Bundle, val at: Long = SystemClock.elapsedRealtime())
 
     private val latest = ConcurrentHashMap<Long, Latest>()
+
+    @VisibleForTesting
+    internal fun forgetPosts() = latest.clear()
 
     // Who a report is about. The schedule can be deleted before the user taps Retry.
     data class Report(val id: Long, val title: String)
