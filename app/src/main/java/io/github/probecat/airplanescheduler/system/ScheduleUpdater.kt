@@ -6,20 +6,21 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
+import kotlinx.coroutines.Job
 
 object ScheduleUpdater {
-    // The hold ends before the refresh, so a failed start still gets its notice.
-    suspend fun update(app: App, schedules: List<Schedule>) {
-        AirplaneController.holding {
-            val event = Engine.Event.Edit(app.schedules.all, schedules, LocalDateTime.now())
-            app.schedules.replaceAll(schedules)
-            AlarmScheduler.scheduleAll(app)
-            AirplaneController.dispatch(app, event)
+    // Saves now, so the next tap sees the new schedules. The hold ends before the refresh, so a failed start still
+    // gets its notice.
+    fun update(app: App, schedules: List<Schedule>): Job {
+        val event = Engine.Event.Edit(app.schedules.all, schedules, LocalDateTime.now())
+        app.schedules.replaceAll(schedules)
+        AlarmScheduler.scheduleAll(app)
+        return AirplaneController.launchHolding(app, { AirplaneController.dispatch(app, event) }) {
+            Notifier.refresh(app)
         }
-        Notifier.refresh(app)
     }
 
-    suspend fun commit(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
+    fun launch(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
         is ScheduleEdits.Result.Overlaps -> result.schedule
         is ScheduleEdits.Result.Saved -> {
             update(app, result.schedules)
@@ -27,11 +28,11 @@ object ScheduleUpdater {
         }
     }
 
-    // Runs in the app scope, so it continues after the screen closes.
-    fun launch(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
+    // Waits for the switch, so a receiver stays alive until it ends.
+    suspend fun commit(app: App, result: ScheduleEdits.Result): Schedule? = when (result) {
         is ScheduleEdits.Result.Overlaps -> result.schedule
         is ScheduleEdits.Result.Saved -> {
-            app.launch { update(app, result.schedules) }
+            update(app, result.schedules).join()
             null
         }
     }

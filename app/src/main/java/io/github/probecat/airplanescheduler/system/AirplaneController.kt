@@ -9,6 +9,7 @@ import io.github.probecat.airplanescheduler.core.Ending
 import io.github.probecat.airplanescheduler.core.Engine
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +65,19 @@ object AirplaneController {
     val inFlightCount: StateFlow<Int> = inFlight.asStateFlow()
 
     val switching: Boolean get() = inFlight.value > 0
+
+    // The hold starts now, so the time before [block] runs does not look like a missed start either.
+    fun launchHolding(app: App, block: suspend () -> Unit, then: () -> Unit): Job {
+        inFlight.update { it + 1 }
+        return app.launch {
+            try {
+                block()
+            } finally {
+                inFlight.update { it - 1 }
+            }
+            then()
+        }
+    }
 
     // Counts as switching while [block] runs, so states during a switch do not look like a missed start.
     suspend fun <T> holding(block: suspend () -> T): T {
