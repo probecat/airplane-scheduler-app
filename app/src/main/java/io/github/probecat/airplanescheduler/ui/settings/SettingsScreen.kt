@@ -71,12 +71,13 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     var choosingPostpone by rememberSaveable { mutableStateOf(false) }
     val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
     val sui by viewModel.sui.collectAsStateWithLifecycle()
-    val shizukuApp = ShizukuStatus.launchIntent(context)
+    var shizukuApp by remember { mutableStateOf(ShizukuStatus.launchIntent(context)) }
     val requestShizuku = rememberShizukuRequest(viewModel)
     var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
         exactAlarms = exactAlarmsAllowed(context)
+        shizukuApp = ShizukuStatus.launchIntent(context)
     }
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
 
