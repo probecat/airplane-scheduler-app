@@ -8,12 +8,11 @@ import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
+import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AirplaneController
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
-import io.github.probecat.airplanescheduler.system.ShizukuState
-import io.github.probecat.airplanescheduler.system.ShizukuStatus
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import java.time.LocalDateTime
 import kotlinx.coroutines.delay
@@ -35,9 +34,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val settings: StateFlow<Settings> = app.settings.settings
 
-    val shizuku: StateFlow<ShizukuState> = app.shizuku
-
-    val sui: StateFlow<Boolean> = app.sui
+    val access: StateFlow<Access> = app.access
 
     val now: StateFlow<LocalDateTime> = flow {
         while (true) {
@@ -61,12 +58,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun refresh() {
         viewModelScope.launch {
             app.switcher.connect(tap = true)
-            app.refreshShizuku()
+            app.refreshAccess()
             Notifier.refresh(app)
         }
     }
 
-    fun requestShizuku(): Boolean = ShizukuStatus.request()
+    fun requestAccess(explain: () -> Unit) {
+        viewModelScope.launch {
+            if (!app.switcher.request()) explain()
+            app.refreshAccess()
+        }
+    }
 
     fun newSchedule(): Schedule {
         val base = Schedule(
@@ -143,6 +145,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSettings(transform: (Settings) -> Settings) {
         val before = app.settings.current
         app.settings.update(transform)
+        if (before.backend != app.settings.current.backend) app.refreshAccess()
         if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
     }
 

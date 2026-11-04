@@ -1,6 +1,5 @@
 package io.github.probecat.airplanescheduler.system
 
-import android.os.Build
 import io.github.probecat.airplanescheduler.IAirplaneService
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan
 import java.io.IOException
@@ -11,22 +10,11 @@ import kotlin.system.exitProcess
 class AirplaneService : IAirplaneService.Stub() {
     override fun setEnabled(enabled: Boolean, airplane: Boolean, wifi: Boolean): Int =
         ConnectivityPlan.order(enabled, ConnectivityPlan.Changes(airplane, wifi)).fold(0) { made, change ->
-            val command = if (change == ConnectivityPlan.AIRPLANE) airplane(enabled) else wifi(!enabled)
-            if (run(command) == 0) made or change else made
+            if (run(Commands.of(change, enabled)) == 0) made or change else made
         }
 
     override fun destroy() {
         exitProcess(0)
-    }
-
-    private fun airplane(on: Boolean) =
-        listOf("/system/bin/cmd", "connectivity", "airplane-mode", if (on) "enable" else "disable")
-
-    // Before Android 11, cmd cannot switch Wi-Fi.
-    private fun wifi(on: Boolean) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        listOf("/system/bin/cmd", "wifi", "set-wifi-enabled", if (on) "enabled" else "disabled")
-    } else {
-        listOf("/system/bin/svc", "wifi", if (on) "enable" else "disable")
     }
 
     private fun run(command: List<String>): Int = try {

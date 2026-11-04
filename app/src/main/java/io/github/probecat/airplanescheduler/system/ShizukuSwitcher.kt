@@ -18,6 +18,11 @@ import rikka.shizuku.Shizuku
 class ShizukuSwitcher(private val context: Context) : Switcher {
     private var timedOutAt = Long.MIN_VALUE / 2
 
+    override fun access() =
+        Access(if (ShizukuStatus.sui) Access.Kind.SUI else Access.Kind.SHIZUKU, ShizukuStatus.current())
+
+    override suspend fun request(): Boolean = ShizukuStatus.request()
+
     // A new process receives the binder asynchronously, so this waits up to 7 s. If a wait timed out recently, Shizuku
     // is not running, so the next steps of the same alarm do not wait again. A tap always waits, because Shizuku sends
     // the binder only after the app becomes active.

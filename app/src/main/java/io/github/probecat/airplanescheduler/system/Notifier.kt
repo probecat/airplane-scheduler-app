@@ -166,7 +166,7 @@ object Notifier {
         val schedules = app.schedules.all
         val missed = AirplaneController.missedSchedule(app, now)?.id
         val format = format(app)
-        val problem = shizukuProblem(app)
+        val problem = accessProblem(app)
         val shown = listOf(SCHEDULES, PROBLEMS).filter { shows(app, it) }
         return schedules.mapNotNull { schedule ->
             Notice.of(schedule, schedules, now, schedule.id == missed)
@@ -198,7 +198,7 @@ object Notifier {
                 Kind.PROBLEM,
                 PROBLEMS,
                 report.title,
-                sentences(app, app.getString(what), shizukuProblem(app)),
+                sentences(app, app.getString(what), accessProblem(app)),
                 actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
                 changes = failed,
             )
@@ -361,18 +361,25 @@ object Notifier {
         NotificationManagerCompat.from(context).getNotificationChannelCompat(channel)?.importance !=
             NotificationManagerCompat.IMPORTANCE_NONE
 
-    private fun shizukuProblem(context: Context): String? = when (ShizukuStatus.current()) {
-        ShizukuState.READY -> null
-        ShizukuState.OFFLINE -> context.getString(
-            if (ShizukuStatus.launchIntent(context) == null) {
-                R.string.notification_shizuku_missing
-            } else {
-                R.string.notification_shizuku_offline
-            },
-        )
-        ShizukuState.PERMISSION_NEEDED -> context.getString(
-            if (ShizukuStatus.sui) R.string.notification_sui_permission else R.string.notification_shizuku_permission,
-        )
+    private fun accessProblem(app: App): String? {
+        val access = app.switcher.access()
+        return when (access.state) {
+            AccessState.READY -> null
+            AccessState.OFFLINE -> app.getString(
+                if (ShizukuStatus.launchIntent(app) == null) {
+                    R.string.notification_shizuku_missing
+                } else {
+                    R.string.notification_shizuku_offline
+                },
+            )
+            AccessState.PERMISSION_NEEDED -> app.getString(
+                when (access.kind) {
+                    Access.Kind.SHIZUKU -> R.string.notification_shizuku_permission
+                    Access.Kind.SUI -> R.string.notification_sui_permission
+                    Access.Kind.ROOT -> R.string.notification_root_permission
+                },
+            )
+        }
     }
 
     private fun canPost(context: Context) =

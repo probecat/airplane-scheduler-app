@@ -13,6 +13,7 @@ data class Settings(
     // How long Postpone and Pause wait. 0 turns them off.
     val postponeMinutes: Int = 30,
     val askedNotifications: Boolean = false,
+    val backend: Backend = Backend.SHIZUKU,
 )
 
 class SettingsRepository(context: Context) {
@@ -32,6 +33,7 @@ class SettingsRepository(context: Context) {
             putBoolean("hideShizukuReady", settings.hideShizukuReady)
             putInt("postponeMinutes", settings.postponeMinutes)
             putBoolean("askedNotifications", settings.askedNotifications)
+            putString("backend", settings.backend.name)
         }
     }
 
@@ -43,6 +45,8 @@ class SettingsRepository(context: Context) {
             hideShizukuReady = prefs.getBoolean("hideShizukuReady", default.hideShizukuReady),
             postponeMinutes = prefs.getInt("postponeMinutes", default.postponeMinutes),
             askedNotifications = prefs.getBoolean("askedNotifications", default.askedNotifications),
+            backend = prefs.getString("backend", null)
+                ?.let { name -> Backend.entries.find { it.name == name } } ?: default.backend,
         )
     }
 

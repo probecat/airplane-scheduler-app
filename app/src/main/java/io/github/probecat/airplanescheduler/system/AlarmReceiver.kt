@@ -13,7 +13,7 @@ class AlarmReceiver : BroadcastReceiver() {
         app.finishAfter(this) {
             // Notices tell whether Shizuku is ready. A new process learns this only after a short time.
             app.switcher.connect()
-            app.refreshShizuku()
+            app.refreshAccess()
             when (action) {
                 AlarmScheduler.CHANGE -> AirplaneController.onAlarm(app)
                 AlarmScheduler.NOTICE -> {}

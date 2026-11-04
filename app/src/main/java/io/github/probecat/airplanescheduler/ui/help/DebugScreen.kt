@@ -25,8 +25,9 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
+import io.github.probecat.airplanescheduler.system.Access
+import io.github.probecat.airplanescheduler.system.AccessState
 import io.github.probecat.airplanescheduler.system.App
-import io.github.probecat.airplanescheduler.system.ShizukuState
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
 import io.github.probecat.airplanescheduler.system.exactAlarmsDeniable
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
@@ -43,10 +44,9 @@ fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
-    val sui by viewModel.sui.collectAsStateWithLifecycle()
+    val access by viewModel.access.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
-    val details = details(context, schedules, settings, shizuku, sui, now)
+    val details = details(context, schedules, settings, access, now)
     Subpage(
         title = "Debug info",
         onBack = onBack,
@@ -76,8 +76,7 @@ private fun details(
     context: Context,
     schedules: List<Schedule>,
     settings: Settings,
-    shizuku: ShizukuState,
-    sui: Boolean,
+    access: Access,
     now: LocalDateTime,
 ): String {
     val app = App.from(context)
@@ -91,11 +90,11 @@ private fun details(
         appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         appendLine("Time zone: ${zoned.zone}")
         appendLine(
-            "Shizuku: " + when (shizuku) {
-                ShizukuState.READY -> "ready"
-                ShizukuState.OFFLINE -> "offline"
-                ShizukuState.PERMISSION_NEEDED -> "permission required"
-            } + if (sui) " (Sui)" else "",
+            "Access: " + when (access.state) {
+                AccessState.READY -> "ready"
+                AccessState.OFFLINE -> "offline"
+                AccessState.PERMISSION_NEEDED -> "permission required"
+            } + " (${access.kind.name.lowercase()})",
         )
         appendLine("Notifications: " + if (notificationsAllowed(context)) "allowed" else "not allowed")
         if (exactAlarmsDeniable) {

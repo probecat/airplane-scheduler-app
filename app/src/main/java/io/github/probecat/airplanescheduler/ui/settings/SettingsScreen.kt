@@ -1,5 +1,6 @@
 package io.github.probecat.airplanescheduler.ui.settings
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,8 +36,10 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.BuildConfig
 import io.github.probecat.airplanescheduler.R
+import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.data.ThemeMode
-import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.Access
+import io.github.probecat.airplanescheduler.system.AccessState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
@@ -50,14 +53,13 @@ import io.github.probecat.airplanescheduler.ui.OverflowMenu
 import io.github.probecat.airplanescheduler.ui.SOURCE_URL
 import io.github.probecat.airplanescheduler.ui.SectionHeader
 import io.github.probecat.airplanescheduler.ui.SettingRow
-import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.Subpage
 import io.github.probecat.airplanescheduler.ui.SwitchRow
 import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.notificationSettings
+import io.github.probecat.airplanescheduler.ui.rememberAccessRequest
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
-import io.github.probecat.airplanescheduler.ui.rememberShizukuRequest
 import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
 @Composable
@@ -69,10 +71,10 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
     var choosingPostpone by rememberSaveable { mutableStateOf(false) }
-    val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
-    val sui by viewModel.sui.collectAsStateWithLifecycle()
+    var choosingBackend by rememberSaveable { mutableStateOf(false) }
+    val access by viewModel.access.collectAsStateWithLifecycle()
     var shizukuApp by remember { mutableStateOf(ShizukuStatus.launchIntent(context)) }
-    val requestShizuku = rememberShizukuRequest(viewModel)
+    val requestAccess = rememberAccessRequest(viewModel)
     var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
@@ -107,47 +109,15 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             text = postponeLabel(settings.postponeMinutes, format),
             onClick = { choosingPostpone = true },
         )
+        SettingRow(
+            icon = R.drawable.ic_airplanemode_active,
+            title = stringResource(R.string.settings_backend),
+            text = stringResource(settings.backend.label),
+            onClick = { choosingBackend = true },
+        )
 
         SectionHeader(stringResource(R.string.settings_permissions))
-        SettingRow(
-            icon = shizuku.icon,
-            title = stringResource(if (sui) R.string.settings_sui else R.string.settings_shizuku),
-            text = stringResource(
-                when (shizuku) {
-                    ShizukuState.READY -> R.string.settings_shizuku_ready
-                    ShizukuState.OFFLINE ->
-                        if (shizukuApp != null) R.string.status_not_running else R.string.status_not_installed
-                    ShizukuState.PERMISSION_NEEDED -> R.string.status_not_allowed
-                },
-            ),
-            trailing = if (sui && shizuku != ShizukuState.PERMISSION_NEEDED) {
-                null
-            } else {
-                {
-                    when {
-                        shizuku == ShizukuState.PERMISSION_NEEDED -> TextButton(onClick = { requestShizuku(shizuku) }) {
-                            Text(stringResource(R.string.action_allow))
-                        }
-                        shizukuApp != null -> TextButton(onClick = { context.startActivity(shizukuApp) }) {
-                            Text(
-                                stringResource(
-                                    if (shizuku ==
-                                        ShizukuState.READY
-                                    ) {
-                                        R.string.action_manage
-                                    } else {
-                                        R.string.action_open
-                                    },
-                                ),
-                            )
-                        }
-                        else -> TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
-                            Text(stringResource(R.string.action_get))
-                        }
-                    }
-                }
-            },
-        )
+        AccessRow(access, shizukuApp, requestAccess)
         SettingRow(
             icon = R.drawable.ic_notifications,
             title = stringResource(R.string.settings_notifications),
@@ -215,6 +185,21 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
         )
     }
 
+    if (choosingBackend) {
+        Choices(
+            title = stringResource(R.string.settings_backend),
+            options = Backend.entries.map { it to stringResource(it.label) },
+            selected = settings.backend,
+            onSelect = { backend ->
+                viewModel.updateSettings { it.copy(backend = backend) }
+                choosingBackend = false
+                // Asks right away, so the root prompt comes while the user is choosing root.
+                requestAccess(viewModel.access.value)
+            },
+            onDismiss = { choosingBackend = false },
+        )
+    }
+
     if (choosingTheme) {
         Choices(
             title = stringResource(R.string.settings_theme),
@@ -227,6 +212,49 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             onDismiss = { choosingTheme = false },
         )
     }
+}
+
+@Composable
+private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> Unit) {
+    val context = LocalContext.current
+    SettingRow(
+        icon = access.state.icon,
+        title = stringResource(
+            when (access.kind) {
+                Access.Kind.SHIZUKU -> R.string.settings_shizuku
+                Access.Kind.SUI -> R.string.settings_sui
+                Access.Kind.ROOT -> R.string.settings_root
+            },
+        ),
+        text = stringResource(
+            when (access.state) {
+                AccessState.READY -> R.string.settings_shizuku_ready
+                AccessState.OFFLINE ->
+                    if (shizukuApp != null) R.string.status_not_running else R.string.status_not_installed
+                AccessState.PERMISSION_NEEDED -> R.string.status_not_allowed
+            },
+        ),
+        trailing = when {
+            access.state == AccessState.PERMISSION_NEEDED -> {
+                { TextButton(onClick = { request(access) }) { Text(stringResource(R.string.action_allow)) } }
+            }
+            access.kind != Access.Kind.SHIZUKU -> null
+            shizukuApp != null -> {
+                {
+                    TextButton(onClick = { context.startActivity(shizukuApp) }) {
+                        Text(stringResource(if (access.ready) R.string.action_manage else R.string.action_open))
+                    }
+                }
+            }
+            else -> {
+                {
+                    TextButton(onClick = { context.startActivity(ShizukuStatus.repository()) }) {
+                        Text(stringResource(R.string.action_get))
+                    }
+                }
+            }
+        },
+    )
 }
 
 private val POSTPONE_MINUTES = listOf(0, 15, 30, 45, 60)

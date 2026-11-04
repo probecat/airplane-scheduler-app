@@ -7,20 +7,18 @@ import androidx.core.net.toUri
 import rikka.shizuku.Shizuku
 import rikka.sui.Sui
 
-enum class ShizukuState { READY, OFFLINE, PERMISSION_NEEDED }
-
 object ShizukuStatus {
     const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
     private const val REQUEST = 1
 
-    fun current(): ShizukuState = try {
+    fun current(): AccessState = try {
         when {
-            !Shizuku.pingBinder() -> ShizukuState.OFFLINE
-            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> ShizukuState.READY
-            else -> ShizukuState.PERMISSION_NEEDED
+            !Shizuku.pingBinder() -> AccessState.OFFLINE
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED -> AccessState.READY
+            else -> AccessState.PERMISSION_NEEDED
         }
     } catch (_: RuntimeException) {
-        ShizukuState.OFFLINE
+        AccessState.OFFLINE
     }
 
     val sui: Boolean get() = Sui.isSui()

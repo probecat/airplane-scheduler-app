@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.annotation.VisibleForTesting
+import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.data.EngineRepository
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
@@ -27,17 +28,19 @@ class App : Application() {
         private set
     lateinit var engine: EngineRepository
         private set
-    lateinit var switcher: Switcher
+    lateinit var shizukuSwitcher: Switcher
         @VisibleForTesting internal set
+    lateinit var rootSwitcher: Switcher
+        @VisibleForTesting internal set
+
+    val switcher: Switcher
+        get() = if (settings.current.backend == Backend.ROOT) rootSwitcher else shizukuSwitcher
 
     // Lives longer than the screens, so work that a tap started finishes after the screen closes.
     private val scope = MainScope()
 
-    private val shizukuState = MutableStateFlow(ShizukuStatus.current())
-    val shizuku: StateFlow<ShizukuState> = shizukuState.asStateFlow()
-
-    private val suiState = MutableStateFlow(ShizukuStatus.sui)
-    val sui: StateFlow<Boolean> = suiState.asStateFlow()
+    private val accessState = MutableStateFlow(Access(Access.Kind.SHIZUKU, AccessState.OFFLINE))
+    val access: StateFlow<Access> = accessState.asStateFlow()
 
     private val airplaneState = MutableStateFlow(false)
     val airplane: StateFlow<Boolean> = airplaneState.asStateFlow()
@@ -47,14 +50,16 @@ class App : Application() {
         schedules = ScheduleRepository(this)
         settings = SettingsRepository(this)
         engine = EngineRepository(this)
-        switcher = ShizukuSwitcher(this)
+        shizukuSwitcher = ShizukuSwitcher(this)
+        rootSwitcher = RootSwitcher(this, ::refreshAccess)
+        accessState.value = switcher.access()
         Notifier.createChannels(this)
         // Restores alarms that a force stop removed.
         AlarmScheduler.scheduleAll(this)
         // Only the state follows Shizuku. A start or end that it missed is not caught up.
-        Shizuku.addBinderReceivedListenerSticky(::refreshShizuku)
-        Shizuku.addBinderDeadListener(::refreshShizuku)
-        Shizuku.addRequestPermissionResultListener { _, _ -> refreshShizuku() }
+        Shizuku.addBinderReceivedListenerSticky(::refreshAccess)
+        Shizuku.addBinderDeadListener(::refreshAccess)
+        Shizuku.addRequestPermissionResultListener { _, _ -> refreshAccess() }
         airplaneState.value = AirplaneController.airplaneOn(this)
         contentResolver.registerContentObserver(
             Settings.Global.getUriFor(Settings.Global.AIRPLANE_MODE_ON),
@@ -81,12 +86,10 @@ class App : Application() {
         }
     }
 
-    fun refreshShizuku() {
-        val state = ShizukuStatus.current()
-        val sui = ShizukuStatus.sui
-        if (state == shizukuState.value && sui == suiState.value) return
-        shizukuState.value = state
-        suiState.value = sui
+    fun refreshAccess() {
+        val access = switcher.access()
+        if (access == accessState.value) return
+        accessState.value = access
         Notifier.refresh(this)
     }
 

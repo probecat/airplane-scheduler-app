@@ -89,12 +89,15 @@
     <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
     <string name="strip_sui_ready">Sui is ready</string>
     <string name="strip_sui_permission">Grant Sui permission for the app to work</string>
+    <string name="strip_root_ready">Root access is ready</string>
+    <string name="strip_root_permission">Grant root access for the app to work</string>
     <string name="card_ends_in">Ends in %1$s</string>
     <string name="card_ends_in_description">Active now, ends in %1$s</string>
     <string name="card_missed">Missed the start</string>
     <string name="card_missed_offline">Missed, Shizuku is unavailable</string>
     <string name="card_missed_permission">Missed, need Shizuku permission</string>
     <string name="card_missed_permission_sui">Missed, need Sui permission</string>
+    <string name="card_missed_permission_root">Missed, need root access</string>
     <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
     <string name="postpone_resumes_at">Resumes at %1$s</string>
     <string name="postpone_starts">Starts %1$s</string>
@@ -129,10 +132,14 @@
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_schedules">Schedules</string>
     <string name="settings_postpone">Postpone and pause</string>
+    <string name="settings_backend">Switch with</string>
+    <string name="backend_shizuku">Shizuku</string>
+    <string name="backend_root">Root</string>
     <string name="settings_postpone_off">Off</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_sui">Sui</string>
+    <string name="settings_root">Root access</string>
     <string name="settings_shizuku_ready">Ready</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_alarms">Alarms</string>
@@ -146,8 +153,10 @@
 
     <string name="help_setup">Set up Shizuku</string>
     <string name="help_setup_sui">Set up Sui</string>
+    <string name="help_setup_root">Set up root</string>
     <string name="help_setup_text">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Shizuku.</string>
     <string name="help_setup_text_sui">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Sui.</string>
+    <string name="help_setup_text_root">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses root.</string>
     <string name="help_install">Install Shizuku</string>
     <string name="help_install_sui">Install Sui</string>
     <string name="help_installed">Installed</string>
@@ -182,6 +191,7 @@
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
     <string name="help_missed_a">Shizuku wasn\'t running or allowed, or the phone was off. By design, the app doesn\'t catch up on its own, but if notifications are allowed, you\'ll get an alert.</string>
     <string name="help_missed_a_sui">Sui wasn\'t allowed, or the phone was off. By design, the app doesn\'t catch up on its own, but if notifications are allowed, you\'ll get an alert.</string>
+    <string name="help_missed_a_root">Root access wasn\'t allowed, or the phone was off. By design, the app doesn\'t catch up on its own, but if notifications are allowed, you\'ll get an alert.</string>
     <!-- Shown below Android 12 only. -->
     <string name="help_late_q">Why did a schedule run late?</string>
     <string name="help_late_a">Battery optimization can delay it by up to 2 hours if you rarely open the app. Tap the battery warning on the Schedules screen to turn it off for Airplane Scheduler.</string>
@@ -190,7 +200,7 @@
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
     <string name="help_shizuku_stopped_legacy">On this Android version, starting Shizuku needs a computer or root.</string>
     <string name="help_root_q">Can I use root?</string>
-    <string name="help_root_a">Yes. Start Shizuku with root, and it can start on its own at boot. With Magisk and Zygisk, you can install the Sui module instead, which replaces the Shizuku app and runs from boot.</string>
+    <string name="help_root_a">Yes. In Settings, set Switch with to Root, and the app won\'t need Shizuku.</string>
 
     <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
     <string name="shizuku_missing_text">Airplane Scheduler needs Shizuku to switch airplane mode. Install it and start it.</string>
@@ -202,6 +212,8 @@
     <string name="shizuku_get">Get Shizuku</string>
     <string name="sui_permission_title">Allow access in Sui</string>
     <string name="sui_permission_text">Sui won\'t ask again. Dial *#*#784784#*#* to open Sui, find Airplane Scheduler, and allow it.</string>
+    <string name="root_permission_title">Allow root access</string>
+    <string name="root_permission_text">Root access wasn\'t allowed. Open your root manager, such as Magisk, find Airplane Scheduler, and allow it.</string>
 
     <string name="channel_schedules">Schedules</string>
     <string name="channel_problems">Problems</string>
@@ -233,4 +245,5 @@
     <string name="notification_shizuku_offline">Shizuku isn\'t running.</string>
     <string name="notification_shizuku_permission">Need Shizuku permission.</string>
     <string name="notification_sui_permission">Need Sui permission.</string>
+    <string name="notification_root_permission">Need root access.</string>
 </resources>

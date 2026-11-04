@@ -20,12 +20,15 @@ import org.robolectric.shadows.ShadowAlarmManager
 // the main thread would run them after the current tap.
 class Device {
     val app: App = ApplicationProvider.getApplicationContext()
-    val shizuku = FakeShizuku()
+    val shizuku = FakeSwitcher(Access.Kind.SHIZUKU)
+    val root = FakeSwitcher(Access.Kind.ROOT)
     private val notifications = app.getSystemService(NotificationManager::class.java)
     private val wifi = app.getSystemService(WifiManager::class.java)
 
     init {
-        app.switcher = shizuku
+        app.shizukuSwitcher = shizuku
+        app.rootSwitcher = root
+        app.refreshAccess()
         AlarmScheduler.last.clear()
         Notifier.forgetPosts()
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
@@ -80,9 +83,13 @@ class Device {
     fun alarms(): List<ShadowAlarmManager.ScheduledAlarm> =
         shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms
 
-    inner class FakeShizuku : Switcher {
+    inner class FakeSwitcher(private val kind: Access.Kind) : Switcher {
         var works = true
         val switched = mutableListOf<Pair<Boolean, Changes>>()
+
+        override fun access() = Access(kind, if (works) AccessState.READY else AccessState.PERMISSION_NEEDED)
+
+        override suspend fun request() = works
 
         override suspend fun connect(tap: Boolean) = works
 

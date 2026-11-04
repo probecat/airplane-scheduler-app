@@ -27,7 +27,7 @@ class NotificationReceiver : BroadcastReceiver() {
                 AirplaneController.undo(app, Changes.of(intent.getIntExtra(Notifier.CHANGES, 0)), report)
                 return@finishAfter
             }
-            app.refreshShizuku()
+            app.refreshAccess()
             act(app, id, intent)
             Notifier.refresh(app)
         }

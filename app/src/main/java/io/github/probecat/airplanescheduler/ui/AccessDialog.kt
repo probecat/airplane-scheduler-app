@@ -11,21 +11,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
-import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.Access
+import io.github.probecat.airplanescheduler.system.AccessState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 
 @Composable
-fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> Unit) {
+fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val shizuku = ShizukuStatus.launchIntent(context)
-    val sui = ShizukuStatus.sui
     val (title, text) = when {
-        state == ShizukuState.READY -> return
+        access.ready -> return
+        access.kind == Access.Kind.ROOT -> R.string.root_permission_title to R.string.root_permission_text
         // Sui has no app to open, so the dialog only says where its settings are.
-        sui -> R.string.sui_permission_title to R.string.sui_permission_text
+        access.kind == Access.Kind.SUI -> R.string.sui_permission_title to R.string.sui_permission_text
         shizuku == null -> R.string.shizuku_missing_title to R.string.shizuku_missing_text
-        state == ShizukuState.OFFLINE -> R.string.shizuku_offline_title to R.string.shizuku_offline_text
+        access.state == AccessState.OFFLINE -> R.string.shizuku_offline_title to R.string.shizuku_offline_text
         else -> R.string.shizuku_permission_title to R.string.shizuku_permission_text
     }
     AlertDialog(
@@ -33,13 +35,13 @@ fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> U
         title = { Text(stringResource(title)) },
         text = { Text(stringResource(text)) },
         confirmButton = {
-            if (sui) {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
-            } else {
+            if (access.kind == Access.Kind.SHIZUKU) {
                 TextButton(onClick = {
                     onDismiss()
                     context.startActivity(shizuku ?: ShizukuStatus.repository())
                 }) { Text(stringResource(if (shizuku != null) R.string.shizuku_open else R.string.shizuku_get)) }
+            } else {
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
             }
         },
         dismissButton = onHelp?.let { { TextButton(onClick = it) { Text(stringResource(R.string.help)) } } },
@@ -47,11 +49,13 @@ fun ShizukuDialog(state: ShizukuState, onHelp: (() -> Unit)?, onDismiss: () -> U
 }
 
 @Composable
-fun rememberShizukuRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null): (ShizukuState) -> Unit {
-    var explaining by rememberSaveable { mutableStateOf<ShizukuState?>(null) }
+fun rememberAccessRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null): (Access) -> Unit {
+    val current by viewModel.access.collectAsStateWithLifecycle()
+    // Only the state is saved, because the kind follows the setting.
+    var explaining by rememberSaveable { mutableStateOf<AccessState?>(null) }
     explaining?.let { state ->
-        ShizukuDialog(
-            state,
+        AccessDialog(
+            current.copy(state = state),
             onHelp = onHelp?.let { help ->
                 {
                     explaining = null
@@ -61,18 +65,18 @@ fun rememberShizukuRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null
             onDismiss = { explaining = null },
         )
     }
-    return { state ->
-        when (state) {
-            ShizukuState.READY -> {}
-            ShizukuState.PERMISSION_NEEDED -> if (!viewModel.requestShizuku()) explaining = state
-            ShizukuState.OFFLINE -> explaining = state
+    return { access ->
+        when (access.state) {
+            AccessState.READY -> {}
+            AccessState.PERMISSION_NEEDED -> viewModel.requestAccess { explaining = access.state }
+            AccessState.OFFLINE -> explaining = access.state
         }
     }
 }
 
-val ShizukuState.icon: Int
+val AccessState.icon: Int
     @DrawableRes get() = when (this) {
-        ShizukuState.READY -> R.drawable.ic_check_circle
-        ShizukuState.OFFLINE -> R.drawable.ic_error
-        ShizukuState.PERMISSION_NEEDED -> R.drawable.ic_lock
+        AccessState.READY -> R.drawable.ic_check_circle
+        AccessState.OFFLINE -> R.drawable.ic_error
+        AccessState.PERMISSION_NEEDED -> R.drawable.ic_lock
     }

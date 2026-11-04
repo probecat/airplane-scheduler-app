@@ -89,7 +89,8 @@ import io.github.probecat.airplanescheduler.core.ScheduleEdits
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.data.Schedule
-import io.github.probecat.airplanescheduler.system.ShizukuState
+import io.github.probecat.airplanescheduler.system.Access
+import io.github.probecat.airplanescheduler.system.AccessState
 import io.github.probecat.airplanescheduler.system.batteryOptimizationOff
 import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
@@ -100,11 +101,10 @@ import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.MenuItem
 import io.github.probecat.airplanescheduler.ui.OverflowMenu
-import io.github.probecat.airplanescheduler.ui.ShizukuDialog
 import io.github.probecat.airplanescheduler.ui.icon
+import io.github.probecat.airplanescheduler.ui.rememberAccessRequest
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
-import io.github.probecat.airplanescheduler.ui.rememberShizukuRequest
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
 import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
 import io.github.probecat.airplanescheduler.ui.theme.OnAddButton
@@ -123,8 +123,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     val context = LocalContext.current
     val resources = LocalResources.current
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
-    val shizuku by viewModel.shizuku.collectAsStateWithLifecycle()
-    val sui by viewModel.sui.collectAsStateWithLifecycle()
+    val access by viewModel.access.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val missed by viewModel.missed.collectAsStateWithLifecycle()
@@ -133,7 +132,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
-    val requestShizuku = rememberShizukuRequest(viewModel, onHelp)
+    val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val active = ScheduleResolver.activeSchedule(schedules, now)
@@ -255,7 +254,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
             ) {
                 val showAlarms = !exactAlarms && schedules.any { it.enabled }
                 val showBattery = !batteryOff && schedules.any { it.enabled }
-                val showStatus = shizuku != ShizukuState.READY || !settings.hideShizukuReady
+                val showStatus = !access.ready || !settings.hideShizukuReady
                 if (showAlarms || showBattery || showStatus) {
                     item(key = "notices") {
                         Column(
@@ -271,13 +270,12 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                                 )
                             }
                             if (showStatus) {
-                                val ready = shizuku == ShizukuState.READY
                                 Strip(
-                                    label = stringResource(statusStrip(shizuku, sui)),
-                                    icon = shizuku.icon,
-                                    error = !ready,
-                                    onClick = if (ready) null else ({ requestShizuku(shizuku) }),
-                                    onDismiss = if (ready) {
+                                    label = stringResource(statusStrip(access)),
+                                    icon = access.state.icon,
+                                    error = !access.ready,
+                                    onClick = if (access.ready) null else ({ requestAccess(access) }),
+                                    onDismiss = if (access.ready) {
                                         { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
                                     } else {
                                         null
@@ -302,13 +300,12 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                     val isActive = schedule.id == active?.id
                     val isMissed = isActive && schedule.id == missed
                     val status = ScheduleStatus.of(schedule, schedules, now, isMissed)
-                    val action = cardAction(status, canCatchUp = isMissed && shizuku == ShizukuState.READY)
+                    val action = cardAction(status, canCatchUp = isMissed && access.ready)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
-                            missed = shizuku.takeIf { isMissed },
-                            sui = sui,
+                            missed = access.takeIf { isMissed },
                             note = status?.takeIf { action?.undoes == true }?.let { note(it, schedule, now, format) },
                             action = action,
                             today = now.toLocalDate(),
@@ -389,10 +386,18 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     }
 }
 
-private fun statusStrip(shizuku: ShizukuState, sui: Boolean): Int = when (shizuku) {
-    ShizukuState.READY -> if (sui) R.string.strip_sui_ready else R.string.strip_shizuku_ready
-    ShizukuState.OFFLINE -> R.string.strip_shizuku_offline
-    ShizukuState.PERMISSION_NEEDED -> if (sui) R.string.strip_sui_permission else R.string.strip_shizuku_permission
+private fun statusStrip(access: Access): Int = when (access.state) {
+    AccessState.READY -> when (access.kind) {
+        Access.Kind.SHIZUKU -> R.string.strip_shizuku_ready
+        Access.Kind.SUI -> R.string.strip_sui_ready
+        Access.Kind.ROOT -> R.string.strip_root_ready
+    }
+    AccessState.OFFLINE -> R.string.strip_shizuku_offline
+    AccessState.PERMISSION_NEEDED -> when (access.kind) {
+        Access.Kind.SHIZUKU -> R.string.strip_shizuku_permission
+        Access.Kind.SUI -> R.string.strip_sui_permission
+        Access.Kind.ROOT -> R.string.strip_root_permission
+    }
 }
 
 // A line above the schedules about what the app needs. An error stays until it is fixed. The user can
@@ -515,8 +520,7 @@ private fun ScheduleCard(
     schedule: Schedule,
     endsIn: Int?,
     // Why airplane mode is off while it is active.
-    missed: ShizukuState?,
-    sui: Boolean,
+    missed: Access?,
     // Why the next window will not run as planned.
     note: Pair<String, Int>?,
     action: CardAction?,
@@ -554,7 +558,7 @@ private fun ScheduleCard(
                         }
                     }
                     when {
-                        missed != null -> Missed(missed, sui)
+                        missed != null -> Missed(missed)
                         endsIn != null -> EndsIn(format.duration(endsIn))
                         note != null -> Status(note.first, note.second)
                     }
@@ -597,14 +601,17 @@ private fun EndsIn(duration: String) = Status(
 )
 
 @Composable
-private fun Missed(shizuku: ShizukuState, sui: Boolean) {
-    val text = when (shizuku) {
-        ShizukuState.READY -> R.string.card_missed
-        ShizukuState.OFFLINE -> R.string.card_missed_offline
-        ShizukuState.PERMISSION_NEEDED ->
-            if (sui) R.string.card_missed_permission_sui else R.string.card_missed_permission
+private fun Missed(access: Access) {
+    val text = when (access.state) {
+        AccessState.READY -> R.string.card_missed
+        AccessState.OFFLINE -> R.string.card_missed_offline
+        AccessState.PERMISSION_NEEDED -> when (access.kind) {
+            Access.Kind.SHIZUKU -> R.string.card_missed_permission
+            Access.Kind.SUI -> R.string.card_missed_permission_sui
+            Access.Kind.ROOT -> R.string.card_missed_permission_root
+        }
     }
-    val icon = if (shizuku == ShizukuState.READY) R.drawable.ic_error else shizuku.icon
+    val icon = if (access.ready) R.drawable.ic_error else access.state.icon
     val label = stringResource(text)
     Status(
         label,
