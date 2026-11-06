@@ -17,15 +17,15 @@ import kotlinx.coroutines.flow.update
 
 // All work runs on the main thread, so events take turns between switches.
 object AirplaneController {
-    suspend fun onAlarm(app: App) {
-        val now = LocalDateTime.now()
+    suspend fun onAlarm(app: App, now: LocalDateTime) {
         val event = Engine.Event.Alarm(app.schedules.all, now)
         ScheduleUpdater.expire(app, now)
         dispatch(app, event)
     }
 
     // A window whose end passed while the phone was off, or that a clock change skipped, is forgotten.
-    suspend fun forgetMissedEnd(app: App) = dispatch(app, Engine.Event.Reset(app.schedules.all, LocalDateTime.now()))
+    suspend fun forgetMissedEnd(app: App, now: LocalDateTime) =
+        dispatch(app, Engine.Event.Reset(app.schedules.all, now))
 
     suspend fun dispatch(app: App, event: Engine.Event) {
         holding {

@@ -8,6 +8,8 @@ import java.time.LocalDateTime
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
+        // Read the time before the Shizuku wait. Otherwise an end that arrives during the wait counts as missed.
+        val now = LocalDateTime.now()
         AlarmScheduler.scheduleAll(context)
         val app = App.from(context)
         app.finishAfter(this) {
@@ -15,13 +17,13 @@ class AlarmReceiver : BroadcastReceiver() {
             app.switcher.connect()
             app.refreshAccess()
             when (action) {
-                AlarmScheduler.CHANGE -> AirplaneController.onAlarm(app)
+                AlarmScheduler.CHANGE -> AirplaneController.onAlarm(app, now)
                 AlarmScheduler.NOTICE -> {}
                 // Boot, app updates and clock changes reset the alarms and notices. A start or end missed
                 // in the meantime is skipped, so schedules that ran once are over.
                 else -> {
-                    AirplaneController.forgetMissedEnd(app)
-                    if (action == Intent.ACTION_BOOT_COMPLETED) ScheduleUpdater.expire(app, LocalDateTime.now())
+                    AirplaneController.forgetMissedEnd(app, now)
+                    if (action == Intent.ACTION_BOOT_COMPLETED) ScheduleUpdater.expire(app, now)
                 }
             }
             Notifier.refresh(app)
