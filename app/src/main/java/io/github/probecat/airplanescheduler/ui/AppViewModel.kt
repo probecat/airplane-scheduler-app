@@ -1,6 +1,11 @@
 package io.github.probecat.airplanescheduler.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.probecat.airplanescheduler.core.ScheduleEdits
@@ -15,12 +20,12 @@ import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import java.time.LocalDateTime
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,12 +41,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     val access: StateFlow<Access> = app.access
 
-    val now: StateFlow<LocalDateTime> = flow {
-        while (true) {
-            val now = LocalDateTime.now()
-            emit(now)
-            delay(60_000L - now.second * 1000L - now.nano / 1_000_000L + 50)
+    // Android's minute tick follows clock and time zone changes. A delay sleeps through them.
+    val now: StateFlow<LocalDateTime> = callbackFlow {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                trySend(LocalDateTime.now())
+            }
         }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_TIME_TICK)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        ContextCompat.registerReceiver(app, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        trySend(LocalDateTime.now())
+        awaitClose { app.unregisterReceiver(receiver) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LocalDateTime.now())
 
     // The schedule of the running window when the app missed its start. The other flows only tell when to look again.
