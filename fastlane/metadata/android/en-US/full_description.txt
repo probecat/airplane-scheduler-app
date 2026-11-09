@@ -1,10 +1,13 @@
 <b>Features</b>
-• <b>Flexible schedules.</b> One-off or repeating on the days you choose.
-• <b>Overnight schedules.</b> Schedules can carry over to the next day.
-• <b>Full control.</b> Skip, postpone, pause or end your schedules.
-• <b>Wi-Fi control.</b> Off when a schedule starts, back on when it ends.
-• <b>Safe by default.</b> Ending a schedule undoes only what it changed, never what you toggled yourself.
+• <b>Flexible schedules.</b> Run once or repeat on the days you choose.
+• <b>Overnight schedules.</b> A schedule can continue into the next day.
+• <b>Full control.</b> Skip, postpone, pause or end a schedule at any time.
+• <b>Wi-Fi control.</b> Turn off Wi-Fi when a schedule starts, and turn it back on when it ends.
+• <b>Safe by default.</b> Ending a schedule only reverts changes the app made.
 • <b>Notifications.</b> Quiet notifications before, during and after a schedule.
-• <b>No internet access, ads or tracking.</b>
+• <b>No internet access, ads or tracking ever.</b>
 
-<b>Note:</b> This app needs Shizuku, or Sui on a rooted phone.
+<b>Requirements</b>
+• Android 9 or later.
+• <b>Non-root:</b> <a href="https://github.com/rushiranpise/Shizuku-Next">Shizuku-Next</a> (recommended) or <a href="https://github.com/RikkaApps/Shizuku">Shizuku</a>.
+• <b>Root:</b> <a href="https://github.com/RikkaApps/Sui">Sui</a>, or root access through <a href="https://github.com/topjohnwu/Magisk">Magisk</a> or similar.
