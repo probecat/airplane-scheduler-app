@@ -7,20 +7,24 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.R
+import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AccessState
+import io.github.probecat.airplanescheduler.system.RootSwitcher
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
 
 @Composable
-fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onDismiss: () -> Unit) {
+fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onUseRoot: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val shizuku = ShizukuStatus.launchIntent(context)
+    val useRoot = access.kind == Access.Kind.SHIZUKU && shizuku == null && remember { RootSwitcher.installed() }
     val (title, text) = when {
         access.ready -> return
         access.kind == Access.Kind.ROOT -> R.string.root_permission_title to R.string.root_permission_text
@@ -44,7 +48,11 @@ fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onDismiss: () -> Unit) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
             }
         },
-        dismissButton = onHelp?.let { { TextButton(onClick = it) { Text(stringResource(R.string.help)) } } },
+        // Root users who never set up Shizuku find root here.
+        dismissButton = {
+            onHelp?.let { TextButton(onClick = it) { Text(stringResource(R.string.help)) } }
+            if (useRoot) TextButton(onClick = onUseRoot) { Text(stringResource(R.string.shizuku_use_root)) }
+        },
     )
 }
 
@@ -53,6 +61,13 @@ fun rememberAccessRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null)
     val current by viewModel.access.collectAsStateWithLifecycle()
     // Only the state is saved, because the kind follows the setting.
     var explaining by rememberSaveable { mutableStateOf<AccessState?>(null) }
+    fun request(access: Access) {
+        when (access.state) {
+            AccessState.READY -> {}
+            AccessState.PERMISSION_NEEDED -> viewModel.requestAccess { explaining = access.state }
+            AccessState.OFFLINE -> explaining = access.state
+        }
+    }
     explaining?.let { state ->
         AccessDialog(
             current.copy(state = state),
@@ -62,16 +77,15 @@ fun rememberAccessRequest(viewModel: AppViewModel, onHelp: (() -> Unit)? = null)
                     help()
                 }
             },
+            onUseRoot = {
+                explaining = null
+                viewModel.updateSettings { it.copy(backend = Backend.ROOT) }
+                request(viewModel.access.value)
+            },
             onDismiss = { explaining = null },
         )
     }
-    return { access ->
-        when (access.state) {
-            AccessState.READY -> {}
-            AccessState.PERMISSION_NEEDED -> viewModel.requestAccess { explaining = access.state }
-            AccessState.OFFLINE -> explaining = access.state
-        }
-    }
+    return ::request
 }
 
 val AccessState.icon: Int

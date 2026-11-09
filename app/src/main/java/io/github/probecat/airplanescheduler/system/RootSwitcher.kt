@@ -5,6 +5,7 @@ import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -68,8 +69,11 @@ class RootSwitcher(
         return output
     }
 
-    private companion object {
-        const val GRANTED = "rootGranted"
-        val REPORT = Regex("""(\d+) (\d+)""")
+    companion object {
+        private const val GRANTED = "rootGranted"
+        private val REPORT = Regex("""(\d+) (\d+)""")
+
+        // Looks for su without running it, so no root prompt or toast shows.
+        fun installed(): Boolean = System.getenv("PATH").orEmpty().split(':').any { File(it, "su").exists() }
     }
 }

@@ -209,6 +209,7 @@
     <string name="shizuku_permission_text">Shizuku won\'t ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it.</string>
     <string name="shizuku_open">Open Shizuku</string>
     <string name="shizuku_get">Get Shizuku</string>
+    <string name="shizuku_use_root">Use root</string>
     <string name="sui_permission_title">Allow access in Sui</string>
     <string name="sui_permission_text">Sui won\'t ask again. Dial *#*#784784#*#* to open Sui, find Airplane Scheduler, and allow it.</string>
     <string name="root_permission_title">Allow root access</string>
