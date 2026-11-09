@@ -1,0 +1,6 @@
+• New: now works with root, no Shizuku needed. Available under Settings > Permission mode.
+• Fixed: cards update right away when the clock or time zone changes.
+• Fixed: one corrupted schedule could erase the others.
+• Fixed: a schedule that ended while Shizuku was slow to respond could be reported as missed.
+• Changed: Help and Settings in the top bar.
+• Rewritten help by hand, and clearer wording throughout.
