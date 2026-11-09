@@ -111,13 +111,46 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         else -> date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
     }
 
-    // "Skipped, resumes tomorrow" for the window that started on [date].
-    fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
+    // "Skipped until tomorrow" for the window that started on [date]. A window later today gives its time instead.
+    fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String = skipped(
+        schedule,
+        date,
+        now,
+        R.string.skipped,
+        R.string.skipped_resumes,
+        R.string.ended_early,
+        R.string.ended_early_resumes,
+    )
+
+    // "Schedule skipped until tomorrow", for a notification.
+    fun skippedNotice(schedule: Schedule, date: LocalDate, now: LocalDateTime): String = skipped(
+        schedule,
+        date,
+        now,
+        R.string.notification_skipped,
+        R.string.notification_skipped_until,
+        R.string.notification_ended_early,
+        R.string.notification_ended_until,
+    )
+
+    private fun skipped(
+        schedule: Schedule,
+        date: LocalDate,
+        now: LocalDateTime,
+        @StringRes skipped: Int,
+        @StringRes skippedUntil: Int,
+        @StringRes ended: Int,
+        @StringRes endedUntil: Int,
+    ): String {
         val started = date in schedule.endedEarly
         val next = ScheduleResolver.nextWindow(schedule, now)
-            ?: return strings.get(if (started) R.string.ended_early else R.string.skipped)
-        val day = upcomingDay(next.toLocalDate(), now.toLocalDate())
-        return strings.get(if (started) R.string.ended_early_resumes else R.string.skipped_resumes, day)
+            ?: return strings.get(if (started) ended else skipped)
+        val day = if (next.toLocalDate() == now.toLocalDate()) {
+            time(next)
+        } else {
+            upcomingDay(next.toLocalDate(), now.toLocalDate())
+        }
+        return strings.get(if (started) endedUntil else skippedUntil, day)
     }
 
     fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))

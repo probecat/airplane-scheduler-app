@@ -189,16 +189,20 @@ object Notifier {
         if (!canPost(app)) return
         val failed = ending.failed
         val content = if (!failed.isEmpty) {
-            val what = when {
-                failed.airplane && failed.wifi -> R.string.notification_failed_both
-                failed.airplane -> R.string.notification_failed_airplane
-                else -> R.string.notification_failed_wifi
-            }
+            val text = accessProblem(app)?.takeIf { ending.nothingSwitched }
+                ?.let { app.getString(R.string.notification_no_action_because, it) }
+                ?: app.getString(
+                    when {
+                        failed.airplane && failed.wifi -> R.string.notification_failed_both
+                        failed.airplane -> R.string.notification_failed_airplane
+                        else -> R.string.notification_failed_wifi
+                    },
+                )
             Content(
                 Kind.PROBLEM,
                 PROBLEMS,
                 report.title,
-                sentences(app, app.getString(what), accessProblem(app)),
+                text,
                 actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
                 changes = failed,
             )
@@ -263,16 +267,17 @@ object Notifier {
             is Notice.Upcoming -> {
                 // A window can be postponed only once, as in the app.
                 val postponable = postpone && !notice.postponed
-                val start = if (notice.postponed) {
-                    format.delayed(notice.start)
-                } else {
-                    app.getString(R.string.starts_at, format.time(notice.start))
+                val time = format.time(notice.start)
+                val text = when {
+                    problem != null -> app.getString(R.string.notification_could_miss, time, problem)
+                    notice.postponed -> app.getString(R.string.notification_postponed_to, time)
+                    else -> app.getString(R.string.notification_starts_at, time)
                 }
                 Content(
                     Kind.NOTICE,
                     if (problem != null) PROBLEMS else SCHEDULES,
                     title,
-                    sentences(app, start, problem, phrase = true),
+                    text,
                     notice.date,
                     listOfNotNull(
                         Action(POSTPONE, app.getString(R.string.action_postpone, format.duration(minutes)))
@@ -286,7 +291,7 @@ object Notifier {
                 Kind.NOTICE,
                 SCHEDULES,
                 title,
-                format.resumes(notice.until),
+                app.getString(R.string.notification_resumes_at, format.time(notice.until)),
                 notice.date,
                 listOf(
                     Action(UNDO, app.getString(R.string.action_resume_now)),
@@ -298,7 +303,8 @@ object Notifier {
                     Kind.NOTICE,
                     PROBLEMS,
                     title,
-                    sentences(app, app.getString(R.string.notification_missed_start), problem),
+                    problem?.let { app.getString(R.string.notification_missed_start_because, it) }
+                        ?: app.getString(R.string.notification_missed_start_no_action),
                     notice.date,
                     listOfNotNull(
                         Action(TURN_ON, app.getString(R.string.action_turn_on)).takeIf { problem == null },
@@ -324,20 +330,15 @@ object Notifier {
                 Kind.NOTICE,
                 SCHEDULES,
                 title,
-                format.skipped(schedule, notice.date, now),
+                format.skippedNotice(schedule, notice.date, now),
                 notice.date,
                 until = notice.until,
             )
         }
     }
 
-    // Joins whole sentences. A notice's first line is a phrase with no period, unless more follow.
-    private fun sentences(context: Context, first: String, vararg more: String?, phrase: Boolean = false): String {
-        val rest = more.filterNotNull()
-        if (rest.isEmpty()) return first
-        val lead = if (phrase) context.getString(R.string.sentence, first) else first
-        return rest.fold(lead) { text, next -> context.getString(R.string.sentences, text, next) }
-    }
+    private fun sentences(context: Context, first: String, second: String?): String =
+        second?.let { context.getString(R.string.sentences, first, it) } ?: first
 
     // Android drops posts to a blocked channel. The notice that a post replaces then stays up.
     private fun shows(context: Context, channel: String): Boolean =
@@ -349,17 +350,17 @@ object Notifier {
         return when (access.state) {
             AccessState.READY -> null
             AccessState.OFFLINE -> app.getString(
-                if (ShizukuStatus.launchIntent(app) == null) {
-                    R.string.notification_shizuku_missing
+                if (access.kind == Access.Kind.SHIZUKU && ShizukuStatus.launchIntent(app) == null) {
+                    R.string.reason_shizuku_missing
                 } else {
-                    R.string.notification_shizuku_offline
+                    R.string.reason_shizuku_offline
                 },
             )
             AccessState.PERMISSION_NEEDED -> app.getString(
                 when (access.kind) {
-                    Access.Kind.SHIZUKU -> R.string.notification_shizuku_permission
-                    Access.Kind.SUI -> R.string.notification_sui_permission
-                    Access.Kind.ROOT -> R.string.notification_root_permission
+                    Access.Kind.SHIZUKU -> R.string.reason_shizuku_permission
+                    Access.Kind.SUI -> R.string.reason_sui_permission
+                    Access.Kind.ROOT -> R.string.reason_root_permission
                 },
             )
         }

@@ -34,11 +34,12 @@
     <string name="status_not_installed">Not installed</string>
     <string name="status_not_running">Not running</string>
     <string name="starts_at">Starts at %1$s</string>
-    <string name="schedule_overlaps">Schedule overlaps %1$s.</string>
+    <string name="schedules_overlap">Overlapping schedule can\'t be turned on</string>
+    <string name="schedules_overlaps_other">Overlaps another schedule</string>
+    <!-- In the schedule sheet, as in "Can’t overlap “Sleep”". -->
+    <string name="sheet_overlaps">Can\'t overlap %1$s</string>
     <!-- Joins two whole sentences. -->
     <string name="sentences">%1$s %2$s</string>
-    <!-- Ends a phrase that is followed by more sentences. -->
-    <string name="sentence">%1$s.</string>
 
     <string name="days_every_day">Every day</string>
     <string name="days_once">Once</string>
@@ -52,9 +53,9 @@
     <string name="schedule_label_unnamed">%1$s (%2$s)</string>
     <string name="schedule_label_every_day">every day</string>
     <string name="skipped">Skipped</string>
-    <string name="skipped_resumes">Skipped, resumes %1$s</string>
+    <string name="skipped_resumes">Skipped until %1$s</string>
     <string name="ended_early">Ended early</string>
-    <string name="ended_early_resumes">Ended early, resumes %1$s</string>
+    <string name="ended_early_resumes">Ended early until %1$s</string>
     <string name="postponed_to">Postponed until %1$s</string>
     <!-- No-break spaces keep a number and its unit together. -->
     <plurals name="duration_days">
@@ -74,34 +75,36 @@
 
     <string name="schedules_add">Add schedule</string>
     <string name="schedules_empty">No schedules yet</string>
-    <string name="schedules_on_for">Airplane mode is on for %1$s</string>
-    <string name="schedules_set_for">Airplane mode set for %1$s from now</string>
+    <string name="schedules_on_for">Schedule ends %1$s from now</string>
+    <string name="schedules_set_for">Schedule starts %1$s from now</string>
     <string name="schedules_skipped">Schedule skipped</string>
     <string name="schedules_ended_early">Schedule ended early</string>
     <string name="schedules_postponed">Schedule postponed</string>
     <string name="schedules_paused">Schedule paused</string>
-    <string name="schedules_turn_on_failed">Couldn\'t turn on airplane mode</string>
+    <string name="schedules_turn_on_failed">Failed to turn on airplane mode</string>
     <string name="schedules_deleted">Schedule deleted</string>
-    <string name="strip_alarms">Allow alarms so schedules run on time</string>
-    <string name="strip_battery">Battery optimization may delay schedules</string>
-    <string name="strip_shizuku_ready">Shizuku is ready</string>
-    <string name="strip_shizuku_offline">Shizuku is unavailable, schedules can\'t work</string>
-    <string name="strip_shizuku_permission">Grant Shizuku permission for the app to work</string>
-    <string name="strip_sui_ready">Sui is ready</string>
-    <string name="strip_sui_permission">Grant Sui permission for the app to work</string>
-    <string name="strip_root_ready">Root access is ready</string>
-    <string name="strip_root_permission">Grant root access for the app to work</string>
+    <string name="strip_alarms">Alarms aren\'t allowed</string>
+    <string name="strip_battery">Battery optimization is on</string>
+    <string name="strip_shizuku_ready">Shizuku is active</string>
+    <string name="strip_shizuku_offline">Shizuku isn\'t running</string>
+    <string name="strip_shizuku_missing">Shizuku isn\'t installed</string>
+    <string name="strip_shizuku_permission">Shizuku access isn\'t allowed</string>
+    <string name="strip_sui_ready">Sui is active</string>
+    <string name="strip_sui_permission">Sui access isn\'t allowed</string>
+    <string name="strip_root_ready">Root access is allowed</string>
+    <string name="strip_root_permission">Root access isn\'t allowed</string>
     <string name="card_ends_in">Ends in %1$s</string>
     <string name="card_ends_in_description">Active now, ends in %1$s</string>
     <string name="card_missed">Missed the start</string>
-    <string name="card_missed_offline">Missed, Shizuku is unavailable</string>
-    <string name="card_missed_permission">Missed, need Shizuku permission</string>
-    <string name="card_missed_permission_sui">Missed, need Sui permission</string>
-    <string name="card_missed_permission_root">Missed, need root access</string>
+    <string name="card_missed_offline">Missed (Shizuku not running)</string>
+    <string name="card_missed_missing">Missed (Shizuku not installed)</string>
+    <string name="card_missed_permission">Missed (no Shizuku access)</string>
+    <string name="card_missed_permission_sui">Missed (no Sui access)</string>
+    <string name="card_missed_permission_root">Missed (no root access)</string>
     <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
     <string name="postpone_resumes_at">Resumes at %1$s</string>
-    <string name="postpone_starts">Starts %1$s</string>
-    <string name="postpone_switches_off">Switches the schedule off</string>
+    <string name="postpone_starts">Starts again %1$s</string>
+    <string name="postpone_switches_off">Schedule turns off</string>
 
     <string name="sheet_starts">Starts</string>
     <string name="sheet_ends">Ends</string>
@@ -109,11 +112,9 @@
     <string name="sheet_end_time">End time</string>
     <string name="sheet_discard_title">Discard changes?</string>
     <string name="sheet_discard_text">Your changes won\'t be saved.</string>
-    <string name="sheet_same_times">Start and end are the same.</string>
-    <!-- %1$s is a length, as in "Schedule lasts 8 h". -->
-    <string name="sheet_lasts">Schedule lasts %1$s</string>
-    <!-- %1$s is the schedule's name and %2$s a length, as in "Sleep lasts 8 h". -->
-    <string name="sheet_lasts_named">%1$s lasts %2$s</string>
+    <string name="sheet_same_times">Start and end can\'t be the same time</string>
+    <!-- %1$s is a length, as in "Duration: 8 h". -->
+    <string name="sheet_lasts">Duration: %1$s</string>
     <string name="sheet_repeats">Repeats</string>
     <string name="sheet_day_repeats">Repeats</string>
     <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>
@@ -131,31 +132,28 @@
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_schedules">Schedules</string>
     <string name="settings_postpone">Postpone and pause</string>
-    <string name="settings_backend">Switch with</string>
+    <string name="settings_backend">Permission mode</string>
     <string name="backend_shizuku">Shizuku</string>
+    <string name="backend_sui">Sui</string>
     <string name="backend_root">Root</string>
     <string name="settings_postpone_off">Off</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_sui">Sui</string>
     <string name="settings_root">Root access</string>
-    <string name="settings_shizuku_ready">Ready</string>
+    <string name="settings_shizuku_ready">Active</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_alarms">Alarms</string>
-    <string name="settings_alarms_denied">Not allowed, schedules may run late</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
     <string name="settings_source">Source code</string>
     <string name="settings_reset">Reset preferences</string>
     <string name="settings_reset_title">Reset preferences?</string>
-    <string name="settings_reset_text">Schedules won\'t be deleted.</string>
+    <string name="settings_reset_text">Your schedules and their settings are kept.</string>
 
-    <string name="help_setup">Set up Shizuku</string>
-    <string name="help_setup_sui">Set up Sui</string>
-    <string name="help_setup_root">Set up root</string>
-    <string name="help_setup_text">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Shizuku.</string>
-    <string name="help_setup_text_sui">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses Sui.</string>
-    <string name="help_setup_text_root">Android doesn\'t let apps switch airplane mode, so Airplane Scheduler uses root.</string>
+    <string name="help_setup">Shizuku status</string>
+    <string name="help_setup_sui">Sui status</string>
+    <string name="help_setup_root">Root status</string>
     <string name="help_install">Install Shizuku</string>
     <string name="help_install_sui">Install Sui</string>
     <string name="help_installed">Installed</string>
@@ -199,21 +197,21 @@
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
     <string name="help_shizuku_stopped_legacy">On this Android version, starting Shizuku needs a computer or root.</string>
     <string name="help_root_q">Can I use root?</string>
-    <string name="help_root_a">Yes. In Settings, set Switch with to Root, and the app won\'t need Shizuku.</string>
+    <string name="help_root_a">Yes. In Settings, set Permission mode to Root, and the app won\'t need Shizuku.</string>
 
     <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
-    <string name="shizuku_missing_text">Airplane Scheduler needs Shizuku to switch airplane mode. Install it and start it.</string>
+    <string name="shizuku_missing_text">Schedules can\'t work without Shizuku or root.</string>
     <string name="shizuku_offline_title">Shizuku isn\'t running</string>
-    <string name="shizuku_offline_text">Restart Shizuku so schedules can switch airplane mode.</string>
+    <string name="shizuku_offline_text">Restart Shizuku so schedules can work.</string>
     <string name="shizuku_permission_title">Allow access in Shizuku</string>
-    <string name="shizuku_permission_text">Shizuku won\'t ask again. Open Shizuku, find Airplane Scheduler under authorized apps, and allow it.</string>
+    <string name="shizuku_permission_text">Access was denied too many times. Open Shizuku and allow Airplane Scheduler.</string>
     <string name="shizuku_open">Open Shizuku</string>
     <string name="shizuku_get">Get Shizuku</string>
     <string name="shizuku_use_root">Use root</string>
     <string name="sui_permission_title">Allow access in Sui</string>
-    <string name="sui_permission_text">Sui won\'t ask again. Dial *#*#784784#*#* to open Sui, find Airplane Scheduler, and allow it.</string>
+    <string name="sui_permission_text">Access was denied too many times. Dial *#*#784784#*#* to open Sui and allow Airplane Scheduler.</string>
     <string name="root_permission_title">Allow root access</string>
-    <string name="root_permission_text">Root access wasn\'t allowed. Open your root manager, such as Magisk, find Airplane Scheduler, and allow it.</string>
+    <string name="root_permission_text">Root access wasn\'t allowed. Open your root manager (e.g. Magisk) and allow Airplane Scheduler.</string>
 
     <string name="channel_schedules">Schedules</string>
     <string name="channel_problems">Problems</string>
@@ -221,14 +219,26 @@
     <string name="notification_ended">%1$s ended</string>
     <!-- Stands in for a schedule that was deleted. -->
     <string name="notification_unknown_schedule">A schedule</string>
-    <string name="notification_ends_at">Ends at %1$s</string>
+    <string name="notification_ends_at">Schedule ends at %1$s</string>
+    <string name="notification_starts_at">Schedule starts at %1$s</string>
+    <string name="notification_postponed_to">Schedule postponed until %1$s</string>
+    <string name="notification_resumes_at">Schedule resumes at %1$s</string>
+    <string name="notification_skipped">Schedule skipped</string>
+    <string name="notification_skipped_until">Schedule skipped until %1$s</string>
+    <string name="notification_ended_early">Schedule ended early</string>
+    <string name="notification_ended_until">Schedule ended early until %1$s</string>
+    <!-- %2$s is a reason below, as in "Schedule at 11:00 PM could miss the start because Shizuku isn’t running." -->
+    <string name="notification_could_miss">Schedule at %1$s could miss the start because %2$s.</string>
+    <string name="notification_missed_start_because">Schedule missed the start because %1$s.</string>
+    <string name="notification_no_action_because">No action taken because %1$s.</string>
     <string name="notification_retry">Retry</string>
     <string name="notification_turn_off">Turn off airplane mode</string>
     <string name="notification_turn_on_wifi">Turn on Wi-Fi</string>
-    <string name="notification_failed_both">Couldn\'t turn off airplane mode or turn on Wi-Fi.</string>
-    <string name="notification_failed_airplane">Couldn\'t turn off airplane mode.</string>
-    <string name="notification_failed_wifi">Couldn\'t turn on Wi-Fi.</string>
+    <string name="notification_failed_both">Failed to turn off airplane mode and turn on Wi-Fi.</string>
+    <string name="notification_failed_airplane">Failed to turn off airplane mode.</string>
+    <string name="notification_failed_wifi">Failed to turn on Wi-Fi.</string>
     <string name="notification_missed_start">Schedule missed the start.</string>
+    <string name="notification_missed_start_no_action">Schedule missed the start. No action taken.</string>
     <string name="notification_airplane_was_on">Airplane mode was on before the schedule.</string>
     <string name="notification_airplane_turned_off">Airplane mode was turned off during the schedule.</string>
     <string name="notification_airplane_stays_on">Airplane mode was turned on during the schedule.</string>
@@ -237,9 +247,11 @@
     <string name="notification_wifi_was_off">Wi-Fi was off before the schedule.</string>
     <string name="notification_wifi_back_on">Wi-Fi turned on.</string>
     <string name="notification_missed_end">Schedule missed the end. No action taken.</string>
-    <string name="notification_shizuku_missing">Shizuku isn\'t installed.</string>
-    <string name="notification_shizuku_offline">Shizuku isn\'t running.</string>
-    <string name="notification_shizuku_permission">Need Shizuku permission.</string>
-    <string name="notification_sui_permission">Need Sui permission.</string>
-    <string name="notification_root_permission">Need root access.</string>
+
+    <!-- Reasons that end a sentence, as in "No action taken because Shizuku isn’t running." -->
+    <string name="reason_shizuku_missing">Shizuku isn\'t installed</string>
+    <string name="reason_shizuku_offline">Shizuku isn\'t running</string>
+    <string name="reason_shizuku_permission">Shizuku access isn\'t allowed</string>
+    <string name="reason_sui_permission">Sui access isn\'t allowed</string>
+    <string name="reason_root_permission">root access isn\'t allowed</string>
 </resources>

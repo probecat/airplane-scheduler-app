@@ -101,18 +101,6 @@ fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 },
             ),
         )
-        Text(
-            stringResource(
-                when (access.kind) {
-                    Access.Kind.SHIZUKU -> R.string.help_setup_text
-                    Access.Kind.SUI -> R.string.help_setup_text_sui
-                    Access.Kind.ROOT -> R.string.help_setup_text_root
-                },
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
         when (access.kind) {
             Access.Kind.SHIZUKU -> SetupSteps(viewModel)
             Access.Kind.SUI -> SuiSteps(viewModel)

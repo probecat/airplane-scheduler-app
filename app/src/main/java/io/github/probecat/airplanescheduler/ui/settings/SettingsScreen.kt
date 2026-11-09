@@ -110,9 +110,9 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             onClick = { choosingPostpone = true },
         )
         SettingRow(
-            icon = R.drawable.ic_airplanemode_active,
+            icon = R.drawable.ic_security,
             title = stringResource(R.string.settings_backend),
-            text = stringResource(settings.backend.label),
+            text = stringResource(backendLabel(settings.backend)),
             onClick = { choosingBackend = true },
         )
 
@@ -136,7 +136,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             SettingRow(
                 icon = R.drawable.ic_alarm,
                 title = stringResource(R.string.settings_alarms),
-                text = stringResource(if (exactAlarms) R.string.status_allowed else R.string.settings_alarms_denied),
+                text = stringResource(if (exactAlarms) R.string.status_allowed else R.string.status_not_allowed),
                 trailing = {
                     TextButton(onClick = { context.startActivity(exactAlarmSettings(context)) }) {
                         Text(stringResource(if (exactAlarms) R.string.action_manage else R.string.action_allow))
@@ -188,7 +188,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     if (choosingBackend) {
         Choices(
             title = stringResource(R.string.settings_backend),
-            options = Backend.entries.map { it to stringResource(it.label) },
+            options = Backend.entries.map { it to stringResource(backendLabel(it)) },
             selected = settings.backend,
             onSelect = { backend ->
                 viewModel.updateSettings { it.copy(backend = backend) }
@@ -228,7 +228,8 @@ private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> 
         ),
         text = stringResource(
             when (access.state) {
-                AccessState.READY -> R.string.settings_shizuku_ready
+                AccessState.READY ->
+                    if (access.kind == Access.Kind.ROOT) R.string.status_allowed else R.string.settings_shizuku_ready
                 AccessState.OFFLINE ->
                     if (shizukuApp != null) R.string.status_not_running else R.string.status_not_installed
                 AccessState.PERMISSION_NEEDED -> R.string.status_not_allowed
@@ -256,6 +257,10 @@ private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> 
         },
     )
 }
+
+// Sui stands in for Shizuku when it is installed.
+private fun backendLabel(backend: Backend): Int =
+    if (backend == Backend.SHIZUKU && ShizukuStatus.sui) R.string.backend_sui else backend.label
 
 private val POSTPONE_MINUTES = listOf(0, 15, 30, 45, 60)
 

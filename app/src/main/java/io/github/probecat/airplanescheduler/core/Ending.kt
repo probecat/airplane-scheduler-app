@@ -16,6 +16,8 @@ data class Ending(
     // Wi-Fi was off before the start, so it stays off although the schedule turns it back on.
     val wifiWasOff: Boolean = false,
     val wifiBackOn: Boolean = false,
+    // The end meant to switch something and switched nothing.
+    val nothingSwitched: Boolean = false,
 ) {
     val clean: Boolean
         get() = failed.isEmpty && !missedStart && !airplaneTurnedOff && !airplaneStaysOn && !wifiWasOff
@@ -37,10 +39,15 @@ data class Ending(
             airplaneStaysOn = airplaneOn && !made.airplane,
             wifiWasOff = started.already.wifi && enableWifi && !wifiOn,
             wifiBackOn = made.wifi,
+            nothingSwitched = !undo.isEmpty && made.isEmpty,
         )
 
         // [airplaneOn] is the state read right after the retry.
-        fun retried(changes: Changes, made: Changes, airplaneOn: Boolean) =
-            Ending(changes - made, airplaneStaysOn = airplaneOn && !made.airplane, wifiBackOn = made.wifi)
+        fun retried(changes: Changes, made: Changes, airplaneOn: Boolean) = Ending(
+            changes - made,
+            airplaneStaysOn = airplaneOn && !made.airplane,
+            wifiBackOn = made.wifi,
+            nothingSwitched = !changes.isEmpty && made.isEmpty,
+        )
     }
 }

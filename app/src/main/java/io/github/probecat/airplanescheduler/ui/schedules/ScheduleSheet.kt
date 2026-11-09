@@ -167,17 +167,13 @@ fun ScheduleSheet(
                 when {
                     sameTimes -> ErrorText(stringResource(R.string.sheet_same_times))
                     conflict != null -> ErrorText(
-                        stringResource(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())),
+                        stringResource(R.string.sheet_overlaps, format.label(conflict, now.toLocalDate())),
                     )
                     else -> Text(
-                        format.duration(ScheduleTime.duration(schedule.start, schedule.end)).let { length ->
-                            val name = schedule.name.trim()
-                            if (name.isEmpty()) {
-                                stringResource(R.string.sheet_lasts, length)
-                            } else {
-                                stringResource(R.string.sheet_lasts_named, name, length)
-                            }
-                        },
+                        stringResource(
+                            R.string.sheet_lasts,
+                            format.duration(ScheduleTime.duration(schedule.start, schedule.end)),
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

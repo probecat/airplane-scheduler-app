@@ -90,6 +90,7 @@ import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AccessState
+import io.github.probecat.airplanescheduler.system.ShizukuStatus
 import io.github.probecat.airplanescheduler.system.batteryOptimizationOff
 import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
@@ -136,9 +137,11 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     val active = ScheduleResolver.activeSchedule(schedules, now)
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
     var batteryOff by remember { mutableStateOf(batteryOptimizationOff(context)) }
+    var shizukuInstalled by remember { mutableStateOf(ShizukuStatus.launchIntent(context) != null) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         exactAlarms = exactAlarmsAllowed(context)
         batteryOff = batteryOptimizationOff(context)
+        shizukuInstalled = ShizukuStatus.launchIntent(context) != null
     }
     val requestNotifications = rememberNotificationRequest(fallback = false) {}
 
@@ -161,13 +164,13 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         show(message)
     }
 
-    fun showConflict(conflict: Schedule) {
-        show(resources.getString(R.string.schedule_overlaps, format.label(conflict, now.toLocalDate())))
+    fun showConflict(@StringRes message: Int = R.string.schedules_overlap) {
+        show(resources.getString(message))
     }
 
     fun unskip(id: Long, offered: ScheduleStatus) {
         when (val result = viewModel.unskip(id, offered)) {
-            is ScheduleEdits.Result.Overlaps -> showConflict(result.schedule)
+            is ScheduleEdits.Result.Overlaps -> showConflict(R.string.schedules_overlaps_other)
             is ScheduleEdits.Result.Saved -> showStart(id)
             null -> {}
         }
@@ -272,7 +275,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                             }
                             if (showStatus && !access.ready) {
                                 Strip(
-                                    label = stringResource(statusStrip(access)),
+                                    label = stringResource(statusStrip(access, shizukuInstalled)),
                                     icon = access.state.icon,
                                     tone = Tone.ERROR,
                                     onClick = { requestAccess(access) },
@@ -288,7 +291,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                             }
                             if (showStatus && access.ready) {
                                 Strip(
-                                    label = stringResource(statusStrip(access)),
+                                    label = stringResource(statusStrip(access, shizukuInstalled)),
                                     icon = access.state.icon,
                                     tone = Tone.SUCCESS,
                                     onDismiss = { viewModel.updateSettings { it.copy(hideShizukuReady = true) } },
@@ -310,6 +313,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                             schedule = schedule,
                             endsIn = if (isActive) minutesLeft(schedule, now) else null,
                             missed = access.takeIf { isMissed },
+                            shizukuInstalled = shizukuInstalled,
                             note = status?.takeIf { action?.undoes == true }?.let { note(it, schedule, now, format) },
                             action = action,
                             today = now.toLocalDate(),
@@ -330,7 +334,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                             },
                             onToggle = { enabled ->
                                 val conflict = viewModel.setEnabled(schedule, enabled)
-                                if (conflict != null) showConflict(conflict) else showStart(schedule.id)
+                                if (conflict != null) showConflict() else showStart(schedule.id)
                             },
                         )
                     }
@@ -389,13 +393,21 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     }
 }
 
-private fun statusStrip(access: Access): Int = when (access.state) {
+// Sui users have no Shizuku app, so its absence says nothing about them.
+private fun shizukuMissing(access: Access, shizukuInstalled: Boolean) =
+    access.kind == Access.Kind.SHIZUKU && !shizukuInstalled
+
+private fun statusStrip(access: Access, shizukuInstalled: Boolean): Int = when (access.state) {
     AccessState.READY -> when (access.kind) {
         Access.Kind.SHIZUKU -> R.string.strip_shizuku_ready
         Access.Kind.SUI -> R.string.strip_sui_ready
         Access.Kind.ROOT -> R.string.strip_root_ready
     }
-    AccessState.OFFLINE -> R.string.strip_shizuku_offline
+    AccessState.OFFLINE -> if (shizukuMissing(access, shizukuInstalled)) {
+        R.string.strip_shizuku_missing
+    } else {
+        R.string.strip_shizuku_offline
+    }
     AccessState.PERMISSION_NEEDED -> when (access.kind) {
         Access.Kind.SHIZUKU -> R.string.strip_shizuku_permission
         Access.Kind.SUI -> R.string.strip_sui_permission
@@ -521,6 +533,7 @@ private fun ScheduleCard(
     endsIn: Int?,
     // Why airplane mode is off while it is active.
     missed: Access?,
+    shizukuInstalled: Boolean,
     // Why the next window will not run as planned.
     note: Pair<String, Int>?,
     action: CardAction?,
@@ -558,7 +571,7 @@ private fun ScheduleCard(
                         }
                     }
                     when {
-                        missed != null -> Missed(missed)
+                        missed != null -> Missed(missed, shizukuInstalled)
                         endsIn != null -> EndsIn(format.duration(endsIn))
                         note != null -> Status(note.first, note.second)
                     }
@@ -601,10 +614,14 @@ private fun EndsIn(duration: String) = Status(
 )
 
 @Composable
-private fun Missed(access: Access) {
+private fun Missed(access: Access, shizukuInstalled: Boolean) {
     val text = when (access.state) {
         AccessState.READY -> R.string.card_missed
-        AccessState.OFFLINE -> R.string.card_missed_offline
+        AccessState.OFFLINE -> if (shizukuMissing(access, shizukuInstalled)) {
+            R.string.card_missed_missing
+        } else {
+            R.string.card_missed_offline
+        }
         AccessState.PERMISSION_NEEDED -> when (access.kind) {
             Access.Kind.SHIZUKU -> R.string.card_missed_permission
             Access.Kind.SUI -> R.string.card_missed_permission_sui
