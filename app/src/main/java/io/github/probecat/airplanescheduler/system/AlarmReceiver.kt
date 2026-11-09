@@ -4,12 +4,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         // Read the time before the Shizuku wait. Otherwise an end that arrives during the wait counts as missed.
         val now = LocalDateTime.now()
+        val zone = if (action == Intent.ACTION_TIMEZONE_CHANGED) " (${ZoneId.systemDefault()})" else ""
+        App.from(context).log.add(Events.received(action) + zone)
         AlarmScheduler.scheduleAll(context)
         val app = App.from(context)
         app.finishAfter(this) {

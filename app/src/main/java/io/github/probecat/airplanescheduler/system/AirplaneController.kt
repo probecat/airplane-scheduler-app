@@ -31,22 +31,35 @@ object AirplaneController {
         holding {
             val result = Engine.on(app.engine.state, event, device(app))
             app.engine.state = result.state
+            if (event is Engine.Event.Alarm && result.effects.isEmpty()) app.log.add("No switch needed")
             for (effect in result.effects) perform(app, effect)
         }
     }
 
     private suspend fun perform(app: App, effect: Engine.Effect) {
         when (effect) {
-            is Engine.Effect.Switch ->
-                dispatch(app, Engine.Event.Switched(effect, app.switcher.set(effect.enabled, effect.changes)))
+            is Engine.Effect.Switch -> {
+                val made = app.switcher.set(effect.enabled, effect.changes)
+                logSwitch(app, Events.then(effect.then), effect.enabled, effect.changes, made)
+                dispatch(app, Engine.Event.Switched(effect, made))
+            }
             is Engine.Effect.Report -> Notifier.ended(app, effect.schedule, effect.ending)
-            is Engine.Effect.MissedEnd -> Notifier.missedEnd(app, effect.schedule, effect.left)
+            is Engine.Effect.MissedEnd -> {
+                val schedule = effect.schedule?.let { "#${it.id}" } ?: "a deleted schedule"
+                app.log.add("Missed END of $schedule and left switched: ${Events.changes(effect.left)}")
+                Notifier.missedEnd(app, effect.schedule, effect.left)
+            }
         }
     }
 
     suspend fun undo(app: App, changes: Changes, report: Notifier.Report) {
         val made = holding { app.switcher.set(false, changes) }
+        logSwitch(app, "RETRY #${report.id}", false, changes, made)
         Notifier.ended(app, report, Ending.retried(changes, made, airplaneOn(app)))
+    }
+
+    private fun logSwitch(app: App, what: String, enabled: Boolean, wanted: Changes, made: Changes) {
+        app.log.add("$what via ${app.access.value.kind.name}: ${Events.switched(enabled, wanted, made)}")
     }
 
     fun device(context: Context) = Engine.Device(airplaneOn(context), wifiOn(context))

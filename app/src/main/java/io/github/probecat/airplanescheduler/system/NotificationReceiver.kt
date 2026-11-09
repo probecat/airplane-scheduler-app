@@ -23,39 +23,58 @@ class NotificationReceiver : BroadcastReceiver() {
         app.finishAfter(this) {
             app.switcher.connect(tap = true)
             if (intent.action == Notifier.RETRY) {
+                app.log.add("Notification action RETRY for #$id")
                 val report = Notifier.Report(id, intent.getStringExtra(Notifier.TITLE).orEmpty())
                 AirplaneController.undo(app, Changes.of(intent.getIntExtra(Notifier.CHANGES, 0)), report)
                 return@finishAfter
             }
             app.refreshAccess()
-            act(app, id, intent)
+            val acted = act(app, id, intent)
+            val note = if (acted) "" else " ignored (no longer offered)"
+            app.log.add("Notification action ${Events.name(intent.action)} for #$id$note")
             Notifier.refresh(app)
         }
     }
 
-    private suspend fun act(app: App, id: Long, intent: Intent) {
-        val schedule = app.schedules.get(id) ?: return
-        val date = intent.getStringExtra(Notifier.DATE)?.let(LocalDate::parse) ?: return
+    // False when the tap is no longer offered and did nothing.
+    private suspend fun act(app: App, id: Long, intent: Intent): Boolean {
+        val schedule = app.schedules.get(id) ?: return false
+        val date = intent.getStringExtra(Notifier.DATE)?.let(LocalDate::parse) ?: return false
         val now = LocalDateTime.now()
         val status = ScheduleUpdater.status(app, schedule, now)
         val all = app.schedules.all
-        when (intent.action) {
+        return when (intent.action) {
             // After Skip or End, the only action left is Undo, and only the app has Undo.
             Notifier.SKIP, Notifier.END -> if (status?.allows(Action.SKIP, date) == true) {
                 val missed = (status as? ScheduleStatus.Running)?.missed == true
                 ScheduleUpdater.commit(app, ScheduleEdits.skip(all, schedule, now, missed))
                 Notifier.dismiss(app, id)
+                true
+            } else {
+                false
             }
             Notifier.POSTPONE -> if (status?.allows(Action.POSTPONE, date) == true) {
                 ScheduleUpdater.commit(
                     app,
                     ScheduleEdits.postpone(all, schedule, now, intent.getIntExtra(Notifier.MINUTES, 0)),
                 )
+                true
+            } else {
+                false
             }
             Notifier.UNDO -> if (status?.allows(Action.UNDO, date) == true) {
                 ScheduleUpdater.commit(app, ScheduleEdits.unskip(all, schedule, now))
+                true
+            } else {
+                false
             }
-            Notifier.TURN_ON -> if (status?.allows(Action.TURN_ON, date) == true) ScheduleUpdater.catchUp(app)
+            Notifier.TURN_ON -> if (status?.allows(Action.TURN_ON, date) == true) {
+                ScheduleUpdater.catchUp(app)
+                true
+            } else {
+                false
+            }
+            else -> false
         }
     }
 }

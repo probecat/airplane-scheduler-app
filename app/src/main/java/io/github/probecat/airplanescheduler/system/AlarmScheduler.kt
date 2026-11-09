@@ -36,6 +36,13 @@ object AlarmScheduler {
         val millis = time?.toInstant()?.toEpochMilli()
         val exact = exactAlarmsAllowed(context)
         if (last.put(action, millis to exact) == (millis to exact)) return
+        if (action == CHANGE) {
+            val log = App.from(context).log
+            log.add(
+                time?.let { "Next ${if (exact) "exact" else "inexact"} alarm at ${Events.MOMENT.format(it)}" }
+                    ?: "No next alarm",
+            )
+        }
         val alarms = context.getSystemService(AlarmManager::class.java)
         val intent = Intent(context, AlarmReceiver::class.java).setAction(action)
         val pending = PendingIntent.getBroadcast(context, 0, intent, FLAGS)

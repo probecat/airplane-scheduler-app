@@ -110,6 +110,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     // Returns the overlapping schedule instead of switching on.
     fun setEnabled(schedule: Schedule, enabled: Boolean): Schedule? =
         ScheduleUpdater.launch(app, ScheduleEdits.setEnabled(app.schedules.all, schedule, enabled, LocalDateTime.now()))
+            .also { if (it == null) app.log.add("Schedule #${schedule.id} ${if (enabled) "enabled" else "disabled"}") }
 
     // These taps act only while the schedule status is still the one they were [offered] for. If the user already did
     // the same tap on the notification, an older card or dialog does nothing and returns null or false.
@@ -117,23 +118,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun skip(id: Long, offered: ScheduleStatus): Boolean {
         val schedule = offered(id, offered) ?: return false
         val missed = (offered as? ScheduleStatus.Running)?.missed == true
+        app.log.add("App action SKIP for #$id")
         commit(ScheduleEdits.skip(app.schedules.all, schedule, LocalDateTime.now(), missed))
         return true
     }
 
     fun postpone(id: Long, offered: ScheduleStatus): Boolean {
         val schedule = offered(id, offered) ?: return false
+        app.log.add("App action POSTPONE for #$id")
         commit(ScheduleEdits.postpone(app.schedules.all, schedule, LocalDateTime.now(), settings.value.postponeMinutes))
         return true
     }
 
     fun unskip(id: Long, offered: ScheduleStatus): ScheduleEdits.Result? {
         val schedule = offered(id, offered) ?: return null
+        app.log.add("App action UNDO for #$id")
         return ScheduleEdits.unskip(app.schedules.all, schedule, LocalDateTime.now()).also(::commit)
     }
 
     fun catchUp(id: Long, offered: ScheduleStatus, done: (Boolean) -> Unit): Boolean {
         offered(id, offered) ?: return false
+        app.log.add("App action TURN_ON for #$id")
         app.launch { done(ScheduleUpdater.catchUp(app)) }
         return true
     }
@@ -141,8 +146,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private fun offered(id: Long, offered: ScheduleStatus): Schedule? =
         app.schedules.get(id)?.takeIf { ScheduleUpdater.status(app, it, LocalDateTime.now()) == offered }
 
-    fun save(edited: Schedule): Schedule? =
-        ScheduleUpdater.launch(app, ScheduleEdits.saveSheet(app.schedules.all, edited, LocalDateTime.now()))
+    fun save(edited: Schedule): Schedule? {
+        val verb = if (isNew(edited)) "added" else "edited"
+        return ScheduleUpdater.launch(app, ScheduleEdits.saveSheet(app.schedules.all, edited, LocalDateTime.now()))
+            .also { if (it == null) app.log.add("Schedule #${edited.id} $verb") }
+    }
 
     // True once, when the first schedule is saved and notifications are not allowed yet.
     fun asksNotifications(): Boolean {
@@ -151,10 +159,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         return !notificationsAllowed(app)
     }
 
-    fun delete(schedule: Schedule) = commit(ScheduleEdits.delete(app.schedules.all, schedule.id))
+    fun delete(schedule: Schedule) {
+        app.log.add("Schedule #${schedule.id} deleted")
+        commit(ScheduleEdits.delete(app.schedules.all, schedule.id))
+    }
 
-    fun restore(schedule: Schedule) =
+    fun restore(schedule: Schedule) {
+        app.log.add("Schedule #${schedule.id} restored")
         commit(ScheduleEdits.restore(app.schedules.all, schedule, app.schedules.nextId(), LocalDateTime.now()))
+    }
 
     fun updateSettings(transform: (Settings) -> Settings) {
         val before = app.settings.current

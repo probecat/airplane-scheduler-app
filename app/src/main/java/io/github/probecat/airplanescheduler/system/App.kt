@@ -10,6 +10,7 @@ import android.provider.Settings
 import androidx.annotation.VisibleForTesting
 import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.data.EngineRepository
+import io.github.probecat.airplanescheduler.data.EventLog
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -27,6 +28,8 @@ class App : Application() {
     lateinit var settings: SettingsRepository
         private set
     lateinit var engine: EngineRepository
+        private set
+    lateinit var log: EventLog
         private set
     lateinit var shizukuSwitcher: Switcher
         @VisibleForTesting internal set
@@ -50,6 +53,7 @@ class App : Application() {
         schedules = ScheduleRepository(this)
         settings = SettingsRepository(this)
         engine = EngineRepository(this)
+        log = EventLog(this)
         shizukuSwitcher = ShizukuSwitcher(this)
         rootSwitcher = RootSwitcher(this, ::refreshAccess)
         accessState.value = switcher.access()
@@ -90,6 +94,7 @@ class App : Application() {
         val access = switcher.access()
         if (access == accessState.value) return
         accessState.value = access
+        log.add("Access changed: ${Events.access(access)}")
         Notifier.refresh(this)
     }
 
