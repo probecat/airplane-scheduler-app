@@ -87,12 +87,11 @@ internal val SeedDark = darkColorScheme(
 val AddButton = Color(0xFFE4CEFF)
 val OnAddButton = Color(0xFF54436B)
 
-// Material has no warning role, so a fixed orange stands in for problems that only delay schedules.
-data class WarningColors(val container: Color, val onContainer: Color)
+// Material has no warning or success roles, so fixed tones of orange and green stand in, like the fixed error red.
+// [color] is for icons on the surface.
+data class StatusColors(val color: Color, val container: Color, val onContainer: Color)
 
-internal val WarningLight = WarningColors(Color(0xFFFFDDB8), Color(0xFF653E00))
-internal val WarningDark = WarningColors(Color(0xFF653E00), Color(0xFFFFDDB8))
-
-// Material has no success role either. A fixed green pairs with the error red for finished steps.
-internal val SuccessLight = Color(0xFF006E1C)
-internal val SuccessDark = Color(0xFFA3D39C)
+internal val WarningLight = StatusColors(Color(0xFF835400), Color(0xFFFFDDB8), Color(0xFF653E00))
+internal val WarningDark = StatusColors(Color(0xFFFFB95F), Color(0xFF653E00), Color(0xFFFFDDB8))
+internal val SuccessLight = StatusColors(Color(0xFF006E1C), Color(0xFFB8F1AE), Color(0xFF1B5320))
+internal val SuccessDark = StatusColors(Color(0xFFA3D39C), Color(0xFF1B5320), Color(0xFFB8F1AE))

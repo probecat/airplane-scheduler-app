@@ -39,7 +39,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -99,13 +98,12 @@ import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
-import io.github.probecat.airplanescheduler.ui.MenuItem
-import io.github.probecat.airplanescheduler.ui.OverflowMenu
 import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.rememberAccessRequest
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
+import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColors
 import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
 import io.github.probecat.airplanescheduler.ui.theme.OnAddButton
 import java.time.Duration
@@ -214,12 +212,15 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    OverflowMenu(
-                        listOf(
-                            MenuItem(stringResource(R.string.settings), R.drawable.ic_settings, onSettings),
-                            MenuItem(stringResource(R.string.help), R.drawable.ic_help, onHelp),
-                        ),
-                    )
+                    IconButton(onClick = onHelp) {
+                        Icon(painterResource(R.drawable.ic_help), contentDescription = stringResource(R.string.help))
+                    }
+                    IconButton(onClick = onSettings) {
+                        Icon(
+                            painterResource(R.drawable.ic_settings),
+                            contentDescription = stringResource(R.string.settings),
+                        )
+                    }
                 },
                 scrollBehavior = scrollBehavior,
             )
@@ -265,29 +266,32 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                                 Strip(
                                     label = stringResource(R.string.strip_alarms),
                                     icon = R.drawable.ic_error,
-                                    error = true,
+                                    tone = Tone.ERROR,
                                     onClick = { context.startActivity(exactAlarmSettings(context)) },
                                 )
                             }
-                            if (showStatus) {
+                            if (showStatus && !access.ready) {
                                 Strip(
                                     label = stringResource(statusStrip(access)),
                                     icon = access.state.icon,
-                                    error = !access.ready,
-                                    onClick = if (access.ready) null else ({ requestAccess(access) }),
-                                    onDismiss = if (access.ready) {
-                                        { viewModel.updateSettings { it.copy(hideShizukuReady = true) } }
-                                    } else {
-                                        null
-                                    },
+                                    tone = Tone.ERROR,
+                                    onClick = { requestAccess(access) },
                                 )
                             }
                             if (showBattery) {
                                 Strip(
                                     label = stringResource(R.string.strip_battery),
                                     icon = R.drawable.ic_warning,
-                                    warning = true,
+                                    tone = Tone.WARNING,
                                     onClick = { stopBatteryOptimization(context) },
+                                )
+                            }
+                            if (showStatus && access.ready) {
+                                Strip(
+                                    label = stringResource(statusStrip(access)),
+                                    icon = access.state.icon,
+                                    tone = Tone.SUCCESS,
+                                    onDismiss = { viewModel.updateSettings { it.copy(hideShizukuReady = true) } },
                                 )
                             }
                         }
@@ -399,58 +403,55 @@ private fun statusStrip(access: Access): Int = when (access.state) {
     }
 }
 
-// A line above the schedules about what the app needs. An error stays until it is fixed. The user can
-// dismiss the others.
+private enum class Tone { SUCCESS, WARNING, ERROR }
+
+// A line above the schedules about what the app needs. A problem stays until it is fixed, and a tap shows how. The user
+// can dismiss the rest.
 @Composable
 private fun Strip(
     label: String,
     icon: Int,
+    tone: Tone,
     modifier: Modifier = Modifier,
-    error: Boolean = false,
-    warning: Boolean = false,
     onClick: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
-    val warningColors = LocalWarningColors.current
+    val (container, content) = when (tone) {
+        Tone.ERROR -> colors.errorContainer to colors.onErrorContainer
+        Tone.WARNING -> LocalWarningColors.current.let { it.container to it.onContainer }
+        Tone.SUCCESS -> LocalSuccessColors.current.let { it.container to it.onContainer }
+    }
     Surface(
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = when {
-            error -> colors.errorContainer
-            warning -> warningColors.container
-            else -> colors.surfaceContainer
-        },
-        contentColor = when {
-            error -> colors.onErrorContainer
-            warning -> warningColors.onContainer
-            else -> colors.onSurface
-        },
+        color = container,
+        contentColor = content,
     ) {
+        val end = if (onDismiss != null) 4.dp else 12.dp
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(
-                start = 16.dp,
-                end = if (onDismiss != null) 8.dp else 16.dp,
-            ),
+            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp, end = end),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                painterResource(icon),
-                contentDescription = null,
-                tint = if (error || warning) LocalContentColor.current else colors.primary,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(12.dp))
             Text(
                 label,
                 style = MaterialTheme.typography.labelLarge,
                 modifier = Modifier.weight(1f).padding(vertical = 12.dp),
             )
+            if (onClick != null) {
+                Icon(painterResource(R.drawable.ic_arrow_forward), contentDescription = null, Modifier.size(18.dp))
+            }
             if (onDismiss != null) {
-                TextButton(onClick = onDismiss, contentPadding = PaddingValues(horizontal = 12.dp)) {
-                    Text(stringResource(R.string.action_dismiss))
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        painterResource(R.drawable.ic_close),
+                        contentDescription = stringResource(R.string.action_dismiss),
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
