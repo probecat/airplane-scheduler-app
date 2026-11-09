@@ -299,7 +299,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
                 items(schedules, key = { it.id }) { schedule ->
                     val isActive = schedule.id == active?.id
                     val isMissed = isActive && schedule.id == missed
-                    val status = ScheduleStatus.of(schedule, schedules, now, isMissed)
+                    val status = ScheduleStatus.of(schedule, now, isMissed)
                     val action = cardAction(status, canCatchUp = isMissed && access.ready)
                     SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
                         ScheduleCard(
@@ -355,7 +355,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
 
     choosing?.let { id ->
         val schedule = schedules.find { it.id == id }
-        val status = schedule?.let { ScheduleStatus.of(it, schedules, now, missed = it.id == missed) }
+        val status = schedule?.let { ScheduleStatus.of(it, now, missed = it.id == missed) }
         val offered = remember(id) { status }
         val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
         // Since the dialog opened, the schedule was deleted or changed, for example by its notification, or nothing
@@ -370,7 +370,6 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
             ending = ending,
             minutes = settings.postponeMinutes,
             to = to,
-            breaksAt = (offered as? ScheduleStatus.Upcoming)?.takeIf { it.after != null }?.start,
             now = now,
             format = format,
             onPostpone = {
@@ -706,8 +705,6 @@ private fun PostponeDialog(
     ending: Boolean,
     minutes: Int,
     to: LocalDateTime,
-    // When airplane mode turns off instead, as the window continues another one.
-    breaksAt: LocalDateTime?,
     now: LocalDateTime,
     format: Format,
     onPostpone: () -> Unit,
@@ -718,8 +715,6 @@ private fun PostponeDialog(
     val resumes = next?.let {
         stringResource(R.string.postpone_starts, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
     } ?: stringResource(R.string.postpone_switches_off)
-    val breaks = breaksAt?.let { stringResource(R.string.postpone_breaks_at, format.time(it)) }
-    fun lines(text: String) = listOfNotNull(breaks, text).joinToString("\n")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(format.title(schedule)) },
@@ -731,18 +726,16 @@ private fun PostponeDialog(
                         if (ending) R.string.action_pause else R.string.action_postpone,
                         format.duration(minutes),
                     ),
-                    text = lines(
-                        stringResource(
-                            if (ending) R.string.postpone_resumes_at else R.string.starts_at,
-                            format.time(to),
-                        ),
+                    text = stringResource(
+                        if (ending) R.string.postpone_resumes_at else R.string.starts_at,
+                        format.time(to),
                     ),
                     onClick = onPostpone,
                 )
                 DialogChoice(
                     icon = R.drawable.ic_skip_next,
                     title = stringResource(if (ending) R.string.action_end else R.string.action_skip),
-                    text = lines(resumes),
+                    text = resumes,
                     onClick = onSkip,
                 )
             }

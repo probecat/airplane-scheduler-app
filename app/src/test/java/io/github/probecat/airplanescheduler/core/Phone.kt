@@ -67,7 +67,7 @@ class Phone(
         Boundary.missed(schedules, now, state.started, airplaneOn, switching = held.isNotEmpty())
 
     fun status(id: Long = schedules.first().id): ScheduleStatus? =
-        ScheduleStatus.of(schedule(id), schedules, now, missed = missedStart()?.id == id)
+        ScheduleStatus.of(schedule(id), now, missed = missedStart()?.id == id)
 
     // The card and the dialog offer taps only in some states. A tap acts only while the status is still the one it was
     // offered for.

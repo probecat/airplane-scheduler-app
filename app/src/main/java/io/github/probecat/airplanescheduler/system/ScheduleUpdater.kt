@@ -39,7 +39,6 @@ object ScheduleUpdater {
 
     fun status(app: App, schedule: Schedule, now: LocalDateTime): ScheduleStatus? = ScheduleStatus.of(
         schedule,
-        app.schedules.all,
         now,
         schedule.id == AirplaneController.missedSchedule(app, now)?.id,
     )

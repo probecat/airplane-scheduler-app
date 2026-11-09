@@ -102,7 +102,6 @@
     <string name="postpone_resumes_at">Resumes at %1$s</string>
     <string name="postpone_starts">Starts %1$s</string>
     <string name="postpone_switches_off">Switches the schedule off</string>
-    <string name="postpone_breaks_at">Airplane mode turns off at %1$s</string>
 
     <string name="sheet_starts">Starts</string>
     <string name="sheet_ends">Ends</string>
@@ -221,11 +220,7 @@
     <string name="notification_ended">%1$s ended</string>
     <!-- Stands in for a schedule that was deleted. -->
     <string name="notification_unknown_schedule">A schedule</string>
-    <string name="notification_continues_from">Starts after %1$s at %2$s</string>
-    <string name="notification_skip_breaks">Skipping turns airplane mode off when %1$s ends.</string>
-    <string name="notification_skip_or_postpone_breaks">Skipping or postponing turns airplane mode off when %1$s ends.</string>
     <string name="notification_ends_at">Ends at %1$s</string>
-    <string name="notification_continues_as">Continues after %2$s as %1$s</string>
     <string name="notification_retry">Retry</string>
     <string name="notification_turn_off">Turn off airplane mode</string>
     <string name="notification_turn_on_wifi">Turn on Wi-Fi</string>

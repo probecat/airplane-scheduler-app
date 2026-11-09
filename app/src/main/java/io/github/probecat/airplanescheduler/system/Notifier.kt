@@ -169,7 +169,7 @@ object Notifier {
         val problem = accessProblem(app)
         val shown = listOf(SCHEDULES, PROBLEMS).filter { shows(app, it) }
         return schedules.mapNotNull { schedule ->
-            Notice.of(schedule, schedules, now, schedule.id == missed)
+            Notice.of(schedule, now, schedule.id == missed)
                 ?.let { notice(app, schedule, it, now, format, problem) }
                 ?.takeIf { it.channel in shown }
                 ?.let { schedule.id to it }
@@ -263,31 +263,16 @@ object Notifier {
             is Notice.Upcoming -> {
                 // A window can be postponed only once, as in the app.
                 val postponable = postpone && !notice.postponed
-                val start = when {
-                    notice.after != null -> app.getString(
-                        R.string.notification_continues_from,
-                        format.title(notice.after),
-                        format.time(notice.start),
-                    )
-                    notice.postponed -> format.delayed(notice.start)
-                    else -> app.getString(R.string.starts_at, format.time(notice.start))
-                }
-                // Leaving out a window that continues another one ends the other one at its end.
-                val breaks = notice.after?.let {
-                    app.getString(
-                        if (postponable) {
-                            R.string.notification_skip_or_postpone_breaks
-                        } else {
-                            R.string.notification_skip_breaks
-                        },
-                        format.label(it, now.toLocalDate()),
-                    )
+                val start = if (notice.postponed) {
+                    format.delayed(notice.start)
+                } else {
+                    app.getString(R.string.starts_at, format.time(notice.start))
                 }
                 Content(
                     Kind.NOTICE,
                     if (problem != null) PROBLEMS else SCHEDULES,
                     title,
-                    sentences(app, start, breaks, problem, phrase = true),
+                    sentences(app, start, problem, phrase = true),
                     notice.date,
                     listOfNotNull(
                         Action(POSTPONE, app.getString(R.string.action_postpone, format.duration(minutes)))
@@ -325,9 +310,7 @@ object Notifier {
                     Kind.NOTICE,
                     SCHEDULES,
                     title,
-                    notice.next?.let {
-                        app.getString(R.string.notification_continues_as, format.title(it), format.time(notice.end))
-                    } ?: app.getString(R.string.notification_ends_at, format.time(notice.end)),
+                    app.getString(R.string.notification_ends_at, format.time(notice.end)),
                     notice.date,
                     listOfNotNull(
                         Action(POSTPONE, app.getString(R.string.action_pause, format.duration(minutes)))

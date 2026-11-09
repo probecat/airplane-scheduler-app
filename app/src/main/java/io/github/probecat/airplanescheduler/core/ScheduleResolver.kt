@@ -60,22 +60,6 @@ object ScheduleResolver {
     fun windowEnd(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(ScheduleTime.duration(schedule.start, schedule.end).toLong())
 
-    // The window that starts where the one that started on [date] ends, so airplane mode stays on between them.
-    fun following(schedule: Schedule, date: LocalDate, schedules: List<Schedule>): Schedule? {
-        val end = windowEnd(schedule, date)
-        return live(schedules).firstOrNull {
-            it.id != schedule.id && startsOn(it, end.toLocalDate()) && startOf(it, end.toLocalDate()) == end
-        }
-    }
-
-    fun preceding(schedule: Schedule, date: LocalDate, schedules: List<Schedule>): Schedule? {
-        val start = startOf(schedule, date)
-        return live(schedules).firstOrNull {
-            val from = startDate(it, start.toLocalDate())
-            it.id != schedule.id && startsOn(it, from) && windowEnd(it, from) == start
-        }
-    }
-
     fun pendingSkips(schedule: Schedule, now: LocalDateTime): Set<LocalDate> =
         schedule.skipped.filterTo(mutableSetOf()) { windowEnd(schedule, it).isAfter(now) }
 
