@@ -27,7 +27,6 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        // Installs beside the signed release, so the two signatures do not clash.
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
@@ -49,7 +48,13 @@ android {
         buildTypes.release.signingConfig signingConfigs.release
     }
 
-    // F-Droid rejects the dependency list that AGP encrypts with Google's key.
+    packaging {
+        // APK is downloaded from F-Droid or GitHub. This halves the size of it.
+        dex {
+            useLegacyPackaging = true
+        }
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -63,7 +68,6 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
-        // Robolectric reaches into JDK internals for file descriptors.
         unitTests.all { jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED' }
     }
 
