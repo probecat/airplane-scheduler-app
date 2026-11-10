@@ -48,6 +48,10 @@ android {
         buildTypes.release.signingConfig signingConfigs.release
     }
 
+    androidResources {
+        localeFilters += ['en']
+    }
+
     packaging {
         // APK is downloaded from F-Droid or GitHub. This halves the size of it.
         dex {
