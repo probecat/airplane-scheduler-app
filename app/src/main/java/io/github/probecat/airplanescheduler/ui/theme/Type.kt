@@ -8,8 +8,7 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import io.github.probecat.airplanescheduler.R
 
-// Google Sans Flex, cut down to Latin with width, roundness and slant fixed at their defaults. Other
-// scripts fall back to the system font.
+// Cut down to Latin; width, roundness, slant and optical size fixed at defaults (opsz 18).
 private val GoogleSansFlex = FontFamily(
     (100..700 step 50).map { weight ->
         Font(
