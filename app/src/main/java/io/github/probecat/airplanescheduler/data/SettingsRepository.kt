@@ -16,9 +16,15 @@ data class Settings(
     val backend: Backend = Backend.SHIZUKU,
 )
 
-class SettingsRepository(context: Context) {
+// [firstBackend] picks the backend when none is saved yet.
+class SettingsRepository(context: Context, firstBackend: () -> Backend = { Backend.SHIZUKU }) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val state = MutableStateFlow(read())
+    private val state = MutableStateFlow(read(firstBackend))
+
+    init {
+        // The first pick is saved, so it persists when Shizuku or root is installed later.
+        if (!prefs.contains("backend")) prefs.edit { putString("backend", current.backend.name) }
+    }
 
     val settings: StateFlow<Settings> = state.asStateFlow()
 
@@ -37,7 +43,7 @@ class SettingsRepository(context: Context) {
         }
     }
 
-    private fun read() = Settings().let { default ->
+    private fun read(firstBackend: () -> Backend) = Settings().let { default ->
         Settings(
             theme = prefs.getString("theme", null)
                 ?.let { name -> ThemeMode.entries.find { it.name == name } } ?: default.theme,
@@ -46,7 +52,7 @@ class SettingsRepository(context: Context) {
             postponeMinutes = prefs.getInt("postponeMinutes", default.postponeMinutes),
             askedNotifications = prefs.getBoolean("askedNotifications", default.askedNotifications),
             backend = prefs.getString("backend", null)
-                ?.let { name -> Backend.entries.find { it.name == name } } ?: default.backend,
+                ?.let { name -> Backend.entries.find { it.name == name } } ?: firstBackend(),
         )
     }
 

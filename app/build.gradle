@@ -16,8 +16,8 @@ android {
         applicationId 'io.github.probecat.airplanescheduler'
         minSdk 28
         targetSdk 37
-        versionCode 11
-        versionName '3.0'
+        versionCode 12
+        versionName '3.0.1'
         manifestPlaceholders = [appLabel: 'Airplane Scheduler']
     }
 
@@ -27,7 +27,6 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        // Installs beside the signed release, so the two signatures do not clash.
         debug {
             applicationIdSuffix '.debug'
             versionNameSuffix '-debug'
@@ -49,7 +48,20 @@ android {
         buildTypes.release.signingConfig signingConfigs.release
     }
 
-    // F-Droid rejects the dependency list that AGP encrypts with Google's key.
+    androidResources {
+        localeFilters += ['en']
+    }
+
+    packaging {
+        // APK is downloaded from F-Droid or GitHub. This halves the size of it.
+        dex {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += ['kotlin/**.kotlin_builtins', 'META-INF/**/LICENSE.txt']
+        }
+    }
+
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
@@ -63,7 +75,6 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
-        // Robolectric reaches into JDK internals for file descriptors.
         unitTests.all { jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED' }
     }
 

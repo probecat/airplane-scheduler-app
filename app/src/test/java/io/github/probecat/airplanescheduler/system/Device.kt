@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.test.core.app.ApplicationProvider
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.ScheduleTime
+import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
 import org.robolectric.Shadows.shadowOf
@@ -26,6 +27,8 @@ class Device {
     private val wifi = app.getSystemService(WifiManager::class.java)
 
     init {
+        // The test runner can have su, which makes root the default backend.
+        app.settings.update { it.copy(backend = Backend.SHIZUKU) }
         app.shizukuSwitcher = shizuku
         app.rootSwitcher = root
         app.refreshAccess()

@@ -24,7 +24,7 @@ import io.github.probecat.airplanescheduler.system.ShizukuStatus
 fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onUseRoot: () -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val shizuku = ShizukuStatus.launchIntent(context)
-    val useRoot = access.kind == Access.Kind.SHIZUKU && shizuku == null && remember { RootSwitcher.installed() }
+    val useRoot = access.kind == Access.Kind.SHIZUKU && remember { RootSwitcher.installed() }
     val (title, text) = when {
         access.ready -> return
         access.kind == Access.Kind.ROOT -> R.string.root_permission_title to R.string.root_permission_text
@@ -48,7 +48,7 @@ fun AccessDialog(access: Access, onHelp: (() -> Unit)?, onUseRoot: () -> Unit, o
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
             }
         },
-        // Root users who never set up Shizuku find root here.
+        // Root users whose Shizuku is missing, stopped or not allowed find root here.
         dismissButton = {
             onHelp?.let { TextButton(onClick = it) { Text(stringResource(R.string.help)) } }
             if (useRoot) TextButton(onClick = onUseRoot) { Text(stringResource(R.string.shizuku_use_root)) }
