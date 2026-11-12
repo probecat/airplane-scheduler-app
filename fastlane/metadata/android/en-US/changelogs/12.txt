@@ -1,0 +1,4 @@
+• Halved APK bundle size with compression.
+• Rooted phones without Shizuku now start in root mode.
+• Show "Use root" button when Shizuku isn't running/allowed.
+• Fixed wording after ending a schedule early.
