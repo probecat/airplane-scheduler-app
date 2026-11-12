@@ -55,7 +55,6 @@
     <string name="skipped">Skipped</string>
     <string name="skipped_resumes">Skipped until %1$s</string>
     <string name="ended_early">Ended early</string>
-    <string name="ended_early_resumes">Ended early until %1$s</string>
     <string name="postponed_to">Postponed until %1$s</string>
     <!-- No-break spaces keep a number and its unit together. -->
     <plurals name="duration_days">
@@ -226,7 +225,6 @@
     <string name="notification_skipped">Schedule skipped</string>
     <string name="notification_skipped_until">Schedule skipped until %1$s</string>
     <string name="notification_ended_early">Schedule ended early</string>
-    <string name="notification_ended_until">Schedule ended early until %1$s</string>
     <!-- %2$s is a reason below, as in "Schedule at 11:00 PM could miss the start because Shizuku isn’t running." -->
     <string name="notification_could_miss">Schedule at %1$s could miss the start because %2$s.</string>
     <string name="notification_missed_start_because">Schedule missed the start because %1$s.</string>

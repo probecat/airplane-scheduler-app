@@ -51,7 +51,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         schedules = ScheduleRepository(this)
-        settings = SettingsRepository(this)
+        settings = SettingsRepository(this, ::firstBackend)
         engine = EngineRepository(this)
         log = EventLog(this)
         shizukuSwitcher = ShizukuSwitcher(this)
@@ -75,6 +75,11 @@ class App : Application() {
                 }
             },
         )
+    }
+
+    private fun firstBackend(): Backend {
+        val shizuku = ShizukuStatus.sui || ShizukuStatus.launchIntent(this) != null
+        return if (!shizuku && RootSwitcher.installed()) Backend.ROOT else Backend.SHIZUKU
     }
 
     fun launch(block: suspend CoroutineScope.() -> Unit): Job = scope.launch(block = block)

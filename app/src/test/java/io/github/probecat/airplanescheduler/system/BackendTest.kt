@@ -42,6 +42,15 @@ class BackendTest {
     }
 
     @Test
+    fun `a rooted phone without Shizuku starts with root and keeps it`() {
+        val prefs = device.app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        prefs.edit { clear() }
+        assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.ROOT }.current.backend)
+        // Installing Shizuku later must not move schedules away from root.
+        assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.SHIZUKU }.current.backend)
+    }
+
+    @Test
     fun `root counts only the changes whose command succeeded`() {
         // What counts as switched is what the end undoes. Wi-Fi that failed to go off must not be turned on later.
         val root = RootSwitcher(device.app, {}, shell = listOf("sh", "-c", "echo 1 0; echo 2 1"))
