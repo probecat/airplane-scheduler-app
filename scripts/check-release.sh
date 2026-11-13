@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Checks the version against the latest release tag, and the F-Droid listing. Needs a checkout with tags.
 set -euo pipefail
 export LC_ALL=C.UTF-8
 cd "$(dirname "$0")/.."

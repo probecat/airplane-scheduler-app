@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The F-Droid build image. The job only compares the APK and does not ship it.
+    # Only compare the APK here, don't ship it.
     container: registry.gitlab.com/fdroid/fdroidserver:buildserver # zizmor: ignore[unpinned-images]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,12 +27,10 @@ jobs:
         with:
           name: ${{ inputs.signed-artifact }}
           path: signed
-      - name: Lint the recipe and build as F-Droid does
-        if: ${{ !inputs.signed-artifact }}
-        run: scripts/fdroid-build.sh . fdroid
-      - name: Lint the recipe, build as F-Droid does, and check the signed APK against the build
-        if: inputs.signed-artifact
-        run: scripts/fdroid-build.sh . fdroid signed/*.apk
+      - name: Lint and build as F-Droid and check any signed APK against it
+        env:
+          SIGNED: ${{ inputs.signed-artifact }}
+        run: scripts/fdroid-build.sh . fdroid ${SIGNED:+signed/*.apk}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fdroid

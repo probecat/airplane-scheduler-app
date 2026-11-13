@@ -28,12 +28,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check the version and the F-Droid listing
+      - name: Check version and validate F-Droid listing
         id: check
         run: scripts/check-release.sh >> "$GITHUB_OUTPUT"
 
-  build:
+  ci:
     needs: check
+    if: needs.check.outputs.release == 'true'
+    uses: $/.github/workflows/ci.yml
+
+  build:
+    needs: [check, ci]
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: release
@@ -43,6 +48,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
+          # Match with the pinned version in mise.toml
           distribution: temurin
           java-version: 21
       - name: Lint and build signed APK
@@ -87,7 +93,7 @@ jobs:
           NOTES: "${{ needs.check.outputs.notes }}"
           PREVIOUS: "${{ needs.check.outputs.previous }}"
         run: |
-          # The README links to releases/latest/download with this fixed name.
+          # README.md links to latest download with this fixed name.
           mv app-release.apk airplane-scheduler.apk
           {
             cat "$NOTES"
