@@ -4,10 +4,11 @@ android-sdk = "23.0"
 ktlint = "1.8.0"
 
 [tasks.setup]
-description = "Install SDK packages and set up Git hooks"
+description = "Install and set up repository tooling"
 run = [
   "android --no-metrics sdk install platform-tools platforms/android-37.0",
   "git config core.hooksPath .githooks",
+  "printf 'sdk.dir=%s\\n' \"$(mise where android-sdk)\" > local.properties",
 ]
 
 [tasks.ktlint]
