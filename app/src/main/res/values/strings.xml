@@ -119,6 +119,7 @@
     <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>
     <string name="sheet_wifi_off">Turn off Wi-Fi at start</string>
     <string name="sheet_wifi_on">Turn on Wi-Fi at end</string>
+    <string name="sheet_turn_off_if_on">Turn off airplane mode at end even if already on</string>
     <string name="sheet_name">Schedule name</string>
     <string name="sheet_name_placeholder">Unnamed</string>
 
@@ -238,6 +239,7 @@
     <string name="notification_missed_start">Schedule missed the start.</string>
     <string name="notification_missed_start_no_action">Schedule missed the start. No action taken.</string>
     <string name="notification_airplane_was_on">Airplane mode was on before the schedule.</string>
+    <string name="notification_airplane_taken_over">Turned off the airplane mode that was already on.</string>
     <string name="notification_airplane_turned_off">Airplane mode was turned off during the schedule.</string>
     <string name="notification_airplane_stays_on">Airplane mode was turned on during the schedule.</string>
     <string name="notification_airplane_off">Airplane mode turned off.</string>

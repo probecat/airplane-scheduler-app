@@ -75,6 +75,11 @@ object Boundary {
         return record to wanted
     }
 
+    // A schedule with [Schedule.turnOffIfAlreadyOn] turns off an airplane mode that was on at the start, although it
+    // did not turn it on.
+    fun takeOver(changes: Changes, schedule: Schedule, airplaneOn: Boolean): Changes =
+        if (schedule.turnOffIfAlreadyOn && airplaneOn) changes.copy(airplane = true) else changes
+
     // What a forgotten window left switched. The app reports it and does not undo it.
     fun leftSwitched(started: Started, enableWifi: Boolean, airplaneOn: Boolean, wifiOn: Boolean): Changes {
         val undo = ConnectivityPlan.end(started.changes, enableWifi)

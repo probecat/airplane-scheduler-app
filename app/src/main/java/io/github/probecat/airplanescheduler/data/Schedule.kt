@@ -25,6 +25,8 @@ data class Schedule(
     val enabled: Boolean = true,
     val disableWifi: Boolean = true,
     val enableWifi: Boolean = true,
+    // Turn airplane mode off at the end even when it was already on at the start, so the app did not turn it on.
+    val turnOffIfAlreadyOn: Boolean = false,
     // Start dates of windows left out by skipping them or ending them early.
     val skipped: Set<SerializableDate> = emptySet(),
     // Of those, the windows that were running, so they ended early. A missed start was never running.

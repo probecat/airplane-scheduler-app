@@ -10,6 +10,8 @@ data class Ending(
     val missedStart: Boolean = false,
     // Airplane mode was on before the start, so it stays on.
     val airplaneWasOn: Boolean = false,
+    // Airplane mode was on before the start, and the end turned it off anyway.
+    val airplaneTakenOver: Boolean = false,
     val airplaneTurnedOff: Boolean = false,
     // The end did not turn airplane mode off, and it is on. For example, it was on before the start.
     val airplaneStaysOn: Boolean = false,
@@ -34,7 +36,8 @@ data class Ending(
         ) = Ending(
             failed = undo - made,
             missedStart = started.wanted.airplane && !started.changes.airplane && !airplaneOn,
-            airplaneWasOn = started.already.airplane && airplaneOn,
+            airplaneWasOn = started.already.airplane && airplaneOn && !made.airplane,
+            airplaneTakenOver = started.already.airplane && made.airplane,
             airplaneTurnedOff = started.changes.airplane && !airplaneOn,
             airplaneStaysOn = airplaneOn && !made.airplane,
             wifiWasOff = started.already.wifi && enableWifi && !wifiOn,

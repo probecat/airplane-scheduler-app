@@ -62,6 +62,21 @@ class SwitchingTest {
     }
 
     @Test
+    fun `a schedule with take over turns off an airplane mode it did not turn on`() {
+        // With the option, the end also undoes an airplane mode that was already on at the start, and the report
+        // says that it took it over instead of saying that it stays on.
+        val phone = Phone(night.copy(turnOffIfAlreadyOn = true), now = friday(22), airplaneOn = true)
+        phone.passTo(friday(23, 5))
+        assertNull(phone.missedStart())
+        phone.passTo(saturday(7))
+        assertFalse(phone.airplaneOn)
+        assertTrue(phone.wifiOn)
+        val ending = phone.reports.single().second
+        assertTrue(ending.airplaneTakenOver)
+        assertFalse(ending.airplaneWasOn)
+    }
+
+    @Test
     fun `Wi-Fi stays off at the end when the schedule doesn't turn it back on`() {
         val phone = Phone(night.copy(enableWifi = false), now = friday(22))
         phone.passTo(saturday(7))

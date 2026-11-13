@@ -199,6 +199,11 @@ fun ScheduleSheet(
                 checked = schedule.enableWifi,
                 enabled = schedule.disableWifi,
             ) { draft = schedule.copy(enableWifi = it) }
+            SwitchRow(
+                icon = R.drawable.ic_airplanemode_active,
+                title = stringResource(R.string.sheet_turn_off_if_on),
+                checked = schedule.turnOffIfAlreadyOn,
+            ) { draft = schedule.copy(turnOffIfAlreadyOn = it) }
             NameRow(schedule.name) { draft = schedule.copy(name = it) }
 
             Row(

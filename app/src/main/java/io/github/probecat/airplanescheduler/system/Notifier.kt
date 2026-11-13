@@ -209,6 +209,7 @@ object Notifier {
         } else {
             val airplane = when {
                 ending.missedStart -> R.string.notification_missed_start
+                ending.airplaneTakenOver -> R.string.notification_airplane_taken_over
                 ending.airplaneWasOn -> R.string.notification_airplane_was_on
                 ending.airplaneTurnedOff -> R.string.notification_airplane_turned_off
                 ending.airplaneStaysOn -> R.string.notification_airplane_stays_on

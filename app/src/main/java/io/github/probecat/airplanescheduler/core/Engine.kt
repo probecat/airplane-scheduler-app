@@ -95,7 +95,13 @@ object Engine {
                 step.schedule == null -> Result(next, forget(started, schedules, device))
                 else -> Result(
                     next,
-                    listOf(Effect.Switch(false, step.changes, Then.End(started, step.schedule, device, natural))),
+                    listOf(
+                        Effect.Switch(
+                            false,
+                            Boundary.takeOver(step.changes, step.schedule, device.airplaneOn),
+                            Then.End(started, step.schedule, device, natural),
+                        ),
+                    ),
                 )
             }
         }
