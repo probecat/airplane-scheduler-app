@@ -10,4 +10,4 @@
 <b>Requirements</b>
 • Android 9 or later.
 • <b>Non-root:</b> <a href="https://github.com/rushiranpise/Shizuku-Next">Shizuku-Next</a> (recommended) or <a href="https://github.com/RikkaApps/Shizuku">Shizuku</a>.
-• <b>Root:</b> <a href="https://github.com/RikkaApps/Sui">Sui</a>, or root access through <a href="https://github.com/topjohnwu/Magisk">Magisk</a> or similar.
+• <b>Root:</b> <a href="https://github.com/topjohnwu/Magisk">Magisk</a> or another root access manager, <a href="https://github.com/RikkaApps/Sui">Sui</a>, or Shizuku/Shizuku-Next as root.
