@@ -33,8 +33,13 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 ## Requirements
 
 - Android 9 or later.
-- **Non-root:** [Shizuku-Next](https://github.com/rushiranpise/Shizuku-Next) (recommended) or [Shizuku](https://github.com/RikkaApps/Shizuku).
-- **Root:** [Sui](https://github.com/RikkaApps/Sui), or root access through [Magisk](https://github.com/topjohnwu/Magisk) or similar.
+- **Non-root:**
+  - [Shizuku-Next](https://github.com/rushiranpise/Shizuku-Next) (recommended)
+  - [Shizuku](https://github.com/RikkaApps/Shizuku)
+- **Root:**
+  - [Magisk](https://github.com/topjohnwu/Magisk) or another root access manager
+  - [Sui](https://github.com/RikkaApps/Sui)
+  - Shizuku/Shizuku-Next as root
 
 ## Building
 
