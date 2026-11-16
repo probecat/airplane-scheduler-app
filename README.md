@@ -39,7 +39,7 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 - **Root:**
   - [Magisk](https://github.com/topjohnwu/Magisk) or another root access manager
   - [Sui](https://github.com/RikkaApps/Sui)
-  - Shizuku/Shizuku-Next as root
+  - Shizuku/Shizuku-Next started with root
 
 ## Building
 

@@ -54,8 +54,8 @@ android {
     }
 
     packaging {
-        // APK is downloaded from F-Droid or GitHub. This halves the size of it.
         dex {
+            // APK is downloaded from F-Droid or GitHub. This halves the size of it.
             useLegacyPackaging = true
         }
         resources {
@@ -76,6 +76,7 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
+        // Robolectric needs JDK internals.
         unitTests.all { jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED' }
     }
 
