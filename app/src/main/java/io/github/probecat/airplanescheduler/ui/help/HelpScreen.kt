@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -12,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +51,7 @@ import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColors
 
 @Composable
+@ReadOnlyComposable
 private fun topic(@StringRes question: Int, @StringRes answer: Int, vararg args: Any) =
     stringResource(question) to stringResource(answer, *args)
 
@@ -66,10 +69,12 @@ private fun schedules(format: Format) = listOf(
 
 @Composable
 private fun troubleshooting(format: Format, kind: Access.Kind): List<Pair<String, String>> {
-    var shizukuStopped = stringResource(R.string.help_shizuku_stopped_a)
+    val stopped = stringResource(R.string.help_shizuku_stopped_a)
     // Wireless debugging, which Shizuku starts with, came in Android 11.
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-        shizukuStopped = format.sentences(shizukuStopped, stringResource(R.string.help_shizuku_stopped_legacy))
+    val shizukuStopped = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        format.sentences(stopped, stringResource(R.string.help_shizuku_stopped_legacy))
+    } else {
+        stopped
     }
     return listOfNotNull(
         topic(
@@ -88,10 +93,12 @@ private fun troubleshooting(format: Format, kind: Access.Kind): List<Pair<String
 }
 
 @Composable
-fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
+fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val format = rememberFormat()
     val access by viewModel.access.collectAsStateWithLifecycle()
-    Subpage(stringResource(R.string.help), onBack) {
+    val requestAccess = rememberAccessRequest(viewModel)
+    val onAllow = { requestAccess(access) }
+    Subpage(stringResource(R.string.help), onBack, modifier) {
         SectionHeader(
             stringResource(
                 when (access.kind) {
@@ -102,9 +109,12 @@ fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             ),
         )
         when (access.kind) {
-            Access.Kind.SHIZUKU -> SetupSteps(viewModel)
-            Access.Kind.SUI -> SuiSteps(viewModel)
-            Access.Kind.ROOT -> RootSteps(viewModel)
+            Access.Kind.SHIZUKU -> SetupSteps(access, onAllow)
+            Access.Kind.SUI -> {
+                Step(R.drawable.ic_counter_1, R.string.help_install_sui, R.string.help_installed, done = true) {}
+                GrantStep(access, R.drawable.ic_counter_2, onAllow)
+            }
+            Access.Kind.ROOT -> GrantStep(access, R.drawable.ic_counter_1, onAllow)
         }
 
         SectionHeader(stringResource(R.string.help_schedules))
@@ -117,12 +127,10 @@ fun HelpScreen(viewModel: AppViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun SetupSteps(viewModel: AppViewModel) {
+private fun SetupSteps(access: Access, onAllow: () -> Unit) {
     val context = LocalContext.current
-    val access by viewModel.access.collectAsStateWithLifecycle()
     var app by remember { mutableStateOf(ShizukuStatus.launchIntent(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { app = ShizukuStatus.launchIntent(context) }
-    val requestAccess = rememberAccessRequest(viewModel)
 
     val installed = app != null
     val running = installed && access.state != AccessState.OFFLINE
@@ -154,33 +162,20 @@ private fun SetupSteps(viewModel: AppViewModel) {
         allowed,
     ) {
         if (running) {
-            TextButton(onClick = { requestAccess(access) }) { Text(stringResource(R.string.action_allow)) }
+            TextButton(onClick = onAllow) { Text(stringResource(R.string.action_allow)) }
         }
     }
 }
 
 @Composable
-private fun SuiSteps(viewModel: AppViewModel) {
-    Step(R.drawable.ic_counter_1, R.string.help_install_sui, R.string.help_installed, done = true) {}
-    GrantStep(viewModel, R.drawable.ic_counter_2)
-}
-
-@Composable
-private fun RootSteps(viewModel: AppViewModel) {
-    GrantStep(viewModel, R.drawable.ic_counter_1)
-}
-
-@Composable
-private fun GrantStep(viewModel: AppViewModel, number: Int) {
-    val access by viewModel.access.collectAsStateWithLifecycle()
-    val requestAccess = rememberAccessRequest(viewModel)
+private fun GrantStep(access: Access, number: Int, onAllow: () -> Unit) {
     Step(
         number,
         R.string.help_grant,
         if (access.ready) R.string.status_allowed else R.string.status_not_allowed,
         access.ready,
     ) {
-        TextButton(onClick = { requestAccess(access) }) { Text(stringResource(R.string.action_allow)) }
+        TextButton(onClick = onAllow) { Text(stringResource(R.string.action_allow)) }
     }
 }
 
@@ -202,7 +197,7 @@ private fun Step(
 }
 
 @Composable
-private fun Topic(question: String, answer: String) {
+private fun Topic(question: String, answer: String) = Column {
     var open by rememberSaveable(question) { mutableStateOf(false) }
     val turn by animateFloatAsState(if (open) 180f else 0f)
     val clickLabel = stringResource(if (open) R.string.help_collapse else R.string.help_expand)

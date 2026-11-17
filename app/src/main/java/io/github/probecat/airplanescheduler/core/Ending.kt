@@ -23,21 +23,14 @@ data class Ending(
         get() = failed.isEmpty && !missedStart && !airplaneTurnedOff && !airplaneStaysOn && !wifiWasOff
 
     companion object {
-        // [airplaneOn] and [wifiOn] are read just before the end.
-        fun of(
-            started: Started,
-            undo: Changes,
-            made: Changes,
-            airplaneOn: Boolean,
-            wifiOn: Boolean,
-            enableWifi: Boolean,
-        ) = Ending(
+        // [before] is read just before the end.
+        fun of(started: Started, undo: Changes, made: Changes, before: Engine.Device, enableWifi: Boolean) = Ending(
             failed = undo - made,
-            missedStart = started.wanted.airplane && !started.changes.airplane && !airplaneOn,
-            airplaneWasOn = started.already.airplane && airplaneOn,
-            airplaneTurnedOff = started.changes.airplane && !airplaneOn,
-            airplaneStaysOn = airplaneOn && !made.airplane,
-            wifiWasOff = started.already.wifi && enableWifi && !wifiOn,
+            missedStart = started.wanted.airplane && !started.changes.airplane && !before.airplaneOn,
+            airplaneWasOn = started.already.airplane && before.airplaneOn,
+            airplaneTurnedOff = started.changes.airplane && !before.airplaneOn,
+            airplaneStaysOn = before.airplaneOn && !made.airplane,
+            wifiWasOff = started.already.wifi && enableWifi && !before.wifiOn,
             wifiBackOn = made.wifi,
             nothingSwitched = !undo.isEmpty && made.isEmpty,
         )

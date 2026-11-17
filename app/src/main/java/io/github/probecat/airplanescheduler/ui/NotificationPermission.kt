@@ -29,9 +29,9 @@ fun rememberNotificationRequest(
     fun rationale() = activity?.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) == true
     var rationaleBefore by rememberSaveable { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (fallback && !granted && !rationaleBefore && !rationale()) {
-            context.startActivity(notificationSettings(context))
-        }
+        // Android shows no dialog after repeated denials, so the settings open instead.
+        val blocked = !rationaleBefore && !rationale()
+        if (fallback && !granted && blocked) context.startActivity(notificationSettings(context))
         onResult(granted)
     }
     return {

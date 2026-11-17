@@ -1,5 +1,7 @@
 package io.github.probecat.airplanescheduler.ui.schedules
 
+import android.content.Context
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -54,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -88,6 +91,7 @@ import io.github.probecat.airplanescheduler.core.ScheduleEdits
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleStatus
 import io.github.probecat.airplanescheduler.data.Schedule
+import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AccessState
 import io.github.probecat.airplanescheduler.system.ShizukuStatus
@@ -114,38 +118,172 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () -> Unit) {
-    val context = LocalContext.current
-    val resources = LocalResources.current
+fun SchedulesScreen(
+    viewModel: AppViewModel,
+    onSettings: () -> Unit,
+    onHelp: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val access by viewModel.access.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
     val missed by viewModel.missed.collectAsStateWithLifecycle()
     val format = rememberFormat()
-    val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
     val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
-    val active = ScheduleResolver.activeSchedule(schedules, now)
-    var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
-    var batteryOff by remember { mutableStateOf(batteryOptimizationOff(context)) }
-    var shizukuInstalled by remember { mutableStateOf(ShizukuStatus.launchIntent(context) != null) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        exactAlarms = exactAlarmsAllowed(context)
-        batteryOff = batteryOptimizationOff(context)
-        shizukuInstalled = ShizukuStatus.launchIntent(context) != null
-    }
+    val phone = rememberPhoneState()
     val requestNotifications = rememberNotificationRequest(fallback = false) {}
+    val actions = rememberScheduleActions(viewModel, format, snackbar)
 
-    fun show(message: String) {
+    Scaffold(
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = { SchedulesTopBar(scrollBehavior, onHelp = onHelp, onSettings = onSettings) },
+        floatingActionButton = { AddScheduleButton(onClick = { editing = viewModel.newSchedule() }) },
+        snackbarHost = { DismissibleSnackbarHost(snackbar) },
+    ) { padding ->
+        SchedulesList(
+            padding,
+            schedules,
+            now,
+            missed,
+            access,
+            settings,
+            phone,
+            format,
+            actions,
+            onAccess = { requestAccess(access) },
+            onHideReady = { viewModel.updateSettings { it.copy(hideShizukuReady = true) } },
+            onEdit = { editing = it },
+            onChoose = { choosing = it },
+        )
+    }
+
+    editing?.let { schedule ->
+        ScheduleSheet(
+            initial = schedule,
+            isNew = viewModel.isNew(schedule),
+            now = now,
+            conflictOf = viewModel::conflict,
+            onDismiss = { editing = null },
+            onSave = { edited -> actions.save(edited, onFirst = requestNotifications) },
+            onDelete = actions::delete,
+        )
+    }
+
+    choosing?.let { id ->
+        PostponeChoice(
+            schedules.find { it.id == id },
+            now,
+            missed,
+            settings.postponeMinutes,
+            format,
+            actions,
+            onClose = { choosing = null },
+        )
+    }
+}
+
+@Composable
+private fun SchedulesList(
+    padding: PaddingValues,
+    schedules: List<Schedule>,
+    now: LocalDateTime,
+    missed: Long?,
+    access: Access,
+    settings: Settings,
+    phone: PhoneState,
+    format: Format,
+    actions: ScheduleActions,
+    onAccess: () -> Unit,
+    onHideReady: () -> Unit,
+    onEdit: (Schedule) -> Unit,
+    onChoose: (Long) -> Unit,
+) {
+    val active = ScheduleResolver.activeSchedule(schedules, now)
+    val strips = Strips.of(phone, access, settings, schedules)
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = padding.calculateTopPadding() + 8.dp,
+                bottom = padding.calculateBottomPadding() + 112.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (strips.any) {
+                item(key = "notices") {
+                    NoticeStrips(
+                        strips,
+                        access,
+                        phone.shizukuInstalled,
+                        onAccess = onAccess,
+                        onHideReady = onHideReady,
+                        Modifier.animateItem().animateContentSize().padding(bottom = 8.dp),
+                    )
+                }
+            }
+            if (schedules.isEmpty()) {
+                item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f)) }
+            }
+            items(schedules, key = { it.id }) { schedule ->
+                val isActive = schedule.id == active?.id
+                ScheduleItem(
+                    schedule,
+                    isActive = isActive,
+                    isMissed = isActive && schedule.id == missed,
+                    now = now,
+                    access = access,
+                    shizukuInstalled = phone.shizukuInstalled,
+                    postponeMinutes = settings.postponeMinutes,
+                    format = format,
+                    actions = actions,
+                    onEdit = { onEdit(schedule) },
+                    onChoose = { onChoose(schedule.id) },
+                    modifier = Modifier.animateItem(),
+                )
+            }
+        }
+    }
+}
+
+// ScheduleActions is a class, not a composable, so the ViewModel goes no further down the UI.
+@Suppress("ViewModelForwarding")
+@Composable
+private fun rememberScheduleActions(
+    viewModel: AppViewModel,
+    format: Format,
+    snackbar: SnackbarHostState,
+): ScheduleActions {
+    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
+    return remember(viewModel, resources, format, snackbar, scope) {
+        ScheduleActions(viewModel, resources, format, snackbar, scope)
+    }
+}
+
+// What the user does to schedules on this screen, and the messages that confirm it.
+private class ScheduleActions(
+    private val viewModel: AppViewModel,
+    private val resources: Resources,
+    private val format: Format,
+    private val snackbar: SnackbarHostState,
+    private val scope: CoroutineScope,
+) {
+    private val now get() = viewModel.now.value
+
+    private fun show(message: String) {
         scope.launch {
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar(message)
@@ -164,12 +302,30 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         show(message)
     }
 
-    fun showConflict(@StringRes message: Int = R.string.schedules_overlap) {
+    private fun showConflict(@StringRes message: Int = R.string.schedules_overlap) {
         show(resources.getString(message))
     }
 
-    fun unskip(id: Long, offered: ScheduleStatus) {
-        when (val result = viewModel.unskip(id, offered)) {
+    // Skip and End ask whether to postpone instead, when the window can be postponed.
+    fun act(
+        schedule: Schedule,
+        status: ScheduleStatus,
+        action: CardAction?,
+        postponeMinutes: Int,
+        onChoose: () -> Unit,
+    ) {
+        val postponable = ScheduleStatus.Action.POSTPONE in status.actions &&
+            ScheduleResolver.postponedTo(schedule, now, postponeMinutes) != null
+        when (action) {
+            CardAction.SKIP, CardAction.END -> if (postponable) onChoose() else skip(schedule.id, status)
+            CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME, CardAction.START -> unskip(schedule.id, status)
+            CardAction.TURN_ON -> catchUp(schedule.id, status)
+            null -> {}
+        }
+    }
+
+    private fun unskip(id: Long, offered: ScheduleStatus) {
+        when (viewModel.unskip(id, offered)) {
             is ScheduleEdits.Result.Overlaps -> showConflict(R.string.schedules_overlaps_other)
             is ScheduleEdits.Result.Saved -> showStart(id)
             null -> {}
@@ -188,10 +344,24 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
         show(resources.getString(if (pausing) R.string.schedules_paused else R.string.schedules_postponed))
     }
 
-    fun catchUp(id: Long, offered: ScheduleStatus) {
+    private fun catchUp(id: Long, offered: ScheduleStatus) {
         viewModel.catchUp(id, offered) { on ->
             if (on) showStart(id) else show(resources.getString(R.string.schedules_turn_on_failed))
         }
+    }
+
+    fun setEnabled(schedule: Schedule, enabled: Boolean) {
+        val conflict = viewModel.setEnabled(schedule, enabled)
+        if (conflict != null) showConflict() else showStart(schedule.id)
+    }
+
+    // Returns true when saved. [onFirst] runs after a new schedule saves while the app still asks for notifications.
+    fun save(edited: Schedule, onFirst: () -> Unit): Boolean {
+        val isNew = viewModel.isNew(edited)
+        val saved = viewModel.save(edited) == null
+        if (saved) showStart(edited.id)
+        if (saved && isNew && viewModel.asksNotifications()) onFirst()
+        return saved
     }
 
     fun delete(schedule: Schedule) {
@@ -208,189 +378,192 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
             }
         }
     }
+}
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    IconButton(onClick = onHelp) {
-                        Icon(painterResource(R.drawable.ic_help), contentDescription = stringResource(R.string.help))
-                    }
-                    IconButton(onClick = onSettings) {
-                        Icon(
-                            painterResource(R.drawable.ic_settings),
-                            contentDescription = stringResource(R.string.settings),
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
+// What the phone allows, read again whenever the app comes back.
+private data class PhoneState(val exactAlarms: Boolean, val batteryOff: Boolean, val shizukuInstalled: Boolean) {
+    companion object {
+        fun of(context: Context) = PhoneState(
+            exactAlarms = exactAlarmsAllowed(context),
+            batteryOff = batteryOptimizationOff(context),
+            shizukuInstalled = ShizukuStatus.launchIntent(context) != null,
+        )
+    }
+}
+
+@Composable
+private fun rememberPhoneState(): PhoneState {
+    val context = LocalContext.current
+    var phone by remember { mutableStateOf(PhoneState.of(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { phone = PhoneState.of(context) }
+    return phone
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SchedulesTopBar(scrollBehavior: TopAppBarScrollBehavior, onHelp: () -> Unit, onSettings: () -> Unit) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.app_name)) },
+        actions = {
+            IconButton(onClick = onHelp) {
+                Icon(painterResource(R.drawable.ic_help), contentDescription = stringResource(R.string.help))
+            }
+            IconButton(onClick = onSettings) {
+                Icon(painterResource(R.drawable.ic_settings), contentDescription = stringResource(R.string.settings))
+            }
+        },
+        scrollBehavior = scrollBehavior,
+    )
+}
+
+@Composable
+private fun AddScheduleButton(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = AddButton,
+        contentColor = OnAddButton,
+        modifier = Modifier.size(80.dp),
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_add),
+            contentDescription = stringResource(R.string.schedules_add),
+            modifier = Modifier.size(28.dp),
+        )
+    }
+}
+
+private class Strips(val alarms: Boolean, val battery: Boolean, val status: Boolean) {
+    val any get() = alarms || battery || status
+
+    companion object {
+        fun of(phone: PhoneState, access: Access, settings: Settings, schedules: List<Schedule>): Strips {
+            val anyEnabled = schedules.any { it.enabled }
+            return Strips(
+                alarms = !phone.exactAlarms && anyEnabled,
+                battery = !phone.batteryOff && anyEnabled,
+                status = !access.ready || !settings.hideShizukuReady,
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { editing = viewModel.newSchedule() },
-                shape = RoundedCornerShape(20.dp),
-                containerColor = AddButton,
-                contentColor = OnAddButton,
-                modifier = Modifier.size(80.dp),
-            ) {
-                Icon(
-                    painterResource(R.drawable.ic_add),
-                    contentDescription = stringResource(R.string.schedules_add),
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-        },
-        snackbarHost = { DismissibleSnackbarHost(snackbar) },
-    ) { padding ->
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(
-                modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = padding.calculateBottomPadding() + 112.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                val showAlarms = !exactAlarms && schedules.any { it.enabled }
-                val showBattery = !batteryOff && schedules.any { it.enabled }
-                val showStatus = !access.ready || !settings.hideShizukuReady
-                if (showAlarms || showBattery || showStatus) {
-                    item(key = "notices") {
-                        Column(
-                            Modifier.animateItem().animateContentSize().padding(bottom = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            if (showAlarms) {
-                                Strip(
-                                    label = stringResource(R.string.strip_alarms),
-                                    icon = R.drawable.ic_error,
-                                    tone = Tone.ERROR,
-                                    onClick = { context.startActivity(exactAlarmSettings(context)) },
-                                )
-                            }
-                            if (showStatus && !access.ready) {
-                                Strip(
-                                    label = stringResource(statusStrip(access, shizukuInstalled)),
-                                    icon = access.state.icon,
-                                    tone = Tone.ERROR,
-                                    onClick = { requestAccess(access) },
-                                )
-                            }
-                            if (showBattery) {
-                                Strip(
-                                    label = stringResource(R.string.strip_battery),
-                                    icon = R.drawable.ic_warning,
-                                    tone = Tone.WARNING,
-                                    onClick = { stopBatteryOptimization(context) },
-                                )
-                            }
-                            if (showStatus && access.ready) {
-                                Strip(
-                                    label = stringResource(statusStrip(access, shizukuInstalled)),
-                                    icon = access.state.icon,
-                                    tone = Tone.SUCCESS,
-                                    onDismiss = { viewModel.updateSettings { it.copy(hideShizukuReady = true) } },
-                                )
-                            }
-                        }
-                    }
-                }
-                if (schedules.isEmpty()) {
-                    item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f)) }
-                }
-                items(schedules, key = { it.id }) { schedule ->
-                    val isActive = schedule.id == active?.id
-                    val isMissed = isActive && schedule.id == missed
-                    val status = ScheduleStatus.of(schedule, now, isMissed)
-                    val action = cardAction(status, canCatchUp = isMissed && access.ready)
-                    SwipeToDelete(onDelete = { delete(schedule) }, modifier = Modifier.animateItem()) {
-                        ScheduleCard(
-                            schedule = schedule,
-                            endsIn = if (isActive) minutesLeft(schedule, now) else null,
-                            missed = access.takeIf { isMissed },
-                            shizukuInstalled = shizukuInstalled,
-                            note = status?.takeIf { action?.undoes == true }?.let { note(it, schedule, now, format) },
-                            action = action,
-                            today = now.toLocalDate(),
-                            format = format,
-                            onClick = { editing = schedule },
-                            onAction = onAction@{
-                                if (status == null) return@onAction
-                                val postponable = ScheduleStatus.Action.POSTPONE in status.actions &&
-                                    ScheduleResolver.postponedTo(schedule, now, settings.postponeMinutes) != null
-                                when (action) {
-                                    CardAction.SKIP, CardAction.END ->
-                                        if (postponable) choosing = schedule.id else skip(schedule.id, status)
-                                    CardAction.UNSKIP, CardAction.RESTORE, CardAction.RESUME, CardAction.START ->
-                                        unskip(schedule.id, status)
-                                    CardAction.TURN_ON -> catchUp(schedule.id, status)
-                                    null -> {}
-                                }
-                            },
-                            onToggle = { enabled ->
-                                val conflict = viewModel.setEnabled(schedule, enabled)
-                                if (conflict != null) showConflict() else showStart(schedule.id)
-                            },
-                        )
-                    }
-                }
-            }
         }
     }
+}
 
-    editing?.let { schedule ->
-        ScheduleSheet(
-            initial = schedule,
-            isNew = viewModel.isNew(schedule),
-            now = now,
-            conflictOf = viewModel::conflict,
-            onDismiss = { editing = null },
-            onSave = { edited ->
-                val isNew = viewModel.isNew(edited)
-                (viewModel.save(edited) == null).also { saved ->
-                    if (saved) showStart(edited.id)
-                    if (saved && isNew && viewModel.asksNotifications()) requestNotifications()
-                }
-            },
-            onDelete = ::delete,
-        )
-    }
-
-    choosing?.let { id ->
-        val schedule = schedules.find { it.id == id }
-        val status = schedule?.let { ScheduleStatus.of(it, now, missed = it.id == missed) }
-        val offered = remember(id) { status }
-        val to = schedule?.let { ScheduleResolver.postponedTo(it, now, settings.postponeMinutes) }
-        // Since the dialog opened, the schedule was deleted or changed, for example by its notification, or nothing
-        // is left to postpone.
-        if (schedule == null || offered == null || status != offered || to == null) {
-            SideEffect { choosing = null }
-            return@let
+@Composable
+private fun NoticeStrips(
+    strips: Strips,
+    access: Access,
+    shizukuInstalled: Boolean,
+    onAccess: () -> Unit,
+    onHideReady: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (strips.alarms) {
+            Strip(
+                label = stringResource(R.string.strip_alarms),
+                icon = R.drawable.ic_error,
+                tone = Tone.ERROR,
+                onClick = { context.startActivity(exactAlarmSettings(context)) },
+            )
         }
-        val ending = offered is ScheduleStatus.Running
-        PostponeDialog(
+        if (strips.status && !access.ready) {
+            Strip(
+                label = stringResource(statusStrip(access, shizukuInstalled)),
+                icon = access.state.icon,
+                tone = Tone.ERROR,
+                onClick = onAccess,
+            )
+        }
+        if (strips.battery) {
+            Strip(
+                label = stringResource(R.string.strip_battery),
+                icon = R.drawable.ic_warning,
+                tone = Tone.WARNING,
+                onClick = { stopBatteryOptimization(context) },
+            )
+        }
+        if (strips.status && access.ready) {
+            Strip(
+                label = stringResource(statusStrip(access, shizukuInstalled)),
+                icon = access.state.icon,
+                tone = Tone.SUCCESS,
+                onDismiss = onHideReady,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ScheduleItem(
+    schedule: Schedule,
+    isActive: Boolean,
+    isMissed: Boolean,
+    now: LocalDateTime,
+    access: Access,
+    shizukuInstalled: Boolean,
+    postponeMinutes: Int,
+    format: Format,
+    actions: ScheduleActions,
+    onEdit: () -> Unit,
+    onChoose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val status = ScheduleStatus.of(schedule, now, isMissed)
+    val action = cardAction(status, canCatchUp = isMissed && access.ready)
+    SwipeToDelete(onDelete = { actions.delete(schedule) }, modifier = modifier) {
+        ScheduleCard(
             schedule = schedule,
-            ending = ending,
-            minutes = settings.postponeMinutes,
-            to = to,
-            now = now,
+            endsIn = if (isActive) minutesLeft(schedule, now) else null,
+            missed = access.takeIf { isMissed },
+            shizukuInstalled = shizukuInstalled,
+            note = status?.takeIf { action?.undoes == true }?.let { note(it, schedule, now, format) },
+            action = action,
+            today = now.toLocalDate(),
             format = format,
-            onPostpone = {
-                choosing = null
-                postpone(id, offered)
-            },
-            onSkip = {
-                choosing = null
-                skip(id, offered)
-            },
-            onDismiss = { choosing = null },
+            onClick = onEdit,
+            onAction = { status?.let { actions.act(schedule, it, action, postponeMinutes, onChoose) } },
+            onToggle = { enabled -> actions.setEnabled(schedule, enabled) },
         )
     }
+}
+
+// Asks whether to postpone or skip. It closes itself when the schedule was deleted or changed since it opened, for
+// example by its notification, or when nothing is left to postpone.
+@Composable
+private fun PostponeChoice(
+    schedule: Schedule?,
+    now: LocalDateTime,
+    missed: Long?,
+    minutes: Int,
+    format: Format,
+    actions: ScheduleActions,
+    onClose: () -> Unit,
+) {
+    val status = schedule?.let { ScheduleStatus.of(it, now, missed = it.id == missed) }
+    val offered = remember(schedule?.id) { status }
+    val to = schedule?.takeIf { status == offered }?.let { ScheduleResolver.postponedTo(it, now, minutes) }
+    if (schedule == null || offered == null || to == null) {
+        SideEffect { onClose() }
+        return
+    }
+    PostponeDialog(
+        schedule = schedule,
+        ending = offered is ScheduleStatus.Running,
+        minutes = minutes,
+        to = to,
+        now = now,
+        format = format,
+        onPostpone = {
+            onClose()
+            actions.postpone(schedule.id, offered)
+        },
+        onSkip = {
+            onClose()
+            actions.skip(schedule.id, offered)
+        },
+        onDismiss = onClose,
+    )
 }
 
 // Sui users have no Shizuku app, so its absence says nothing about them.
@@ -693,17 +866,21 @@ private fun cardAction(status: ScheduleStatus?, canCatchUp: Boolean): CardAction
         else -> CardAction.END
     }
     is ScheduleStatus.Paused -> CardAction.RESUME
-    is ScheduleStatus.Upcoming -> when {
-        status.postponed -> CardAction.RESTORE
-        status.soon -> CardAction.SKIP
-        else -> null
-    }
-    is ScheduleStatus.Skipped -> when {
-        status.endedEarly -> CardAction.RESUME
-        status.underway -> CardAction.START
-        else -> CardAction.UNSKIP
-    }
+    is ScheduleStatus.Upcoming -> upcomingAction(status)
+    is ScheduleStatus.Skipped -> skippedAction(status)
     null -> null
+}
+
+private fun upcomingAction(status: ScheduleStatus.Upcoming): CardAction? = when {
+    status.postponed -> CardAction.RESTORE
+    status.soon -> CardAction.SKIP
+    else -> null
+}
+
+private fun skippedAction(status: ScheduleStatus.Skipped): CardAction = when {
+    status.endedEarly -> CardAction.RESUME
+    status.underway -> CardAction.START
+    else -> CardAction.UNSKIP
 }
 
 private fun note(status: ScheduleStatus, schedule: Schedule, now: LocalDateTime, format: Format): Pair<String, Int>? =

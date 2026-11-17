@@ -19,7 +19,7 @@ class AirplaneService : IAirplaneService.Stub() {
 
     private fun run(command: List<String>): Int = try {
         val process = ProcessBuilder(command).redirectErrorStream(true).start()
-        if (!process.waitFor(5, TimeUnit.SECONDS)) {
+        if (!process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
             process.destroyForcibly()
             -1
         } else {
@@ -30,5 +30,9 @@ class AirplaneService : IAirplaneService.Stub() {
     } catch (_: InterruptedException) {
         Thread.currentThread().interrupt()
         -1
+    }
+
+    private companion object {
+        const val TIMEOUT_SECONDS = 5L
     }
 }

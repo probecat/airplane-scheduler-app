@@ -107,15 +107,7 @@ object Engine {
         Then.Start -> state.started?.let { Result(state.copy(started = it.copy(changes = it.changes + made))) }
             ?: Result(state, listOf(Effect.Switch(false, made, Then.Undo)))
         is Then.End -> {
-            val before = then.before
-            val ending = Ending.of(
-                then.started,
-                switch.changes,
-                made,
-                before.airplaneOn,
-                before.wifiOn,
-                then.schedule.enableWifi,
-            )
+            val ending = Ending.of(then.started, switch.changes, made, then.before, then.schedule.enableWifi)
             val reported = then.natural || !ending.failed.isEmpty
             Result(state, listOfNotNull(Effect.Report(then.schedule, ending).takeIf { reported }))
         }

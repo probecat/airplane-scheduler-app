@@ -8,6 +8,7 @@ import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,6 +16,7 @@ class RootSwitcher(
     context: Context,
     private val changed: () -> Unit,
     @VisibleForTesting private val shell: List<String> = listOf("su", "-c"),
+    private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : Switcher {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
@@ -50,10 +52,10 @@ class RootSwitcher(
 
     // Null when su is missing, denied, or the user did not answer its prompt in time.
     private suspend fun su(script: String): List<String>? {
-        val output = withContext(Dispatchers.IO) {
+        val output = withContext(io) {
             try {
                 val process = ProcessBuilder(shell + script).redirectErrorStream(true).start()
-                if (process.waitFor(20, TimeUnit.SECONDS)) {
+                if (process.waitFor(PROMPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                     process.inputStream.bufferedReader().readLines().takeIf { process.exitValue() == 0 }
                 } else {
                     process.destroyForcibly()
@@ -71,6 +73,7 @@ class RootSwitcher(
 
     companion object {
         private const val GRANTED = "rootGranted"
+        private const val PROMPT_TIMEOUT_SECONDS = 20L
         private val REPORT = Regex("""(\d+) (\d+)""")
 
         // Looks for su without running it, so no root prompt or toast shows.
