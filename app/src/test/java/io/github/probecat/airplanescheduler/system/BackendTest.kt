@@ -51,6 +51,21 @@ class BackendTest {
     }
 
     @Test
+    fun `a reset picks the backend again, as on the first start`() {
+        val rooted = SettingsRepository(device.app) { Backend.ROOT }
+        rooted.update { it.copy(backend = Backend.SHIZUKU, postponeMinutes = 15) }
+        rooted.update { rooted.defaults() }
+        assertEquals(Backend.ROOT, rooted.current.backend)
+        assertEquals(30, rooted.current.postponeMinutes)
+        // The pick is saved, so the next start keeps it.
+        assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.SHIZUKU }.current.backend)
+        // With Shizuku installed, a reset goes back to Shizuku.
+        val shizuku = SettingsRepository(device.app) { Backend.SHIZUKU }
+        shizuku.update { shizuku.defaults() }
+        assertEquals(Backend.SHIZUKU, shizuku.current.backend)
+    }
+
+    @Test
     fun `root counts only the changes whose command succeeded`() {
         // What counts as switched is what the end undoes. Wi-Fi that failed to go off must not be turned on later.
         val root = RootSwitcher(device.app, {}, shell = listOf("sh", "-c", "echo 1 0; echo 2 1"))

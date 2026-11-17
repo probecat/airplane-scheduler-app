@@ -176,7 +176,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
     }
 
-    fun resetSettings() = updateSettings { Settings() }
+    fun resetSettings() = updateSettings { app.settings.defaults() }
 
     private fun commit(result: ScheduleEdits.Result) {
         ScheduleUpdater.launch(app, result)

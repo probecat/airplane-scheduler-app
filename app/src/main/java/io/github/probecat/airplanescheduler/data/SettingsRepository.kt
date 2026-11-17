@@ -17,9 +17,9 @@ data class Settings(
 )
 
 // [firstBackend] picks the backend when none is saved yet.
-class SettingsRepository(context: Context, firstBackend: () -> Backend = { Backend.SHIZUKU }) {
+class SettingsRepository(context: Context, private val firstBackend: () -> Backend = { Backend.SHIZUKU }) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    private val state = MutableStateFlow(read(firstBackend))
+    private val state = MutableStateFlow(read())
 
     init {
         // The first pick is saved, so it persists when Shizuku or root is installed later.
@@ -29,6 +29,9 @@ class SettingsRepository(context: Context, firstBackend: () -> Backend = { Backe
     val settings: StateFlow<Settings> = state.asStateFlow()
 
     val current: Settings get() = state.value
+
+    // What a reset goes back to. The backend is picked again, as on the first start.
+    fun defaults(): Settings = Settings(backend = firstBackend())
 
     fun update(transform: (Settings) -> Settings) {
         val settings = transform(state.value)
@@ -43,7 +46,7 @@ class SettingsRepository(context: Context, firstBackend: () -> Backend = { Backe
         }
     }
 
-    private fun read(firstBackend: () -> Backend) = Settings().let { default ->
+    private fun read() = Settings().let { default ->
         Settings(
             theme = prefs.getString("theme", null)
                 ?.let { name -> ThemeMode.entries.find { it.name == name } } ?: default.theme,
