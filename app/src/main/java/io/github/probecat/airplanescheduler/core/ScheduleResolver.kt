@@ -140,8 +140,8 @@ object ScheduleResolver {
         val aLength = ScheduleTime.duration(a.start, a.end)
         val bLength = ScheduleTime.duration(b.start, b.end)
         if (a.once && b.once) {
-            val aStart = a.date!!.toEpochDay() * ScheduleTime.DAY + a.start
-            val bStart = b.date!!.toEpochDay() * ScheduleTime.DAY + b.start
+            val aStart = checkNotNull(a.date).toEpochDay() * ScheduleTime.DAY + a.start
+            val bStart = checkNotNull(b.date).toEpochDay() * ScheduleTime.DAY + b.start
             return bStart - aStart in 0L until aLength || aStart - bStart in 0L until bLength
         }
         // A schedule that runs once is checked as if it ran every week on its weekday.
@@ -186,7 +186,7 @@ object ScheduleResolver {
         date !in schedule.skipped && if (schedule.once) date == schedule.date else date.dayOfWeek in schedule.days
 
     private fun weekdays(schedule: Schedule): Set<DayOfWeek> =
-        if (schedule.once) setOf(schedule.date!!.dayOfWeek) else schedule.days
+        if (schedule.once) setOf(checkNotNull(schedule.date).dayOfWeek) else schedule.days
 
     private fun startDate(schedule: Schedule, endDate: LocalDate): LocalDate =
         if (schedule.start < schedule.end) endDate else endDate.minusDays(1)

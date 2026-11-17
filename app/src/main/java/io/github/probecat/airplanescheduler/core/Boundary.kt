@@ -88,14 +88,14 @@ object Boundary {
         val running = started?.takeIf { it.window == before.start }
         return when {
             after == null -> {
-                val active = ScheduleResolver.activeSchedule(old, now)!!
+                val active = checkNotNull(ScheduleResolver.activeSchedule(old, now))
                 val schedule = new.find { it.id == active.id } ?: active
                 Step.End(
                     running?.let {
                         ConnectivityPlan.end(it.changes, schedule.enableWifi)
                     } ?: Changes.NONE,
                     schedule,
-                    ScheduleResolver.windowEnd(active, ScheduleResolver.nextDate(active, now)!!),
+                    ScheduleResolver.windowEnd(active, checkNotNull(ScheduleResolver.nextDate(active, now))),
                 )
             }
             running != null && after.start != before.start -> Step.Move(running.copy(window = after.start))
