@@ -11,10 +11,6 @@ run = [
   "printf 'sdk.dir=%s\\n' \"$(mise where android-sdk)\" > local.properties",
 ]
 
-[tasks.ktlint]
-description = "Check Kotlin style"
-run = "ktlint"
-
 [tasks.format]
 description = "Fix Kotlin style"
 run = "ktlint --format"
