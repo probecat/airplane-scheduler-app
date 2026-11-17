@@ -258,6 +258,8 @@ private fun SchedulesList(
     }
 }
 
+// ScheduleActions is a class, not a composable, so the ViewModel goes no further down the UI.
+@Suppress("ViewModelForwarding")
 @Composable
 private fun rememberScheduleActions(
     viewModel: AppViewModel,

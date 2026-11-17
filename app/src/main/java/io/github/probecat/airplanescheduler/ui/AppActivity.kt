@@ -15,6 +15,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.ui.theme.AppTheme
 import io.github.probecat.airplanescheduler.ui.theme.isDark
 
+// Abstract because it is a base for the app's activities and is not registered in the manifest itself.
+@Suppress("AbstractClassCanBeConcreteClass")
 abstract class AppActivity : ComponentActivity() {
     protected val viewModel: AppViewModel by viewModels()
 

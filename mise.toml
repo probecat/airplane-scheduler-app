@@ -20,8 +20,8 @@ description = "Fix Kotlin style"
 run = "ktlint --format"
 
 [tasks.check]
-description = "Check style, test, and lint"
-run = ["ktlint", "./gradlew testDebugUnitTest lintDebug"]
+description = "Check style, analyze, test, and lint"
+run = ["ktlint", "./gradlew detektDebug detektDebugUnitTest testDebugUnitTest lintDebug"]
 
 [tasks.dev]
 description = "Build and launch the debug app on USB device"
