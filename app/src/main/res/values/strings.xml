@@ -159,7 +159,7 @@
     <string name="help_start">Start Shizuku</string>
     <string name="help_running">Running</string>
     <string name="help_grant">Grant permission</string>
-    <string name="help_schedules">How schedules work</string>
+    <string name="help_schedules">Common questions</string>
     <string name="help_troubleshooting">Troubleshooting</string>
     <string name="help_report">Still stuck? Report an issue</string>
     <string name="help_expand">Expand</string>
@@ -167,23 +167,23 @@
     <string name="help_expanded">Expanded</string>
     <string name="help_collapsed">Collapsed</string>
 
-    <string name="help_start_end_q">What happens when a schedule starts and ends?</string>
+    <string name="help_start_end_q">How do schedules work from start to end?</string>
     <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. The app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
     <string name="help_wifi_q">What do the Wi-Fi options do?</string>
     <string name="help_wifi_a">“Turn off Wi-Fi at start” disables Wi-Fi before turning on airplane mode. “Turn on Wi-Fi at end” enables Wi-Fi again, but only if the app turned it off.</string>
     <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
     <!-- %1$s is 11 PM and %2$s is 7 AM. -->
     <string name="help_overnight_a">The day the schedule starts. For example, a Friday schedule running from %1$s to %2$s ends on Saturday morning.</string>
-    <string name="help_once_q">What happens if I don\'t select any days?</string>
-    <string name="help_once_a">The schedule runs once at its next start time, then turns itself off. If you enable it between its start and end times, it starts immediately.</string>
-    <string name="help_skip_q">Can I skip or postpone a schedule?</string>
-    <string name="help_skip_a">During the hour before a schedule starts, you can skip it or postpone its start. A postponed schedule will still end at its originally scheduled time.</string>
-    <string name="help_pause_q">Can I pause a schedule temporarily?</string>
-    <string name="help_pause_a">Yes. You can pause a schedule to temporarily turn off airplane mode, or end it early. Postpone and pause use the same duration setting, which you can configure in Settings.</string>
+    <string name="help_once_q">Can a schedule run just once?</string>
+    <string name="help_once_a">Yes. With no days selected, the schedule runs once at its next start time, then turns itself off. When turned on between its start and end times, it starts immediately.</string>
+    <string name="help_skip_q">Can a schedule be skipped or postponed?</string>
+    <string name="help_skip_a">Yes, during the hour before it starts. A postponed schedule still ends at its original time.</string>
+    <string name="help_pause_q">How does pausing a schedule work?</string>
+    <string name="help_pause_a">Pausing a running schedule turns airplane mode off for the time set in “Postpone and pause” in Settings. A running schedule can also be ended early.</string>
     <string name="help_change_active_q">Do changes take effect immediately?</string>
     <string name="help_change_active_a">Yes. Turning off or deleting an active schedule ends it just like a normal schedule ending. Enabling or adding a schedule that covers the current time starts it immediately. Changing a schedule\'s time also starts or ends it as needed to match the updated schedule.</string>
-    <string name="help_overlap_q">Why can\'t schedules overlap?</string>
-    <string name="help_overlap_a">Only one schedule can control airplane mode at a time. Back-to-back schedules are treated as one continuous schedule, so airplane mode stays on between them. Wi-Fi follows the start option of the first schedule and the end option of the last one.</string>
+    <string name="help_overlap_q">Can schedules overlap?</string>
+    <string name="help_overlap_a">No. Only one schedule can control airplane mode at a time. Back-to-back schedules are treated as one continuous schedule, so airplane mode stays on between them. Wi-Fi follows the start option of the first schedule and the end option of the last one.</string>
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
     <string name="help_missed_a">Shizuku may not have been running or allowed, or your phone may have been turned off. The app doesn\'t automatically retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
     <string name="help_missed_a_sui">Sui may not have been authorized, or your phone may have been turned off. The app doesn\'t automatically retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
