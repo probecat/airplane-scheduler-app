@@ -1,5 +1,5 @@
 [tools]
-java = "temurin-21"
+java = "temurin-25"
 android-sdk = "23.0"
 ktlint = "1.8.0"
 
