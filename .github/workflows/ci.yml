@@ -68,10 +68,9 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
-      - name: Test and lint
-        run: ./gradlew testDebugUnitTest lintDebug
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      # The unsigned release build catches R8 and resource shrinking problems before a release.
+      - name: Test, lint, and build
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: AirplaneScheduler-debug
