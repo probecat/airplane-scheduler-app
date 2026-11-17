@@ -61,7 +61,14 @@ const val SOURCE_URL = "https://github.com/probecat/airplane-scheduler-app"
 const val ISSUES_URL = "$SOURCE_URL/issues"
 
 @Composable
-fun SwitchRow(icon: Int?, title: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+fun SwitchRow(
+    icon: Int?,
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
     SettingRow(
         icon = icon,
         title = title,
@@ -74,7 +81,7 @@ fun SwitchRow(icon: Int?, title: String, checked: Boolean, enabled: Boolean = tr
                 modifier = Modifier.clearAndSetSemantics {},
             )
         },
-        modifier = Modifier.toggleable(
+        modifier = modifier.toggleable(
             value = checked,
             enabled = enabled,
             role = Role.Switch,
@@ -84,7 +91,7 @@ fun SwitchRow(icon: Int?, title: String, checked: Boolean, enabled: Boolean = tr
 }
 
 @Composable
-fun LinkRow(icon: Int, title: String, url: String) {
+fun LinkRow(icon: Int, title: String, url: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     SettingRow(
         icon = icon,
@@ -96,6 +103,7 @@ fun LinkRow(icon: Int, title: String, url: String) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
+        modifier = modifier,
         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) },
     )
 }
@@ -140,8 +148,8 @@ fun SettingRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DismissibleSnackbarHost(state: SnackbarHostState) {
-    SnackbarHost(state) { data ->
+fun DismissibleSnackbarHost(state: SnackbarHostState, modifier: Modifier = Modifier) {
+    SnackbarHost(state, modifier) { data ->
         key(data) {
             SwipeToDismissBox(
                 state = rememberSwipeToDismissBoxState(),
@@ -172,12 +180,12 @@ fun ErrorText(text: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SectionHeader(text: String) {
+fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp).semantics { heading() },
+        modifier = modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 8.dp).semantics { heading() },
     )
 }
 
@@ -186,12 +194,13 @@ fun SectionHeader(text: String) {
 fun Subpage(
     title: String,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             TopAppBar(
                 title = { Text(title) },
@@ -224,9 +233,9 @@ fun Subpage(
 class MenuItem(val label: String, @param:DrawableRes val icon: Int, val onClick: () -> Unit)
 
 @Composable
-fun OverflowMenu(items: List<MenuItem>) {
+fun OverflowMenu(items: List<MenuItem>, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
-    Box {
+    Box(modifier) {
         IconButton(onClick = { open = true }) {
             Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.more_options))
         }

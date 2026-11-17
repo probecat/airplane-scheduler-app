@@ -99,7 +99,8 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
                 icon = R.drawable.ic_palette,
                 title = stringResource(R.string.settings_dynamic_color),
                 checked = settings.dynamicColor,
-            ) { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } }
+                onChange = { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } },
+            )
         }
 
         SectionHeader(stringResource(R.string.settings_schedules))

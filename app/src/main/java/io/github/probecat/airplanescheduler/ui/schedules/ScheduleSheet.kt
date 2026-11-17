@@ -189,7 +189,8 @@ fun ScheduleSheet(
                 icon = R.drawable.ic_wifi_off,
                 title = stringResource(R.string.sheet_wifi_off),
                 checked = schedule.disableWifi,
-            ) { draft = schedule.copy(disableWifi = it) }
+                onChange = { draft = schedule.copy(disableWifi = it) },
+            )
             // Only Wi-Fi that the start turned off comes back, so the end option needs the start one.
             // It grays out instead of hiding. The sheet grows from the bottom, so hiding the row moves
             // the switch above it out from under the finger.
@@ -198,7 +199,8 @@ fun ScheduleSheet(
                 title = stringResource(R.string.sheet_wifi_on),
                 checked = schedule.enableWifi,
                 enabled = schedule.disableWifi,
-            ) { draft = schedule.copy(enableWifi = it) }
+                onChange = { draft = schedule.copy(enableWifi = it) },
+            )
             NameRow(schedule.name) { draft = schedule.copy(name = it) }
 
             Row(
