@@ -9,13 +9,14 @@ import android.os.SystemClock
 import io.github.probecat.airplanescheduler.IAirplaneService
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import kotlin.coroutines.resume
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import rikka.shizuku.Shizuku
 
-class ShizukuSwitcher(private val context: Context) : Switcher {
+class ShizukuSwitcher(private val context: Context, private val io: CoroutineDispatcher = Dispatchers.IO) : Switcher {
     private var timedOutAt = Long.MIN_VALUE / 2
 
     override fun access() =
@@ -53,7 +54,7 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
                 .processNameSuffix("airplane")
                 .daemon(false)
             val (binder, connection) = withTimeoutOrNull(BIND_TIMEOUT_MS) { bind(args) } ?: return Changes.NONE
-            withContext(Dispatchers.IO) {
+            withContext(io) {
                 try {
                     Changes.of(
                         IAirplaneService.Stub.asInterface(binder).setEnabled(enabled, changes.airplane, changes.wifi),
