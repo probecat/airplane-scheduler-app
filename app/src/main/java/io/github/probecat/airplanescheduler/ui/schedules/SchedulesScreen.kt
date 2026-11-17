@@ -169,7 +169,7 @@ fun SchedulesScreen(viewModel: AppViewModel, onSettings: () -> Unit, onHelp: () 
     }
 
     fun unskip(id: Long, offered: ScheduleStatus) {
-        when (val result = viewModel.unskip(id, offered)) {
+        when (viewModel.unskip(id, offered)) {
             is ScheduleEdits.Result.Overlaps -> showConflict(R.string.schedules_overlaps_other)
             is ScheduleEdits.Result.Saved -> showStart(id)
             null -> {}

@@ -68,10 +68,12 @@ private fun schedules(format: Format) = listOf(
 
 @Composable
 private fun troubleshooting(format: Format, kind: Access.Kind): List<Pair<String, String>> {
-    var shizukuStopped = stringResource(R.string.help_shizuku_stopped_a)
+    val stopped = stringResource(R.string.help_shizuku_stopped_a)
     // Wireless debugging, which Shizuku starts with, came in Android 11.
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-        shizukuStopped = format.sentences(shizukuStopped, stringResource(R.string.help_shizuku_stopped_legacy))
+    val shizukuStopped = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        format.sentences(stopped, stringResource(R.string.help_shizuku_stopped_legacy))
+    } else {
+        stopped
     }
     return listOfNotNull(
         topic(
