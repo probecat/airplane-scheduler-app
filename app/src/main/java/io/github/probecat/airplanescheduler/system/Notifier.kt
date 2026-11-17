@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.core.os.bundleOf
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Ending
@@ -373,12 +372,12 @@ object Notifier {
     private fun post(app: App, id: Long, content: Content, now: LocalDateTime, alert: Boolean = false) {
         val tag = if (content.kind == Kind.PROBLEM) PROBLEM_TAG else TAG
         val key = content.toString()
-        val extras = bundleOf(
-            KEY to key,
-            KIND to content.kind.name,
-            CHANNEL to content.channel,
-            CHANGES to content.changes.bits,
-        )
+        val extras = Bundle().apply {
+            putString(KEY, key)
+            putString(KIND, content.kind.name)
+            putString(CHANNEL, content.channel)
+            putInt(CHANGES, content.changes.bits)
+        }
         val open = Intent(app, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val builder = NotificationCompat.Builder(app, content.channel)
             .setSmallIcon(R.drawable.ic_notification)

@@ -78,9 +78,21 @@ android {
         unitTests.all { jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED' }
     }
 
+    lint {
+        warningsAsErrors true
+        // Dependabot handles updates. These checks fail CI whenever a dependency releases.
+        disable += ['AndroidGradlePluginVersion', 'GradleDependency', 'NewerVersionAvailable']
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+kotlin {
+    compilerOptions {
+        allWarningsAsErrors = true
     }
 }
 
