@@ -89,6 +89,7 @@ import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.SwitchRow
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -115,7 +116,6 @@ fun ScheduleSheet(
     val format = rememberFormat()
     val scope = rememberCoroutineScope()
     var draft by rememberSaveable(initial.id, stateSaver = ScheduleSaver) { mutableStateOf(initial) }
-    var picking by rememberSaveable { mutableStateOf<Boolean?>(null) }
     var discarding by rememberSaveable { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
     val schedule = draft ?: initial
@@ -126,6 +126,7 @@ fun ScheduleSheet(
     }
 
     val sameTimes = schedule.start == schedule.end
+    val changed = isNew || dirty
     // A name cannot overlap anything, so a change to the name does not run the overlap check again.
     val conflict = remember(schedule.copy(name = ""), now) { conflictOf(schedule) }
 
@@ -147,93 +148,70 @@ fun ScheduleSheet(
         // The sheet handles back itself and hides without asking its state, so this handler takes back first.
         BackHandler(enabled = dirty && !closing) { discarding = true }
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
-            Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                TimeButton(stringResource(R.string.sheet_starts), schedule.start, format, Modifier.weight(1f)) {
-                    picking =
-                        true
-                }
-                Icon(
-                    painterResource(R.drawable.ic_arrow_forward),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 8.dp).size(20.dp),
-                )
-                TimeButton(stringResource(R.string.sheet_ends), schedule.end, format, Modifier.weight(1f)) {
-                    picking =
-                        false
-                }
-            }
-            Column(Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
-                when {
-                    sameTimes -> ErrorText(stringResource(R.string.sheet_same_times))
-                    conflict != null -> ErrorText(
-                        stringResource(R.string.sheet_overlaps, format.label(conflict, now.toLocalDate())),
-                    )
-                    else -> Text(
-                        stringResource(
-                            R.string.sheet_lasts,
-                            format.duration(ScheduleTime.duration(schedule.start, schedule.end)),
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            SheetHeading(stringResource(R.string.sheet_repeats))
-            DayChips(format, schedule.days, Modifier.padding(horizontal = 16.dp)) { day ->
-                draft = schedule.copy(days = if (day in schedule.days) schedule.days - day else schedule.days + day)
-            }
-            Spacer(Modifier.height(8.dp))
-            SwitchRow(
-                icon = R.drawable.ic_wifi_off,
-                title = stringResource(R.string.sheet_wifi_off),
-                checked = schedule.disableWifi,
-                onChange = { draft = schedule.copy(disableWifi = it) },
+            TimesRow(schedule, format, onChange = { draft = it }, Modifier.padding(horizontal = 16.dp))
+            TimesNote(
+                schedule,
+                conflict,
+                format,
+                now.toLocalDate(),
+                Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
-            // Only Wi-Fi that the start turned off comes back, so the end option needs the start one.
-            // It grays out instead of hiding. The sheet grows from the bottom, so hiding the row moves
-            // the switch above it out from under the finger.
-            SwitchRow(
-                icon = R.drawable.ic_wifi,
-                title = stringResource(R.string.sheet_wifi_on),
-                checked = schedule.enableWifi,
-                enabled = schedule.disableWifi,
-                onChange = { draft = schedule.copy(enableWifi = it) },
-            )
-            NameRow(schedule.name) { draft = schedule.copy(name = it) }
+            OptionFields(schedule, format, onChange = { draft = it })
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                if (!isNew) {
-                    FilledTonalButton(
-                        onClick = { close { onDelete(initial) } },
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MaterialTheme.colorScheme.error,
-                        ),
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.ic_delete),
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.action_delete))
-                    }
-                }
-                Button(
-                    onClick = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
-                    enabled = !sameTimes && conflict == null && (isNew || dirty),
-                    modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.action_save)) }
-            }
+            SheetButtons(
+                canDelete = !isNew,
+                canSave = !sameTimes && conflict == null && changed,
+                onDelete = { close { onDelete(initial) } },
+                onSave = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp),
+            )
         }
     }
 
+    if (discarding) {
+        DiscardDialog(
+            onDiscard = {
+                discarding = false
+                close()
+            },
+            onKeep = { discarding = false },
+        )
+    }
+}
+
+// A new start moves the end with it. A new end keeps the start.
+private fun picked(schedule: Schedule, start: Boolean, minute: Int): Schedule = if (start) {
+    schedule.copy(start = minute, end = ScheduleTime.movedEnd(schedule.start, schedule.end, minute))
+} else {
+    schedule.copy(end = ScheduleTime.pickedEnd(schedule.start, minute))
+}
+
+@Composable
+private fun TimesRow(schedule: Schedule, format: Format, onChange: (Schedule) -> Unit, modifier: Modifier = Modifier) {
+    // True while picking the start, and false while picking the end.
+    var picking by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        TimeButton(
+            stringResource(R.string.sheet_starts),
+            schedule.start,
+            format,
+            onClick = { picking = true },
+            Modifier.weight(1f),
+        )
+        Icon(
+            painterResource(R.drawable.ic_arrow_forward),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp).size(20.dp),
+        )
+        TimeButton(
+            stringResource(R.string.sheet_ends),
+            schedule.end,
+            format,
+            onClick = { picking = false },
+            Modifier.weight(1f),
+        )
+    }
     picking?.let { start ->
         TimeDialog(
             title = stringResource(if (start) R.string.sheet_start_time else R.string.sheet_end_time),
@@ -241,35 +219,114 @@ fun ScheduleSheet(
             is24Hour = format.is24Hour,
             onDismiss = { picking = null },
             onConfirm = { minute ->
-                draft = if (start) {
-                    schedule.copy(start = minute, end = ScheduleTime.movedEnd(schedule.start, schedule.end, minute))
-                } else {
-                    schedule.copy(end = ScheduleTime.pickedEnd(schedule.start, minute))
-                }
+                onChange(picked(schedule, start, minute))
                 picking = null
             },
         )
     }
+}
 
-    if (discarding) {
-        AlertDialog(
-            onDismissRequest = { discarding = false },
-            title = { Text(stringResource(R.string.sheet_discard_title)) },
-            text = { Text(stringResource(R.string.sheet_discard_text)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        discarding = false
-                        close()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) { Text(stringResource(R.string.action_discard)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { discarding = false }) { Text(stringResource(R.string.action_keep_editing)) }
-            },
-        )
+@Composable
+private fun OptionFields(schedule: Schedule, format: Format, onChange: (Schedule) -> Unit) = Column {
+    SheetHeading(stringResource(R.string.sheet_repeats))
+    DayChips(
+        format,
+        schedule.days,
+        onToggle = { day ->
+            onChange(schedule.copy(days = if (day in schedule.days) schedule.days - day else schedule.days + day))
+        },
+        Modifier.padding(horizontal = 16.dp),
+    )
+    Spacer(Modifier.height(8.dp))
+    SwitchRow(
+        icon = R.drawable.ic_wifi_off,
+        title = stringResource(R.string.sheet_wifi_off),
+        checked = schedule.disableWifi,
+        onChange = { onChange(schedule.copy(disableWifi = it)) },
+    )
+    // Only Wi-Fi that the start turned off comes back, so the end option needs the start one.
+    // It grays out instead of hiding. The sheet grows from the bottom, so hiding the row moves
+    // the switch above it out from under the finger.
+    SwitchRow(
+        icon = R.drawable.ic_wifi,
+        title = stringResource(R.string.sheet_wifi_on),
+        checked = schedule.enableWifi,
+        enabled = schedule.disableWifi,
+        onChange = { onChange(schedule.copy(enableWifi = it)) },
+    )
+    NameRow(schedule.name) { onChange(schedule.copy(name = it)) }
+}
+
+// Why the times cannot be saved, or else how long the window lasts.
+@Composable
+private fun TimesNote(
+    schedule: Schedule,
+    conflict: Schedule?,
+    format: Format,
+    today: LocalDate,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        when {
+            schedule.start == schedule.end -> ErrorText(stringResource(R.string.sheet_same_times))
+            conflict != null -> ErrorText(stringResource(R.string.sheet_overlaps, format.label(conflict, today)))
+            else -> Text(
+                stringResource(
+                    R.string.sheet_lasts,
+                    format.duration(ScheduleTime.duration(schedule.start, schedule.end)),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
+
+@Composable
+private fun SheetButtons(
+    canDelete: Boolean,
+    canSave: Boolean,
+    onDelete: () -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (canDelete) {
+            FilledTonalButton(
+                onClick = onDelete,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.action_delete))
+            }
+        }
+        Button(onClick = onSave, enabled = canSave, modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.action_save))
+        }
+    }
+}
+
+@Composable
+private fun DiscardDialog(onDiscard: () -> Unit, onKeep: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onKeep,
+        title = { Text(stringResource(R.string.sheet_discard_title)) },
+        text = { Text(stringResource(R.string.sheet_discard_text)) },
+        confirmButton = {
+            TextButton(
+                onClick = onDiscard,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.action_discard)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onKeep) { Text(stringResource(R.string.action_keep_editing)) }
+        },
+    )
 }
 
 @Composable
@@ -288,8 +345,8 @@ private fun TimeButton(
     label: String,
     minute: Int,
     format: Format,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         onClick = onClick,
@@ -318,8 +375,8 @@ private fun TimeButton(
 private fun DayChips(
     format: Format,
     days: Set<DayOfWeek>,
-    modifier: Modifier = Modifier,
     onToggle: (DayOfWeek) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (day in format.week) {
@@ -398,12 +455,7 @@ private fun TimeDialog(title: String, minute: Int, is24Hour: Boolean, onDismiss:
 @Composable
 private fun NameRow(name: String, onChange: (String) -> Unit) {
     var field by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(name)) }
-    var focused by remember { mutableStateOf(false) }
-    var textWidth by remember { mutableFloatStateOf(0f) }
-    var placeholderWidth by remember { mutableFloatStateOf(0f) }
     val focus = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -412,60 +464,87 @@ private fun NameRow(name: String, onChange: (String) -> Unit) {
             .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(painterResource(R.drawable.ic_label), contentDescription = null, tint = colors.onSurfaceVariant)
+        Icon(
+            painterResource(R.drawable.ic_label),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Spacer(Modifier.width(16.dp))
         val label = stringResource(R.string.sheet_name)
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Spacer(Modifier.width(16.dp))
-        BasicTextField(
-            value = field,
-            onValueChange = {
+        NameField(
+            field,
+            label,
+            focus,
+            onChange = {
                 field = it.copy(text = it.text.take(NAME_LENGTH))
                 onChange(field.text)
             },
-            singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = colors.onSurfaceVariant,
-                textAlign = TextAlign.End,
-            ),
-            cursorBrush = SolidColor(colors.primary),
-            onTextLayout = { textWidth = it.getLineRight(0) - it.getLineLeft(0) },
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Sentences,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
-            modifier = Modifier
-                .weight(1f)
-                .focusRequester(focus)
-                .onFocusChanged {
-                    focused = it.isFocused
-                    if (it.isFocused) field = field.copy(selection = TextRange(0, field.text.length))
-                }
-                .semantics { contentDescription = label },
-            decorationBox = { inner ->
-                Box(
-                    contentAlignment = Alignment.CenterEnd,
-                    modifier = Modifier.drawBehind {
-                        // Underlines just the name or placeholder, which sits at the end of the field.
-                        if (focused) {
-                            val y = size.height + 4.dp.toPx()
-                            val start = size.width - if (field.text.isEmpty()) placeholderWidth else textWidth
-                            drawLine(colors.primary, Offset(start, y), Offset(size.width, y), 2.dp.toPx())
-                        }
-                    },
-                ) {
-                    if (field.text.isEmpty()) {
-                        Text(
-                            stringResource(R.string.sheet_name_placeholder),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = colors.onSurfaceVariant,
-                            onTextLayout = { placeholderWidth = it.size.width.toFloat() },
-                        )
-                    }
-                    inner()
-                }
-            },
+            onFocus = { field = field.copy(selection = TextRange(0, field.text.length)) },
+            Modifier.weight(1f),
         )
     }
+}
+
+@Composable
+private fun NameField(
+    field: TextFieldValue,
+    label: String,
+    focus: FocusRequester,
+    onChange: (TextFieldValue) -> Unit,
+    onFocus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var focused by remember { mutableStateOf(false) }
+    var textWidth by remember { mutableFloatStateOf(0f) }
+    var placeholderWidth by remember { mutableFloatStateOf(0f) }
+    val focusManager = LocalFocusManager.current
+    val colors = MaterialTheme.colorScheme
+    BasicTextField(
+        value = field,
+        onValueChange = onChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(
+            color = colors.onSurfaceVariant,
+            textAlign = TextAlign.End,
+        ),
+        cursorBrush = SolidColor(colors.primary),
+        onTextLayout = { textWidth = it.getLineRight(0) - it.getLineLeft(0) },
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences,
+            imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+        modifier = modifier
+            .focusRequester(focus)
+            .onFocusChanged {
+                focused = it.isFocused
+                if (it.isFocused) onFocus()
+            }
+            .semantics { contentDescription = label },
+        decorationBox = { inner ->
+            Box(
+                contentAlignment = Alignment.CenterEnd,
+                modifier = Modifier.drawBehind {
+                    // Underlines just the name or placeholder, which sits at the end of the field.
+                    if (focused) {
+                        val y = size.height + 4.dp.toPx()
+                        val start = size.width - if (field.text.isEmpty()) placeholderWidth else textWidth
+                        drawLine(colors.primary, Offset(start, y), Offset(size.width, y), 2.dp.toPx())
+                    }
+                },
+            ) {
+                if (field.text.isEmpty()) {
+                    Text(
+                        stringResource(R.string.sheet_name_placeholder),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onSurfaceVariant,
+                        onTextLayout = { placeholderWidth = it.size.width.toFloat() },
+                    )
+                }
+                inner()
+            }
+        },
+    )
 }
