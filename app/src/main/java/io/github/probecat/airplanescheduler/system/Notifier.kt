@@ -4,8 +4,11 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.SystemClock
+import android.service.notification.StatusBarNotification
+import androidx.annotation.StringRes
 import androidx.annotation.VisibleForTesting
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
@@ -124,12 +127,7 @@ object Notifier {
         val posted = active.filter { it.tag == TAG }
             .associate { it.id.toLong() to it.notification.extras } +
             latest.filterValues { SystemClock.elapsedRealtime() - it.at < 5_000 }.mapValues { it.value.extras }
-        val dismissed = dismissed(app)
-        dismissed.edit {
-            for (id in dismissed.all.keys) {
-                if (dismissed.getString(id, null) != wanted[id.toLong()]?.toString()) remove(id)
-            }
-        }
+        val dismissed = keepDismissed(app, wanted)
         for ((id, content) in wanted) {
             val key = content.toString()
             if (posted[id]?.getString(KEY) == key || dismissed.getString(id.toString(), null) == key) continue
@@ -143,12 +141,29 @@ object Notifier {
                 latest[id] = Latest(Bundle())
             }
         }
+        cancelSettled(app, manager, active)
+    }
 
+    // A dismissal holds only while the notice it took down is still what the schedule would show.
+    private fun keepDismissed(app: App, wanted: Map<Long, Content>): SharedPreferences {
+        val dismissed = dismissed(app)
+        dismissed.edit {
+            for (id in dismissed.all.keys) {
+                if (dismissed.getString(id, null) != wanted[id.toLong()]?.toString()) remove(id)
+            }
+        }
+        return dismissed
+    }
+
+    // Takes down a report of what an end left switched once the user switched it back.
+    private fun cancelSettled(app: App, manager: NotificationManagerCompat, active: List<StatusBarNotification>) {
         val airplane = AirplaneController.airplaneOn(app)
         val wifi = AirplaneController.wifiOn(app)
         for (problem in active.filter { it.tag == PROBLEM_TAG }) {
             val left = Changes.of(problem.notification.extras.getInt(CHANGES))
-            if ((!left.airplane || !airplane) && (!left.wifi || wifi)) manager.cancel(PROBLEM_TAG, problem.id)
+            val airplaneSettled = !left.airplane || !airplane
+            val wifiSettled = !left.wifi || wifi
+            if (airplaneSettled && wifiSettled) manager.cancel(PROBLEM_TAG, problem.id)
         }
     }
 
@@ -164,12 +179,11 @@ object Notifier {
     private fun wanted(app: App, now: LocalDateTime): Map<Long, Content> {
         val schedules = app.schedules.all
         val missed = AirplaneController.missedSchedule(app, now)?.id
-        val format = format(app)
-        val problem = accessProblem(app)
+        val notices = Notices(app, now)
         val shown = listOf(SCHEDULES, PROBLEMS).filter { shows(app, it) }
         return schedules.mapNotNull { schedule ->
             Notice.of(schedule, now, schedule.id == missed)
-                ?.let { notice(app, schedule, it, now, format, problem) }
+                ?.let { notices.content(schedule, it) }
                 ?.takeIf { it.channel in shown }
                 ?.let { schedule.id to it }
         }.toMap()
@@ -186,53 +200,60 @@ object Notifier {
     fun ended(context: Context, report: Report, ending: Ending) {
         val app = App.from(context)
         if (!canPost(app)) return
-        val failed = ending.failed
-        val content = if (!failed.isEmpty) {
-            val text = accessProblem(app)?.takeIf { ending.nothingSwitched }
-                ?.let { app.getString(R.string.notification_no_action_because, it) }
-                ?: app.getString(
-                    when {
-                        failed.airplane && failed.wifi -> R.string.notification_failed_both
-                        failed.airplane -> R.string.notification_failed_airplane
-                        else -> R.string.notification_failed_wifi
-                    },
-                )
-            Content(
-                Kind.PROBLEM,
-                PROBLEMS,
-                report.title,
-                text,
-                actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
-                changes = failed,
-            )
-        } else {
-            val airplane = when {
-                ending.missedStart -> R.string.notification_missed_start
-                ending.airplaneWasOn -> R.string.notification_airplane_was_on
-                ending.airplaneTurnedOff -> R.string.notification_airplane_turned_off
-                ending.airplaneStaysOn -> R.string.notification_airplane_stays_on
-                else -> R.string.notification_airplane_off
-            }
-            val wifi = when {
-                ending.wifiWasOff -> R.string.notification_wifi_was_off
-                ending.wifiBackOn -> R.string.notification_wifi_back_on
-                else -> null
-            }
-            val now = LocalDateTime.now()
-            Content(
-                Kind.REPORT,
-                SCHEDULES,
-                report.title,
-                if (airplane == R.string.notification_airplane_was_on && wifi == R.string.notification_wifi_was_off) {
-                    app.getString(R.string.notification_both_were_set)
-                } else {
-                    sentences(app, app.getString(airplane), wifi?.let(app::getString))
-                },
-                until = if (ending.clean) now.plusMinutes(CLEAN_END_SHOWS_MINUTES) else null,
-            )
-        }
+        val content = if (ending.failed.isEmpty) endReport(app, report, ending) else endProblem(app, report, ending)
         if (content.kind != Kind.PROBLEM) NotificationManagerCompat.from(app).cancel(PROBLEM_TAG, report.id.toInt())
         if (shows(app, content.channel)) post(app, report.id, content, LocalDateTime.now())
+    }
+
+    private fun endProblem(app: App, report: Report, ending: Ending): Content {
+        val failed = ending.failed
+        val text = accessProblem(app)?.takeIf { ending.nothingSwitched }
+            ?.let { app.getString(R.string.notification_no_action_because, it) }
+            ?: app.getString(
+                when {
+                    failed.airplane && failed.wifi -> R.string.notification_failed_both
+                    failed.airplane -> R.string.notification_failed_airplane
+                    else -> R.string.notification_failed_wifi
+                },
+            )
+        return Content(
+            Kind.PROBLEM,
+            PROBLEMS,
+            report.title,
+            text,
+            actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
+            changes = failed,
+        )
+    }
+
+    private fun endReport(app: App, report: Report, ending: Ending): Content {
+        val airplane = airplaneAtEnd(ending)
+        val wifi = wifiAtEnd(ending)
+        val text = if (airplane == R.string.notification_airplane_was_on &&
+            wifi == R.string.notification_wifi_was_off
+        ) {
+            app.getString(R.string.notification_both_were_set)
+        } else {
+            sentences(app, app.getString(airplane), wifi?.let(app::getString))
+        }
+        val until = if (ending.clean) LocalDateTime.now().plusMinutes(CLEAN_END_SHOWS_MINUTES) else null
+        return Content(Kind.REPORT, SCHEDULES, report.title, text, until = until)
+    }
+
+    @StringRes
+    private fun airplaneAtEnd(ending: Ending): Int = when {
+        ending.missedStart -> R.string.notification_missed_start
+        ending.airplaneWasOn -> R.string.notification_airplane_was_on
+        ending.airplaneTurnedOff -> R.string.notification_airplane_turned_off
+        ending.airplaneStaysOn -> R.string.notification_airplane_stays_on
+        else -> R.string.notification_airplane_off
+    }
+
+    @StringRes
+    private fun wifiAtEnd(ending: Ending): Int? = when {
+        ending.wifiWasOff -> R.string.notification_wifi_was_off
+        ending.wifiBackOn -> R.string.notification_wifi_back_on
+        else -> null
     }
 
     // The app was not running when a window ended, so what it switched stays switched.
@@ -251,89 +272,88 @@ object Notifier {
         post(app, schedule?.id ?: 0, content, LocalDateTime.now())
     }
 
-    private fun notice(
-        app: App,
-        schedule: Schedule,
-        notice: Notice,
-        now: LocalDateTime,
-        format: Format,
-        problem: String?,
-    ): Content {
-        val title = format.title(schedule)
-        val minutes = app.settings.current.postponeMinutes
-        val postpone = ScheduleResolver.postponedTo(schedule, now, minutes) != null
-        return when (notice) {
-            is Notice.Upcoming -> {
+    // What schedules' notices show at [now]. [problem] says why the app cannot switch, if it cannot.
+    private class Notices(private val app: App, private val now: LocalDateTime) {
+        private val format = format(app)
+        private val problem = accessProblem(app)
+        private val minutes = app.settings.current.postponeMinutes
+
+        fun content(schedule: Schedule, notice: Notice): Content {
+            val title = format.title(schedule)
+            val postpone = ScheduleResolver.postponedTo(schedule, now, minutes) != null
+            return when (notice) {
                 // A window can be postponed only once, as in the app.
-                val postponable = postpone && !notice.postponed
-                val time = format.time(notice.start)
-                val text = when {
-                    problem != null -> app.getString(R.string.notification_could_miss, time, problem)
-                    notice.postponed -> app.getString(R.string.notification_postponed_to, time)
-                    else -> app.getString(R.string.notification_starts_at, time)
-                }
-                Content(
-                    Kind.NOTICE,
-                    if (problem != null) PROBLEMS else SCHEDULES,
-                    title,
-                    text,
-                    notice.date,
-                    listOfNotNull(
-                        Action(POSTPONE, app.getString(R.string.action_postpone, format.duration(minutes)))
-                            .takeIf { postponable },
-                        Action(SKIP, app.getString(R.string.action_skip)),
-                    ),
-                    minutes = minutes,
-                )
-            }
-            is Notice.Paused -> Content(
-                Kind.NOTICE,
-                SCHEDULES,
-                title,
-                app.getString(R.string.notification_resumes_at, format.time(notice.until)),
-                notice.date,
-                listOf(
-                    Action(UNDO, app.getString(R.string.action_resume_now)),
-                    Action(END, app.getString(R.string.action_end)),
-                ),
-            )
-            is Notice.Active -> if (notice.missed) {
-                Content(
-                    Kind.NOTICE,
-                    PROBLEMS,
-                    title,
-                    problem?.let { app.getString(R.string.notification_missed_start_because, it) }
-                        ?: app.getString(R.string.notification_missed_start_no_action),
-                    notice.date,
-                    listOfNotNull(
-                        Action(TURN_ON, app.getString(R.string.action_turn_on)).takeIf { problem == null },
-                        Action(SKIP, app.getString(R.string.action_skip)),
-                    ),
-                )
-            } else {
-                Content(
+                is Notice.Upcoming -> upcoming(title, notice, postpone && !notice.postponed)
+                is Notice.Paused -> Content(
                     Kind.NOTICE,
                     SCHEDULES,
                     title,
-                    app.getString(R.string.notification_ends_at, format.time(notice.end)),
+                    app.getString(R.string.notification_resumes_at, format.time(notice.until)),
                     notice.date,
-                    listOfNotNull(
-                        Action(POSTPONE, app.getString(R.string.action_pause, format.duration(minutes)))
-                            .takeIf { postpone },
+                    listOf(
+                        Action(UNDO, app.getString(R.string.action_resume_now)),
                         Action(END, app.getString(R.string.action_end)),
                     ),
-                    minutes = minutes,
+                )
+                is Notice.Active -> if (notice.missed) missed(title, notice) else active(title, notice, postpone)
+                is Notice.Skipped -> Content(
+                    Kind.NOTICE,
+                    SCHEDULES,
+                    title,
+                    format.skippedNotice(schedule, notice.date, now),
+                    notice.date,
+                    until = notice.until,
                 )
             }
-            is Notice.Skipped -> Content(
+        }
+
+        private fun upcoming(title: String, notice: Notice.Upcoming, postponable: Boolean): Content {
+            val time = format.time(notice.start)
+            val text = when {
+                problem != null -> app.getString(R.string.notification_could_miss, time, problem)
+                notice.postponed -> app.getString(R.string.notification_postponed_to, time)
+                else -> app.getString(R.string.notification_starts_at, time)
+            }
+            return Content(
                 Kind.NOTICE,
-                SCHEDULES,
+                if (problem != null) PROBLEMS else SCHEDULES,
                 title,
-                format.skippedNotice(schedule, notice.date, now),
+                text,
                 notice.date,
-                until = notice.until,
+                listOfNotNull(
+                    Action(POSTPONE, app.getString(R.string.action_postpone, format.duration(minutes)))
+                        .takeIf { postponable },
+                    Action(SKIP, app.getString(R.string.action_skip)),
+                ),
+                minutes = minutes,
             )
         }
+
+        private fun missed(title: String, notice: Notice.Active) = Content(
+            Kind.NOTICE,
+            PROBLEMS,
+            title,
+            problem?.let { app.getString(R.string.notification_missed_start_because, it) }
+                ?: app.getString(R.string.notification_missed_start_no_action),
+            notice.date,
+            listOfNotNull(
+                Action(TURN_ON, app.getString(R.string.action_turn_on)).takeIf { problem == null },
+                Action(SKIP, app.getString(R.string.action_skip)),
+            ),
+        )
+
+        private fun active(title: String, notice: Notice.Active, postpone: Boolean) = Content(
+            Kind.NOTICE,
+            SCHEDULES,
+            title,
+            app.getString(R.string.notification_ends_at, format.time(notice.end)),
+            notice.date,
+            listOfNotNull(
+                Action(POSTPONE, app.getString(R.string.action_pause, format.duration(minutes))).takeIf { postpone },
+                Action(END, app.getString(R.string.action_end)),
+            ),
+            minutes = minutes,
+        )
     }
 
     private fun sentences(context: Context, first: String, second: String?): String =
