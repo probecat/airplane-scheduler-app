@@ -195,8 +195,6 @@
     <string name="help_shizuku_stopped_a">Shizuku stops when your phone restarts. If notifications are enabled, you\'ll receive a warning one hour before a schedule starts.</string>
     <!-- Added to the answer above below Android 11, which lacks wireless debugging. -->
     <string name="help_shizuku_stopped_legacy">On this Android version, Shizuku can only be started using a computer or root.</string>
-    <string name="help_root_q">Can I use root instead?</string>
-    <string name="help_root_a">Yes. Go to Settings and change Permission mode to Root.</string>
 
     <string name="shizuku_missing_title">Shizuku isn\'t installed</string>
     <string name="shizuku_missing_text">Schedules can\'t work without Shizuku or root.</string>
