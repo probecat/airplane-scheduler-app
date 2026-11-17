@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.probecat.airplanescheduler.BuildConfig
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.data.Backend
+import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.data.ThemeMode
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AccessState
@@ -62,63 +63,114 @@ import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
+private enum class Dialog { THEME, POSTPONE, BACKEND, RESET }
+
 @Composable
-fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit) {
-    val context = LocalContext.current
+fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val access by viewModel.access.collectAsStateWithLifecycle()
     val format = rememberFormat()
+    val requestAccess = rememberAccessRequest(viewModel)
+    var dialog by rememberSaveable { mutableStateOf<Dialog?>(null) }
+    val update: ((Settings) -> Settings) -> Unit = viewModel::updateSettings
+
+    val menu = listOf(
+        MenuItem(stringResource(R.string.settings_reset), R.drawable.ic_settings_backup_restore) {
+            dialog = Dialog.RESET
+        },
+    )
+    Subpage(stringResource(R.string.settings), onBack, modifier, actions = { OverflowMenu(menu) }) {
+        AppearanceSection(
+            settings,
+            onTheme = { dialog = Dialog.THEME },
+            onDynamicColor = { on -> update { it.copy(dynamicColor = on) } },
+        )
+        SchedulesSection(
+            settings,
+            format,
+            onPostpone = { dialog = Dialog.POSTPONE },
+            onBackend = { dialog = Dialog.BACKEND },
+        )
+        PermissionsSection(access, requestAccess)
+        AboutSection(onDebug)
+    }
+
+    dialog?.let { shown ->
+        SettingsDialog(
+            shown,
+            settings,
+            format,
+            onUpdate = update,
+            onReset = viewModel::resetSettings,
+            // Asks right away, so the root prompt comes while the user is choosing root.
+            onBackendChange = { requestAccess(viewModel.access.value) },
+            onDismiss = { dialog = null },
+        )
+    }
+}
+
+@Composable
+private fun AppearanceSection(
+    settings: Settings,
+    onTheme: () -> Unit,
+    onDynamicColor: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) = Column(modifier) {
+    SectionHeader(stringResource(R.string.settings_appearance))
+    SettingRow(
+        icon = R.drawable.ic_contrast,
+        title = stringResource(R.string.settings_theme),
+        text = stringResource(settings.theme.label),
+        onClick = onTheme,
+    )
+    if (hasDynamicColor) {
+        SwitchRow(
+            icon = R.drawable.ic_palette,
+            title = stringResource(R.string.settings_dynamic_color),
+            checked = settings.dynamicColor,
+            onChange = onDynamicColor,
+        )
+    }
+}
+
+@Composable
+private fun SchedulesSection(
+    settings: Settings,
+    format: Format,
+    onPostpone: () -> Unit,
+    onBackend: () -> Unit,
+    modifier: Modifier = Modifier,
+) = Column(modifier) {
+    SectionHeader(stringResource(R.string.settings_schedules))
+    SettingRow(
+        icon = R.drawable.ic_snooze,
+        title = stringResource(R.string.settings_postpone),
+        text = postponeLabel(settings.postponeMinutes, format),
+        onClick = onPostpone,
+    )
+    SettingRow(
+        icon = R.drawable.ic_security,
+        title = stringResource(R.string.settings_backend),
+        text = stringResource(backendLabel(settings.backend)),
+        onClick = onBackend,
+    )
+}
+
+@Composable
+private fun PermissionsSection(access: Access, onRequestAccess: (Access) -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     var notifications by remember { mutableStateOf(notificationsAllowed(context)) }
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
-    var choosingTheme by rememberSaveable { mutableStateOf(false) }
-    var choosingPostpone by rememberSaveable { mutableStateOf(false) }
-    var choosingBackend by rememberSaveable { mutableStateOf(false) }
-    val access by viewModel.access.collectAsStateWithLifecycle()
     var shizukuApp by remember { mutableStateOf(ShizukuStatus.launchIntent(context)) }
-    val requestAccess = rememberAccessRequest(viewModel)
-    var resetting by rememberSaveable { mutableStateOf(false) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notifications = notificationsAllowed(context)
         exactAlarms = exactAlarmsAllowed(context)
         shizukuApp = ShizukuStatus.launchIntent(context)
     }
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
-
-    val menu = listOf(
-        MenuItem(stringResource(R.string.settings_reset), R.drawable.ic_settings_backup_restore) { resetting = true },
-    )
-    Subpage(stringResource(R.string.settings), onBack, actions = { OverflowMenu(menu) }) {
-        SectionHeader(stringResource(R.string.settings_appearance))
-        SettingRow(
-            icon = R.drawable.ic_contrast,
-            title = stringResource(R.string.settings_theme),
-            text = stringResource(settings.theme.label),
-            onClick = { choosingTheme = true },
-        )
-        if (hasDynamicColor) {
-            SwitchRow(
-                icon = R.drawable.ic_palette,
-                title = stringResource(R.string.settings_dynamic_color),
-                checked = settings.dynamicColor,
-                onChange = { on -> viewModel.updateSettings { it.copy(dynamicColor = on) } },
-            )
-        }
-
-        SectionHeader(stringResource(R.string.settings_schedules))
-        SettingRow(
-            icon = R.drawable.ic_snooze,
-            title = stringResource(R.string.settings_postpone),
-            text = postponeLabel(settings.postponeMinutes, format),
-            onClick = { choosingPostpone = true },
-        )
-        SettingRow(
-            icon = R.drawable.ic_security,
-            title = stringResource(R.string.settings_backend),
-            text = stringResource(backendLabel(settings.backend)),
-            onClick = { choosingBackend = true },
-        )
-
+    Column(modifier) {
         SectionHeader(stringResource(R.string.settings_permissions))
-        AccessRow(access, shizukuApp, requestAccess)
+        AccessRow(access, shizukuApp, onRequestAccess)
         SettingRow(
             icon = R.drawable.ic_notifications,
             title = stringResource(R.string.settings_notifications),
@@ -145,72 +197,76 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
                 },
             )
         }
-
-        SectionHeader(stringResource(R.string.settings_about))
-        SettingRow(
-            icon = R.drawable.ic_info,
-            title = stringResource(R.string.settings_version),
-            text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-            onClick = onDebug,
-        )
-        LinkRow(R.drawable.ic_code, stringResource(R.string.settings_source), SOURCE_URL)
     }
+}
 
-    if (resetting) {
-        AlertDialog(
-            onDismissRequest = { resetting = false },
+@Composable
+private fun AboutSection(onDebug: () -> Unit, modifier: Modifier = Modifier) = Column(modifier) {
+    SectionHeader(stringResource(R.string.settings_about))
+    SettingRow(
+        icon = R.drawable.ic_info,
+        title = stringResource(R.string.settings_version),
+        text = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        onClick = onDebug,
+    )
+    LinkRow(R.drawable.ic_code, stringResource(R.string.settings_source), SOURCE_URL)
+}
+
+@Composable
+private fun SettingsDialog(
+    dialog: Dialog,
+    settings: Settings,
+    format: Format,
+    onUpdate: ((Settings) -> Settings) -> Unit,
+    onReset: () -> Unit,
+    onBackendChange: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    when (dialog) {
+        Dialog.RESET -> AlertDialog(
+            onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.settings_reset_title)) },
             text = { Text(stringResource(R.string.settings_reset_text)) },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.resetSettings()
-                    resetting = false
+                    onReset()
+                    onDismiss()
                 }) { Text(stringResource(R.string.action_reset)) }
             },
             dismissButton = {
-                TextButton(onClick = { resetting = false }) { Text(stringResource(R.string.action_cancel)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             },
         )
-    }
-
-    if (choosingPostpone) {
-        Choices(
+        Dialog.POSTPONE -> Choices(
             title = stringResource(R.string.settings_postpone),
             options = POSTPONE_MINUTES.map { it to postponeLabel(it, format) },
             selected = settings.postponeMinutes,
             onSelect = { minutes ->
-                viewModel.updateSettings { it.copy(postponeMinutes = minutes) }
-                choosingPostpone = false
+                onUpdate { it.copy(postponeMinutes = minutes) }
+                onDismiss()
             },
-            onDismiss = { choosingPostpone = false },
+            onDismiss = onDismiss,
         )
-    }
-
-    if (choosingBackend) {
-        Choices(
+        Dialog.BACKEND -> Choices(
             title = stringResource(R.string.settings_backend),
             options = Backend.entries.map { it to stringResource(backendLabel(it)) },
             selected = settings.backend,
             onSelect = { backend ->
-                viewModel.updateSettings { it.copy(backend = backend) }
-                choosingBackend = false
-                // Asks right away, so the root prompt comes while the user is choosing root.
-                requestAccess(viewModel.access.value)
+                onUpdate { it.copy(backend = backend) }
+                onDismiss()
+                onBackendChange()
             },
-            onDismiss = { choosingBackend = false },
+            onDismiss = onDismiss,
         )
-    }
-
-    if (choosingTheme) {
-        Choices(
+        Dialog.THEME -> Choices(
             title = stringResource(R.string.settings_theme),
             options = ThemeMode.entries.map { it to stringResource(it.label) },
             selected = settings.theme,
             onSelect = { theme ->
-                viewModel.updateSettings { it.copy(theme = theme) }
-                choosingTheme = false
+                onUpdate { it.copy(theme = theme) }
+                onDismiss()
             },
-            onDismiss = { choosingTheme = false },
+            onDismiss = onDismiss,
         )
     }
 }
