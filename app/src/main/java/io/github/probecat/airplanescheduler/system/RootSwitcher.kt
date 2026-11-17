@@ -53,7 +53,7 @@ class RootSwitcher(
         val output = withContext(Dispatchers.IO) {
             try {
                 val process = ProcessBuilder(shell + script).redirectErrorStream(true).start()
-                if (process.waitFor(20, TimeUnit.SECONDS)) {
+                if (process.waitFor(PROMPT_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
                     process.inputStream.bufferedReader().readLines().takeIf { process.exitValue() == 0 }
                 } else {
                     process.destroyForcibly()
@@ -71,6 +71,7 @@ class RootSwitcher(
 
     companion object {
         private const val GRANTED = "rootGranted"
+        private const val PROMPT_TIMEOUT_SECONDS = 20L
         private val REPORT = Regex("""(\d+) (\d+)""")
 
         // Looks for su without running it, so no root prompt or toast shows.

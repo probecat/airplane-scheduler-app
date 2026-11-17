@@ -27,9 +27,9 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
     // is not running, so the next steps of the same alarm do not wait again. A tap always waits, because Shizuku sends
     // the binder only after the app becomes active.
     override suspend fun connect(tap: Boolean): Boolean {
-        val waitedRecently = !tap && SystemClock.elapsedRealtime() - timedOutAt < 30_000
+        val waitedRecently = !tap && SystemClock.elapsedRealtime() - timedOutAt < WAIT_AGAIN_AFTER_MS
         if (Shizuku.pingBinder() || waitedRecently) return Shizuku.pingBinder()
-        val received = withTimeoutOrNull(7000) {
+        val received = withTimeoutOrNull(BINDER_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
                 val listener = object : Shizuku.OnBinderReceivedListener {
                     override fun onBinderReceived() {
@@ -52,7 +52,7 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
             val args = Shizuku.UserServiceArgs(ComponentName(context, AirplaneService::class.java))
                 .processNameSuffix("airplane")
                 .daemon(false)
-            val (binder, connection) = withTimeoutOrNull(10_000) { bind(args) } ?: return Changes.NONE
+            val (binder, connection) = withTimeoutOrNull(BIND_TIMEOUT_MS) { bind(args) } ?: return Changes.NONE
             withContext(Dispatchers.IO) {
                 try {
                     Changes.of(
@@ -92,4 +92,10 @@ class ShizukuSwitcher(private val context: Context) : Switcher {
             }
             Shizuku.bindUserService(args, connection)
         }
+
+    private companion object {
+        const val BINDER_TIMEOUT_MS = 7_000L
+        const val WAIT_AGAIN_AFTER_MS = 30_000L
+        const val BIND_TIMEOUT_MS = 10_000L
+    }
 }

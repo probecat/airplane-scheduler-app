@@ -14,6 +14,9 @@ object ScheduleResolver {
     private const val WEEK = 7 * ScheduleTime.DAY
     private const val SKIP_KEPT_DAYS = 10L
 
+    // Windows repeat weekly. A search also covers the day before, because an overnight window started then.
+    private const val WEEK_DAYS = 7L
+
     // How many minutes before a start the user can skip or postpone it, and its notification shows.
     const val AHEAD_MINUTES = 60L
 
@@ -45,7 +48,7 @@ object ScheduleResolver {
     // The start date of the window that is running, or else of the next one.
     fun nextDate(schedule: Schedule, now: LocalDateTime): LocalDate? {
         if (!isValid(schedule)) return null
-        return runningDate(schedule, now) ?: (-1L..7L).map { now.toLocalDate().plusDays(it) }
+        return runningDate(schedule, now) ?: (-1L..WEEK_DAYS).map { now.toLocalDate().plusDays(it) }
             .firstOrNull { startsOn(schedule, it) && startOf(schedule, it).isAfter(now) }
     }
 
@@ -171,7 +174,7 @@ object ScheduleResolver {
         at: (Schedule, LocalDate) -> LocalDateTime,
     ): ZonedDateTime? {
         if (!isValid(schedule)) return null
-        return (-1L..7L).firstNotNullOfOrNull { offset ->
+        return (-1L..WEEK_DAYS).firstNotNullOfOrNull { offset ->
             val date = now.toLocalDate().plusDays(offset)
             ScheduleTime.at(at(schedule, date), now.zone).takeIf { it.isAfter(now) && startsOn(schedule, date) }
         }
@@ -231,7 +234,7 @@ object ScheduleResolver {
 
     private fun lastEnd(live: List<Schedule>, now: LocalDateTime): Pair<Schedule, LocalDateTime>? =
         live.mapNotNull { schedule ->
-            (0L..8L).firstNotNullOfOrNull { offset ->
+            (0L..WEEK_DAYS + 1).firstNotNullOfOrNull { offset ->
                 val endDate = now.toLocalDate().minusDays(offset)
                 val end = ScheduleTime.on(endDate, schedule.end)
                 end.takeIf { !it.isAfter(now) && startsOn(schedule, startDate(schedule, endDate)) }
