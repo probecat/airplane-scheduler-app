@@ -50,7 +50,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
 @Composable
-fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit) {
+fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val app = App.from(context)
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
@@ -60,11 +60,19 @@ fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit) {
     val airplane by app.airplane.collectAsStateWithLifecycle()
     val switching by AirplaneController.inFlightCount.collectAsStateWithLifecycle()
     val events by app.log.entries.collectAsStateWithLifecycle()
-    val sections = sections(context, schedules, settings, access, now, airplane, switching > 0) +
+    val zoned = ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS)
+    val sections = listOf(
+        appSection(context, zoned),
+        accessSection(context, settings, access, airplane, switching > 0),
+        alarmsSection(context, schedules, zoned),
+        windowSection(app, schedules, now),
+        settingsSection(settings),
+    ) + schedules.map { scheduleSection(it, zoned) } +
         Section("Recent events", lines = events.reversed().ifEmpty { listOf("none") })
     Subpage(
         title = "Debug info",
         onBack = onBack,
+        modifier = modifier,
         actions = {
             IconButton(onClick = {
                 context.getSystemService(ClipboardManager::class.java)
@@ -89,7 +97,7 @@ private class Section(
 )
 
 @Composable
-private fun SectionView(section: Section) {
+private fun SectionView(section: Section) = Column {
     Text(
         section.title,
         style = MaterialTheme.typography.titleSmall,
@@ -134,19 +142,33 @@ private fun text(sections: List<Section>): String = sections.joinToString("\n\n"
 
 private val moment = Events.MOMENT
 
-private fun sections(
-    context: Context,
-    schedules: List<Schedule>,
-    settings: Settings,
-    access: Access,
-    now: LocalDateTime,
-    airplane: Boolean,
-    switching: Boolean,
-): List<Section> {
-    val app = App.from(context)
-    val zoned = ZonedDateTime.now().truncatedTo(ChronoUnit.SECONDS)
-    val active = ScheduleResolver.activeSchedule(schedules, now)
-    val started = app.engine.state.started
+private fun appSection(context: Context, zoned: ZonedDateTime) = Section(
+    "App and phone",
+    listOf(
+        "Version" to "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        "Package" to context.packageName,
+        "Android" to "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+        "Phone" to "${Build.MANUFACTURER} ${Build.MODEL}",
+        "Time" to DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(zoned),
+        "Time zone" to zoned.zone.id,
+    ),
+)
+
+private fun accessSection(context: Context, settings: Settings, access: Access, airplane: Boolean, switching: Boolean) =
+    Section(
+        "Access",
+        listOfNotNull(
+            "Method" to settings.backend.name,
+            "Access" to Events.access(access),
+            ("Shizuku app" to if (ShizukuStatus.launchIntent(context) != null) "INSTALLED" else "NOT_INSTALLED")
+                .takeIf { access.kind == Access.Kind.SHIZUKU },
+            "Switching" to Events.yesNo(switching),
+            "Airplane mode" to Events.onOff(airplane),
+            "Wi-Fi" to Events.onOff(AirplaneController.wifiOn(context)),
+        ),
+    )
+
+private fun alarmsSection(context: Context, schedules: List<Schedule>, zoned: ZonedDateTime): Section {
     val change = ScheduleResolver.nextChange(schedules, zoned)
     val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
     val blocked = NotificationManagerCompat.from(context).notificationChannelsCompat
@@ -155,64 +177,47 @@ private fun sections(
     val ignoresBattery = context.getSystemService(PowerManager::class.java)
         .isIgnoringBatteryOptimizations(context.packageName)
     fun allowed(yes: Boolean) = if (yes) "ALLOWED" else "DENIED"
-    return listOf(
-        Section(
-            "App and phone",
-            listOf(
-                "Version" to "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                "Package" to context.packageName,
-                "Android" to "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-                "Phone" to "${Build.MANUFACTURER} ${Build.MODEL}",
-                "Time" to DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(zoned),
-                "Time zone" to zoned.zone.id,
-            ),
+    return Section(
+        "Alarms and notifications",
+        listOfNotNull(
+            "Next alarm" to (change?.let(moment::format) ?: "none"),
+            "Next notice" to (notice?.let(moment::format) ?: "none"),
+            ("Exact alarms" to allowed(exactAlarmsAllowed(context))).takeIf { exactAlarmsDeniable },
+            "Battery optimization" to Events.onOff(!ignoresBattery),
+            "Notifications" to allowed(notificationsAllowed(context)),
+            "Blocked channels" to blocked.ifEmpty { "none" },
         ),
-        Section(
-            "Access",
-            listOfNotNull(
-                "Method" to settings.backend.name,
-                "Access" to Events.access(access),
-                ("Shizuku app" to if (ShizukuStatus.launchIntent(context) != null) "INSTALLED" else "NOT_INSTALLED")
-                    .takeIf { access.kind == Access.Kind.SHIZUKU },
-                "Switching" to Events.yesNo(switching),
-                "Airplane mode" to Events.onOff(airplane),
-                "Wi-Fi" to Events.onOff(AirplaneController.wifiOn(context)),
-            ),
+    )
+}
+
+private fun windowSection(app: App, schedules: List<Schedule>, now: LocalDateTime): Section {
+    val active = ScheduleResolver.activeSchedule(schedules, now)
+    val started = app.engine.state.started
+    return Section(
+        "Window",
+        listOfNotNull(
+            "Active schedule" to (active?.let { "#${it.id}" } ?: "none"),
+            "Started window" to (started?.let { moment.format(it.window) } ?: "none"),
+            started?.let { "Changed" to Events.changes(it.changes) },
+            started?.let { "Meant to change" to Events.changes(it.wanted) },
+            started?.let { "Already set" to Events.changes(it.already) },
+            app.engine.state.wifiKeptUntil?.let { "Wi-Fi kept on until" to moment.format(it) },
         ),
-        Section(
-            "Alarms and notifications",
-            listOfNotNull(
-                "Next alarm" to (change?.let(moment::format) ?: "none"),
-                "Next notice" to (notice?.let(moment::format) ?: "none"),
-                ("Exact alarms" to allowed(exactAlarmsAllowed(context))).takeIf { exactAlarmsDeniable },
-                "Battery optimization" to Events.onOff(!ignoresBattery),
-                "Notifications" to allowed(notificationsAllowed(context)),
-                "Blocked channels" to blocked.ifEmpty { "none" },
-            ),
-        ),
-        Section(
-            "Window",
-            listOfNotNull(
-                "Active schedule" to (active?.let { "#${it.id}" } ?: "none"),
-                "Started window" to (started?.let { moment.format(it.window) } ?: "none"),
-                started?.let { "Changed" to Events.changes(it.changes) },
-                started?.let { "Meant to change" to Events.changes(it.wanted) },
-                started?.let { "Already set" to Events.changes(it.already) },
-                app.engine.state.wifiKeptUntil?.let { "Wi-Fi kept on until" to moment.format(it) },
-            ),
-        ),
-        Section(
-            "Settings",
-            listOf(
-                "Theme" to settings.theme.name,
-                "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
-                "Postpone" to (settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"),
-            ),
-        ),
-    ) + schedules.map { schedule ->
-        val name = if (schedule.name.isBlank()) "" else " “${schedule.name}”"
-        Section("Schedule #${schedule.id}$name", scheduleRows(schedule, zoned))
-    }
+    )
+}
+
+private fun settingsSection(settings: Settings) = Section(
+    "Settings",
+    listOf(
+        "Theme" to settings.theme.name,
+        "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
+        "Postpone" to (settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"),
+    ),
+)
+
+private fun scheduleSection(schedule: Schedule, zoned: ZonedDateTime): Section {
+    val name = if (schedule.name.isBlank()) "" else " “${schedule.name}”"
+    return Section("Schedule #${schedule.id}$name", scheduleRows(schedule, zoned))
 }
 
 private fun scheduleRows(schedule: Schedule, now: ZonedDateTime): List<Pair<String, String>> = buildList {
