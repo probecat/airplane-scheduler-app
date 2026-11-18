@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 // updates the notification.
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val app = App.from(context)
+        val app = appOrRetry(context, intent) ?: return
         val id = intent.getLongExtra(Notifier.ID, 0)
         if (intent.action == Notifier.DISMISSED) {
             intent.getStringExtra(Notifier.KEY)?.let { Notifier.dismissed(app, id, it) }
