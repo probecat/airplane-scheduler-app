@@ -174,9 +174,9 @@
     <string name="help_collapsed">Collapsed</string>
 
     <string name="help_start_end_q">How do schedules work from start to end?</string>
-    <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. The app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
+    <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. In Safe mode, the app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
     <string name="help_wifi_q">What do the Wi-Fi options do?</string>
-    <string name="help_wifi_a">“Wi-Fi off at start” disables Wi-Fi before turning on airplane mode. “Wi-Fi on at end” enables Wi-Fi again, but only if the app turned it off.</string>
+    <string name="help_wifi_a">“Wi-Fi off at start” disables Wi-Fi before turning on airplane mode. “Wi-Fi on at end” enables Wi-Fi again. In Safe mode, only if the app turned it off.</string>
     <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
     <!-- %1$s is 11 PM and %2$s is 7 AM. -->
     <string name="help_overnight_a">The day the schedule starts. For example, a Friday schedule running from %1$s to %2$s ends on Saturday morning.</string>
@@ -188,12 +188,14 @@
     <string name="help_pause_a">Pausing a running schedule turns airplane mode off for the time set in “Postpone and pause” in Settings. A running schedule can also be ended early.</string>
     <string name="help_change_active_q">Do changes take effect immediately?</string>
     <string name="help_change_active_a">Yes. Turning off or deleting an active schedule ends it just like a normal schedule ending. Enabling or adding a schedule that covers the current time starts it immediately. Changing a schedule\'s time also starts or ends it as needed to match the updated schedule.</string>
+    <string name="help_safe_mode_q">What is Safe mode?</string>
+    <string name="help_safe_mode_a">Safe mode is on by default. The app only reverts changes it made, and missed schedule changes are not retried. With Safe mode off, app always matches the schedules end state: airplane mode off and Wi-Fi on at the end, for example. Missed starts and ends are caught up once possible.</string>
     <string name="help_overlap_q">Can schedules overlap?</string>
     <string name="help_overlap_a">No. Only one schedule can control airplane mode at a time. Back-to-back schedules are treated as one continuous schedule, so airplane mode stays on between them. Wi-Fi follows the start option of the first schedule and the end option of the last one.</string>
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
-    <string name="help_missed_a">Shizuku may not have been running or allowed, or your phone may have been turned off. The app doesn\'t automatically retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
-    <string name="help_missed_a_sui">Sui may not have been authorized, or your phone may have been turned off. The app doesn\'t automatically retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
-    <string name="help_missed_a_root">Root access may not have been granted, or your phone may have been turned off. The app doesn\'t automatically retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a">Shizuku may not have been running or allowed, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a_sui">Sui may not have been authorized, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a_root">Root access may not have been granted, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
     <!-- Shown below Android 12 only. -->
     <string name="help_late_q">Why did a schedule start late?</string>
     <string name="help_late_a">Battery optimization may delay schedules by up to 2 hours if you don\'t open the app often. Try disabling battery optimization for Airplane Scheduler.</string>
