@@ -152,9 +152,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             .also { if (it == null) app.log.add("Schedule #${edited.id} $verb") }
     }
 
-    // True once, when the first schedule is saved and notifications are not allowed yet.
+    // True once, when schedules exist and notifications were not asked for yet. A restore brings back schedules
+    // without that flag.
     fun asksNotifications(): Boolean {
-        if (app.settings.current.askedNotifications) return false
+        if (app.settings.current.askedNotifications || app.schedules.all.isEmpty()) return false
         updateSettings { it.copy(askedNotifications = true) }
         return !notificationsAllowed(app)
     }

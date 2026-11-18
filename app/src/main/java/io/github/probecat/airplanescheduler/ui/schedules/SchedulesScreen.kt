@@ -142,7 +142,7 @@ fun SchedulesScreen(
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val phone = rememberPhoneState()
-    val requestNotifications = rememberNotificationRequest(fallback = false) {}
+    val requestNotifications = rememberNotificationAsk(viewModel)
     val actions = rememberScheduleActions(viewModel, format, snackbar)
 
     Scaffold(
@@ -175,7 +175,7 @@ fun SchedulesScreen(
             now = now,
             conflictOf = viewModel::conflict,
             onDismiss = { editing = null },
-            onSave = { edited -> actions.save(edited, onFirst = requestNotifications) },
+            onSave = { edited -> actions.save(edited, onAsk = requestNotifications) },
             onDelete = actions::delete,
         )
     }
@@ -355,12 +355,11 @@ private class ScheduleActions(
         if (conflict != null) showConflict() else showStart(schedule.id)
     }
 
-    // Returns true when saved. [onFirst] runs after a new schedule saves while the app still asks for notifications.
-    fun save(edited: Schedule, onFirst: () -> Unit): Boolean {
-        val isNew = viewModel.isNew(edited)
+    // Returns true when saved.
+    fun save(edited: Schedule, onAsk: () -> Unit): Boolean {
         val saved = viewModel.save(edited) == null
         if (saved) showStart(edited.id)
-        if (saved && isNew && viewModel.asksNotifications()) onFirst()
+        if (saved && viewModel.asksNotifications()) onAsk()
         return saved
     }
 
@@ -958,4 +957,12 @@ private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =
 private fun minutesUntil(now: LocalDateTime, next: (ZonedDateTime) -> ZonedDateTime?): Int? {
     val minute = now.truncatedTo(ChronoUnit.MINUTES).atZone(ZoneId.systemDefault())
     return next(minute)?.let { Duration.between(minute, it).toMinutes().toInt() }
+}
+
+// Asks on opening when restored schedules exist. The returned request asks after a save.
+@Composable
+private fun rememberNotificationAsk(viewModel: AppViewModel): () -> Unit {
+    val request = rememberNotificationRequest(fallback = false) {}
+    SideEffect { if (viewModel.asksNotifications()) request() }
+    return request
 }
