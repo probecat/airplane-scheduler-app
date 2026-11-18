@@ -17,7 +17,8 @@ import kotlinx.serialization.json.Json
 
 // The engine state is one JSON value, so a save never writes half of a change.
 class EngineRepository(context: Context) {
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    // On the device only, as a restored install has no running window. See [Prefs].
+    private val prefs = Prefs.device(context, LEGACY + KEY)
     private val flow = MutableStateFlow(read(prefs))
 
     val states: StateFlow<Engine.State> = flow.asStateFlow()
@@ -37,7 +38,6 @@ class EngineRepository(context: Context) {
     private data class StoredStart(val window: String, val changes: Int, val wanted: Int, val already: Int)
 
     companion object {
-        private const val PREFS = "settings"
         private const val KEY = "engine"
         private val LEGACY =
             listOf("startedWindow", "startedChanges", "startedWanted", "startedAlready", "wifiKeptUntil")

@@ -16,14 +16,17 @@ data class Settings(
     val backend: Backend = Backend.SHIZUKU,
 )
 
-// [firstBackend] picks the backend when none is saved yet.
+// [firstBackend] picks the backend when none is saved yet. Choices the user made go in [prefs] and come back with a
+// restore. Ones that depend on this device's permissions and access go in [device], so a restore picks and asks for
+// them again. See [Prefs].
 class SettingsRepository(context: Context, private val firstBackend: () -> Backend = { Backend.SHIZUKU }) {
-    private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(Prefs.SETTINGS, Context.MODE_PRIVATE)
+    private val device = Prefs.device(context, listOf(BACKEND, ASKED_NOTIFICATIONS, HIDE_SHIZUKU_READY))
     private val state = MutableStateFlow(read())
 
     init {
         // The first pick is saved, so it persists when Shizuku or root is installed later.
-        if (!prefs.contains("backend")) prefs.edit { putString("backend", current.backend.name) }
+        if (!device.contains(BACKEND)) device.edit { putString(BACKEND, current.backend.name) }
     }
 
     val settings: StateFlow<Settings> = state.asStateFlow()
@@ -39,10 +42,12 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
         prefs.edit {
             putString("theme", settings.theme.name)
             putBoolean("dynamicColor", settings.dynamicColor)
-            putBoolean("hideShizukuReady", settings.hideShizukuReady)
             putInt("postponeMinutes", settings.postponeMinutes)
-            putBoolean("askedNotifications", settings.askedNotifications)
-            putString("backend", settings.backend.name)
+        }
+        device.edit {
+            putBoolean(HIDE_SHIZUKU_READY, settings.hideShizukuReady)
+            putBoolean(ASKED_NOTIFICATIONS, settings.askedNotifications)
+            putString(BACKEND, settings.backend.name)
         }
     }
 
@@ -51,15 +56,17 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
             theme = prefs.getString("theme", null)
                 ?.let { name -> ThemeMode.entries.find { it.name == name } } ?: default.theme,
             dynamicColor = prefs.getBoolean("dynamicColor", default.dynamicColor),
-            hideShizukuReady = prefs.getBoolean("hideShizukuReady", default.hideShizukuReady),
+            hideShizukuReady = device.getBoolean(HIDE_SHIZUKU_READY, default.hideShizukuReady),
             postponeMinutes = prefs.getInt("postponeMinutes", default.postponeMinutes),
-            askedNotifications = prefs.getBoolean("askedNotifications", default.askedNotifications),
-            backend = prefs.getString("backend", null)
+            askedNotifications = device.getBoolean(ASKED_NOTIFICATIONS, default.askedNotifications),
+            backend = device.getString(BACKEND, null)
                 ?.let { name -> Backend.entries.find { it.name == name } } ?: firstBackend(),
         )
     }
 
     private companion object {
-        const val PREFS = "settings"
+        const val BACKEND = "backend"
+        const val ASKED_NOTIFICATIONS = "askedNotifications"
+        const val HIDE_SHIZUKU_READY = "hideShizukuReady"
     }
 }

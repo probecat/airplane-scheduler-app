@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.data.Backend
+import io.github.probecat.airplanescheduler.data.Prefs
 import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.SettingsRepository
 import kotlinx.coroutines.runBlocking
@@ -34,7 +35,8 @@ class BackendTest {
     @Test
     fun `settings saved before root support keep Shizuku`() {
         // Existing users must not find their schedules switched through root they never allowed.
-        val prefs = device.app.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val prefs = device.app.getSharedPreferences(Prefs.SETTINGS, Context.MODE_PRIVATE)
+        device.app.getSharedPreferences(Prefs.DEVICE, Context.MODE_PRIVATE).edit { clear() }
         prefs.edit { clear().putInt("postponeMinutes", 15) }
         assertEquals(Backend.SHIZUKU, SettingsRepository(device.app).current.backend)
         prefs.edit { putString("backend", "ROOT") }
@@ -43,8 +45,7 @@ class BackendTest {
 
     @Test
     fun `a rooted phone without Shizuku starts with root and keeps it`() {
-        val prefs = device.app.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        prefs.edit { clear() }
+        device.app.getSharedPreferences(Prefs.DEVICE, Context.MODE_PRIVATE).edit { clear() }
         assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.ROOT }.current.backend)
         // Installing Shizuku later must not move schedules away from root.
         assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.SHIZUKU }.current.backend)
