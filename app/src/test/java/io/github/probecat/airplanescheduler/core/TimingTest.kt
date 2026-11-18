@@ -21,8 +21,7 @@ class TimingTest {
     private val utc = ZoneOffset.UTC
 
     @Test
-    fun `an overnight window belongs to the day it starts`() {
-        // A Friday-only night runs from Friday 23:00 into Saturday. Early Friday is not part of it.
+    fun `overnight window belongs to start day`() {
         val fridays = night.copy(days = setOf(FRIDAY))
         assertTrue(ScheduleResolver.isActive(fridays, friday(23)))
         assertTrue(ScheduleResolver.isActive(fridays, saturday(6, 59)))
@@ -31,7 +30,7 @@ class TimingTest {
     }
 
     @Test
-    fun `a window runs only on its days, and Sunday night runs into Monday`() {
+    fun `window runs only on its days and Sunday night runs into Monday`() {
         val weekend = Schedule(id = 2, start = at(13), end = at(15), days = setOf(SATURDAY, SUNDAY))
         assertFalse(ScheduleResolver.isActive(weekend, friday(14)))
         assertTrue(ScheduleResolver.isActive(weekend, saturday(14)))
@@ -40,16 +39,14 @@ class TimingTest {
     }
 
     @Test
-    fun `a schedule that runs once takes the first window that hasn't ended`() {
-        // Saved at noon, it is the window of tonight. Saved at 03:00, it is the window that started last night and
-        // still runs.
+    fun `once schedule takes first unended window`() {
         val once = night.copy(days = emptySet())
         assertEquals(fridayDate, ScheduleResolver.dated(once, friday(12)).date)
         assertEquals(fridayDate.minusDays(1), ScheduleResolver.dated(once, friday(3)).date)
     }
 
     @Test
-    fun `a schedule that runs once runs on its date only, then switches itself off`() {
+    fun `once schedule runs on its date only and then switches off`() {
         val phone = Phone(night.copy(days = emptySet(), date = fridayDate), now = friday(22))
         phone.passTo(friday(23))
         assertTrue(phone.airplaneOn)
@@ -61,9 +58,7 @@ class TimingTest {
     }
 
     @Test
-    fun `overlapping schedules are refused, touching ones aren't`() {
-        // The overlap check works across midnight and the end of the week, and only on the days when both schedules
-        // run.
+    fun `overlaps refused but touching allowed`() {
         val all = listOf(night)
         assertEquals(night, ScheduleEdits.conflict(all, Schedule(id = 2, start = at(21), end = at(23, 30)), friday(12)))
         assertEquals(night, ScheduleEdits.conflict(all, Schedule(id = 2, start = at(6), end = at(8)), friday(12)))
@@ -76,7 +71,7 @@ class TimingTest {
     }
 
     @Test
-    fun `a schedule that runs once overlaps only around its date`() {
+    fun `once schedule overlaps only around its date`() {
         val saturdayMorning =
             Schedule(id = 2, start = at(6), end = at(8), days = emptySet(), date = fridayDate.plusDays(1))
         assertEquals(night, ScheduleEdits.conflict(listOf(night), saturdayMorning, friday(12)))
@@ -84,7 +79,7 @@ class TimingTest {
     }
 
     @Test
-    fun `switched-off schedules and ones that ran once and are over may overlap anything`() {
+    fun `off or finished schedules overlap anything`() {
         val other = Schedule(id = 2, start = at(22), end = at(23, 30))
         assertNull(ScheduleEdits.conflict(listOf(night.copy(enabled = false)), other, friday(12)))
         assertNull(ScheduleEdits.conflict(listOf(night), other.copy(enabled = false), friday(12)))
@@ -93,16 +88,14 @@ class TimingTest {
     }
 
     @Test
-    fun `a window with the same start and end never runs`() {
+    fun `same start and end never runs`() {
         val phone = Phone(night.copy(end = night.start), now = friday(22))
         phone.passTo(saturday(8))
         assertFalse(phone.airplaneOn)
     }
 
     @Test
-    fun `touching counts only on the days both windows run`() {
-        // A Friday-only night, then a daily morning. On Friday morning, the morning window starts on its own, and its
-        // own Wi-Fi option applies.
+    fun `touching counts only on shared days`() {
         val fridayNight = night.copy(days = setOf(FRIDAY))
         val morning = Schedule(id = 2, start = at(7), end = at(9), disableWifi = false)
         val phone = Phone(fridayNight, morning, now = friday(6))
@@ -116,14 +109,14 @@ class TimingTest {
     }
 
     @Test
-    fun `windows covering the whole day don't loop forever looking for the chain's start`() {
+    fun `full-day windows do not loop forever`() {
         val day = Schedule(id = 1, start = at(7), end = at(19))
         val nightShift = Schedule(id = 2, start = at(19), end = at(7))
         assertTrue(ScheduleResolver.window(listOf(day, nightShift), friday(12)) != null)
     }
 
     @Test
-    fun `alarms come at each start and end, and the notice an hour before a start`() {
+    fun `alarms at start and end and notice hour before`() {
         val lunch = Schedule(id = 2, start = at(12), end = at(13))
         val schedules = listOf(night, lunch)
         assertEquals(friday(7), ScheduleResolver.nextChange(schedules, friday(5).atZone(utc))?.toLocalDateTime())
@@ -132,7 +125,7 @@ class TimingTest {
     }
 
     @Test
-    fun `a skipped window sets no start alarm, and a postponed one starts late but ends on time`() {
+    fun `skip drops start alarm and postpone delays start only`() {
         val skipped = ScheduleResolver.skip(night, friday(12))
         assertEquals(saturday(23), ScheduleResolver.nextStart(skipped, friday(12).atZone(utc))?.toLocalDateTime())
         val postponed = ScheduleResolver.postpone(night, friday(22, 30), 30)
@@ -144,7 +137,7 @@ class TimingTest {
     }
 
     @Test
-    fun `a start in a daylight saving gap comes when the clock jumps past it`() {
+    fun `start in DST gap comes after jump`() {
         // 02:30 does not exist on 8 March 2026 in New York, so the window starts at 03:30 instead of never.
         val zone = ZoneId.of("America/New_York")
         val schedule = Schedule(id = 2, start = at(2, 30), end = at(5))

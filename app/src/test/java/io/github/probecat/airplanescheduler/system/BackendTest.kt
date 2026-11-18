@@ -21,7 +21,7 @@ class BackendTest {
     private val both = Changes(airplane = true, wifi = true)
 
     @Test
-    fun `with root chosen, schedules switch through root and not Shizuku`() {
+    fun `root backend switches through root only`() {
         // A user without Shizuku would otherwise miss every start.
         device.app.settings.update { it.copy(backend = Backend.ROOT) }
         device.save(Schedule(id = 1, start = device.minute(1), end = device.minute(60)))
@@ -33,7 +33,7 @@ class BackendTest {
     }
 
     @Test
-    fun `settings saved before root support keep Shizuku`() {
+    fun `pre-root settings keep Shizuku`() {
         // Existing users must not find their schedules switched through root they never allowed.
         val prefs = device.app.getSharedPreferences(Prefs.SETTINGS, Context.MODE_PRIVATE)
         device.app.getSharedPreferences(Prefs.DEVICE, Context.MODE_PRIVATE).edit { clear() }
@@ -44,7 +44,7 @@ class BackendTest {
     }
 
     @Test
-    fun `a rooted phone without Shizuku starts with root and keeps it`() {
+    fun `rooted phone without Shizuku starts and stays root`() {
         device.app.getSharedPreferences(Prefs.DEVICE, Context.MODE_PRIVATE).edit { clear() }
         assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.ROOT }.current.backend)
         // Installing Shizuku later must not move schedules away from root.
@@ -52,29 +52,27 @@ class BackendTest {
     }
 
     @Test
-    fun `a reset picks the backend again, as on the first start`() {
+    fun `reset picks backend again`() {
         val rooted = SettingsRepository(device.app) { Backend.ROOT }
         rooted.update { it.copy(backend = Backend.SHIZUKU, postponeMinutes = 15) }
         rooted.update { rooted.defaults() }
         assertEquals(Backend.ROOT, rooted.current.backend)
         assertEquals(30, rooted.current.postponeMinutes)
-        // The pick is saved, so the next start keeps it.
         assertEquals(Backend.ROOT, SettingsRepository(device.app) { Backend.SHIZUKU }.current.backend)
-        // With Shizuku installed, a reset goes back to Shizuku.
         val shizuku = SettingsRepository(device.app) { Backend.SHIZUKU }
         shizuku.update { shizuku.defaults() }
         assertEquals(Backend.SHIZUKU, shizuku.current.backend)
     }
 
     @Test
-    fun `root counts only the changes whose command succeeded`() {
+    fun `root counts only succeeded commands`() {
         // What counts as switched is what the end undoes. Wi-Fi that failed to go off must not be turned on later.
         val root = RootSwitcher(device.app, {}, shell = listOf("sh", "-c", "echo 1 0; echo 2 1"))
         assertEquals(Changes(airplane = true, wifi = false), runBlocking { root.set(true, both) })
     }
 
     @Test
-    fun `when su is denied, nothing is switched and root shows as not allowed`() {
+    fun `denied su switches nothing and shows not allowed`() {
         // A failed su is how the app learns that root access was taken away.
         RootSwitcher(device.app, {}, shell = listOf("sh", "-c")).let { runBlocking { it.request() } }
         val denied = RootSwitcher(device.app, {}, shell = listOf("sh", "-c", "exit 1"))

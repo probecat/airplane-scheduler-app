@@ -18,7 +18,7 @@ class NotificationsTest {
     private val soon = Schedule(id = 1, start = device.minute(30), end = device.minute(90))
 
     @Test
-    fun `Skip on the notice before a window skips it and takes the notice down`() {
+    fun `notice Skip skips and removes notice`() {
         // The skipped notice would offer nothing, and the card has Undo.
         device.save(soon)
         val notice = device.notice(1)
@@ -29,8 +29,7 @@ class NotificationsTest {
     }
 
     @Test
-    fun `Postpone on a notice that is already out of date does nothing`() {
-        // A window is postponed only once, even if the user taps the same button twice before the notice updates.
+    fun `stale Postpone does nothing`() {
         device.save(soon)
         val notice = device.notice(1)
         device.tap(notice, Notifier.POSTPONE)
@@ -40,8 +39,7 @@ class NotificationsTest {
     }
 
     @Test
-    fun `an end that fails posts a problem whose Retry turns airplane mode off`() {
-        // Retry switches only what the end failed to switch.
+    fun `failed end posts problem and Retry turns airplane off`() {
         val running = Schedule(id = 1, start = device.minute(-30), end = device.minute(30), disableWifi = false)
         device.save(running)
         assertTrue(device.airplaneOn)
@@ -57,7 +55,7 @@ class NotificationsTest {
     }
 
     @Test
-    fun `a window that ended while the phone was off is reported, not undone`() {
+    fun `end while phone off is reported but not undone`() {
         // The user may have wanted airplane mode since, so only a tap on the problem turns it off.
         val running = Schedule(id = 1, start = device.minute(-30), end = device.minute(30), disableWifi = false)
         device.save(running)

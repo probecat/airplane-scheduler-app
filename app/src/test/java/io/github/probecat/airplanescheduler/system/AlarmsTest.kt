@@ -20,8 +20,7 @@ class AlarmsTest {
     private val device = Device()
 
     @Test
-    fun `the start alarm switches what the schedule asks for`() {
-        // A new schedule turns Wi-Fi off too.
+    fun `start alarm switches what schedule asks`() {
         device.save(Schedule(id = 1, start = device.minute(1), end = device.minute(60)))
         device.startsNow(1)
         device.alarm(AlarmScheduler.CHANGE)
@@ -31,7 +30,7 @@ class AlarmsTest {
     }
 
     @Test
-    fun `a start that Shizuku could not switch shows as missed`() {
+    fun `start Shizuku failed shows missed`() {
         // Without Shizuku, the notice offers Skip only. Turn on would fail too.
         device.shizuku.works = false
         device.save(Schedule(id = 1, start = device.minute(1), end = device.minute(60)))
@@ -42,7 +41,7 @@ class AlarmsTest {
     }
 
     @Test
-    fun `saving sets the next start and the notice an hour before, and deleting removes them`() {
+    fun `save sets start and notice alarms and delete clears`() {
         val schedule = Schedule(id = 1, start = device.minute(90), end = device.minute(120))
         device.save(schedule)
         val start = startMillis(schedule)
@@ -53,7 +52,7 @@ class AlarmsTest {
 
     @Test
     @Config(sdk = [31])
-    fun `on Android 12 with exact alarms denied, the start still has an alarm`() {
+    fun `Android 12 without exact alarms still sets start`() {
         // A late start is better than none.
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         val schedule = Schedule(id = 1, start = device.minute(90), end = device.minute(120))

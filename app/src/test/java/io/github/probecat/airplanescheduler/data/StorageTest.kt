@@ -17,7 +17,7 @@ class StorageTest {
     private val airplane = Changes(airplane = true, wifi = false)
 
     @Test
-    fun `saved schedules still load`() {
+    fun `saved schedules load`() {
         // Written in the format that the app stores. A change to the name or format of a field breaks this test, and
         // existing users.
         val stored = """[{"id":1,"name":"Night","start":1380,"end":420,"days":["MONDAY"],"date":"2026-10-09",""" +
@@ -43,7 +43,7 @@ class StorageTest {
     }
 
     @Test
-    fun `schedules from older versions load with defaults for newer fields`() {
+    fun `older schedules load with defaults`() {
         assertEquals(
             ScheduleRepository.Read(listOf(Schedule(id = 3, start = 60, end = 120)), lost = false),
             ScheduleRepository.read("""[{"id":3,"start":60,"end":120,"future":1}]"""),
@@ -51,7 +51,7 @@ class StorageTest {
     }
 
     @Test
-    fun `a schedule that can't be read doesn't take the others with it`() {
+    fun `unreadable schedule does not lose others`() {
         // The result marks the loss, so the app keeps a copy of the saved text before anything overwrites it.
         val read = ScheduleRepository.read(
             """[{"id":1,"start":60,"end":120},{"id":2,"start":60,"end":120,"days":["FUNDAY"]}]""",
@@ -62,7 +62,7 @@ class StorageTest {
     }
 
     @Test
-    fun `the running window's state still loads`() {
+    fun `running window state loads`() {
         val stored = """{"started":{"window":"2026-10-09T23:00","changes":1,"wanted":3,"already":0},""" +
             """"wifiKeptUntil":"2026-10-10T07:00"}"""
         val state = Engine.State(Started(window, airplane, wanted = both), LocalDateTime.of(2026, 10, 10, 7, 0))
@@ -71,7 +71,7 @@ class StorageTest {
     }
 
     @Test
-    fun `the running window's state moves from the older separate keys`() {
+    fun `running window state moves from legacy keys`() {
         // Before 2.0, a window kept only what it changed, so the migration treats it as if it wanted only that.
         val keys = mapOf(
             "startedWindow" to "2026-10-09T23:00",
@@ -89,7 +89,7 @@ class StorageTest {
     }
 
     @Test
-    fun `an unreadable running window's state is dropped rather than crashing every alarm`() {
+    fun `unreadable window state is dropped`() {
         assertEquals(Engine.State(), EngineRepository.decode("{"))
         assertEquals(
             Engine.State(),
