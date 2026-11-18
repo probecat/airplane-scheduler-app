@@ -33,6 +33,8 @@ class Phone(
     var state = Engine.State()
     var shizukuWorks = true
 
+    var safe = true
+
     // While this is set, switches wait for [finishSwitches], as when Shizuku is slow to answer.
     var holdSwitches = false
     private val held = mutableListOf<Effect.Switch>()
@@ -126,6 +128,19 @@ class Phone(
         return Ending.retried(changes, made, airplaneOn)
     }
 
+    // Shizuku runs again, so the app catches up what it owes.
+    fun accessReturns() {
+        shizukuWorks = true
+        send(Event.Ready(schedules, now))
+    }
+
+    // The user switches airplane mode while the app runs, so it sees the switch. A plain change of [airplaneOn] is one
+    // that the app missed, as while it was not running.
+    fun userSetsAirplane(on: Boolean) {
+        airplaneOn = on
+        send(Event.Touched)
+    }
+
     fun finishSwitches() {
         holdSwitches = false
         while (held.isNotEmpty()) finish(held.removeAt(0))
@@ -142,7 +157,7 @@ class Phone(
     }
 
     private fun send(event: Event) {
-        val result = Engine.on(state, event, Engine.Device(airplaneOn, wifiOn))
+        val result = Engine.on(state, event, Engine.Device(airplaneOn, wifiOn), safe)
         state = result.state
         for (effect in result.effects) {
             when (effect) {

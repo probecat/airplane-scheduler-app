@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import io.github.probecat.airplanescheduler.core.Boundary
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Engine
+import io.github.probecat.airplanescheduler.core.Reconcile
 import java.time.LocalDateTime
 import java.time.format.DateTimeParseException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,10 +33,23 @@ class EngineRepository(context: Context) {
         }
 
     @Serializable
-    private data class Stored(val started: StoredStart? = null, val wifiKeptUntil: String? = null)
+    private data class Stored(
+        val started: StoredStart? = null,
+        val wifiKeptUntil: String? = null,
+        val owed: StoredOwed? = null,
+    )
 
     @Serializable
     private data class StoredStart(val window: String, val changes: Int, val wanted: Int, val already: Int)
+
+    @Serializable
+    private data class StoredOwed(
+        val airplaneOn: Boolean,
+        val wifiOn: Boolean,
+        val touched: Int,
+        val ended: StoredStart? = null,
+        val schedule: Long? = null,
+    )
 
     companion object {
         private const val KEY = "engine"
@@ -45,25 +59,27 @@ class EngineRepository(context: Context) {
 
         fun encode(state: Engine.State): String = json.encodeToString(
             Stored(
-                state.started?.let {
-                    StoredStart(it.window.toString(), it.changes.bits, it.wanted.bits, it.already.bits)
-                },
+                state.started?.let(::store),
                 state.wifiKeptUntil?.toString(),
+                state.owed?.let {
+                    StoredOwed(it.seen.airplaneOn, it.seen.wifiOn, it.touched.bits, it.ended?.let(::store), it.schedule)
+                },
             ),
         )
 
         fun decode(value: String): Engine.State = try {
             val stored = json.decodeFromString<Stored>(value)
             Engine.State(
-                stored.started?.let {
-                    Boundary.Started(
-                        LocalDateTime.parse(it.window),
-                        Changes.of(it.changes),
-                        Changes.of(it.wanted),
-                        Changes.of(it.already),
+                stored.started?.let(::load),
+                stored.wifiKeptUntil?.let(LocalDateTime::parse),
+                stored.owed?.let {
+                    Reconcile.Owed(
+                        Engine.Device(it.airplaneOn, it.wifiOn),
+                        Changes.of(it.touched),
+                        it.ended?.let(::load),
+                        it.schedule,
                     )
                 },
-                stored.wifiKeptUntil?.let(LocalDateTime::parse),
             )
         } catch (_: SerializationException) {
             Engine.State()
@@ -72,6 +88,20 @@ class EngineRepository(context: Context) {
         } catch (_: DateTimeParseException) {
             Engine.State()
         }
+
+        private fun store(started: Boundary.Started) = StoredStart(
+            started.window.toString(),
+            started.changes.bits,
+            started.wanted.bits,
+            started.already.bits,
+        )
+
+        private fun load(stored: StoredStart) = Boundary.Started(
+            LocalDateTime.parse(stored.window),
+            Changes.of(stored.changes),
+            Changes.of(stored.wanted),
+            Changes.of(stored.already),
+        )
 
         fun legacy(get: (String) -> Any?): Engine.State {
             val changes = get("startedChanges") as? Int ?: 0

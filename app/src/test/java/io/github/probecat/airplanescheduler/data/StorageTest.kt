@@ -3,6 +3,7 @@ package io.github.probecat.airplanescheduler.data
 import io.github.probecat.airplanescheduler.core.Boundary.Started
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Engine
+import io.github.probecat.airplanescheduler.core.Reconcile
 import java.time.DayOfWeek.MONDAY
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -66,6 +67,22 @@ class StorageTest {
         val stored = """{"started":{"window":"2026-10-09T23:00","changes":1,"wanted":3,"already":0},""" +
             """"wifiKeptUntil":"2026-10-10T07:00"}"""
         val state = Engine.State(Started(window, airplane, wanted = both), LocalDateTime.of(2026, 10, 10, 7, 0))
+        assertEquals(state, EngineRepository.decode(stored))
+        assertEquals(state, EngineRepository.decode(EngineRepository.encode(state)))
+    }
+
+    @Test
+    fun `owed switch loads`() {
+        // Shizuku often runs again only in a later process, which must still know what to catch up.
+        val stored = """{"owed":{"airplaneOn":true,"wifiOn":false,"touched":2,""" +
+            """"ended":{"window":"2026-10-09T23:00","changes":3,"wanted":3,"already":0},"schedule":1}}"""
+        val owed = Reconcile.Owed(
+            Engine.Device(airplaneOn = true, wifiOn = false),
+            Changes(false, true),
+            Started(window, both),
+            schedule = 1,
+        )
+        val state = Engine.State(owed = owed)
         assertEquals(state, EngineRepository.decode(stored))
         assertEquals(state, EngineRepository.decode(EngineRepository.encode(state)))
     }

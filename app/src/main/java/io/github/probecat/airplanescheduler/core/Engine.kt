@@ -10,8 +10,12 @@ import java.time.LocalDateTime
 // while its start is still switching.
 object Engine {
     // [started] is the window that the app started. [wifiKeptUntil] is the time until which Wi-Fi stays on after the
-    // user turned it on against a start.
-    data class State(val started: Started? = null, val wifiKeptUntil: LocalDateTime? = null)
+    // user turned it on against a start. [owed] is a switch that the app still owes with Safe mode off.
+    data class State(
+        val started: Started? = null,
+        val wifiKeptUntil: LocalDateTime? = null,
+        val owed: Reconcile.Owed? = null,
+    )
 
     data class Device(val airplaneOn: Boolean, val wifiOn: Boolean)
 
@@ -27,6 +31,12 @@ object Engine {
         data class Reset(val schedules: List<Schedule>, val now: LocalDateTime) : Event
 
         data class Switched(val switch: Effect.Switch, val made: Changes) : Event
+
+        // Access is ready, so the app can switch what it owes.
+        data class Ready(val schedules: List<Schedule>, val now: LocalDateTime) : Event
+
+        // The user switched airplane mode.
+        data object Touched : Event
     }
 
     sealed interface Effect {
@@ -48,7 +58,12 @@ object Engine {
 
     data class Result(val state: State, val effects: List<Effect> = emptyList())
 
-    fun on(state: State, event: Event, device: Device): Result = when (event) {
+    fun on(state: State, event: Event, device: Device, safe: Boolean = true): Result {
+        if (!safe) return Reconcile.on(state, event, device)
+        return conservative(state, event, device)
+    }
+
+    private fun conservative(state: State, event: Event, device: Device): Result = when (event) {
         is Event.Alarm -> step(
             state,
             Boundary.atAlarm(event.schedules, event.now, state.started),
@@ -70,9 +85,11 @@ object Engine {
             }
         }
         is Event.Switched -> switched(state, event.switch, event.made)
+        // Only Reconcile owes switches.
+        is Event.Ready, Event.Touched -> Result(state)
     }
 
-    private fun step(
+    internal fun step(
         state: State,
         step: Step,
         schedules: List<Schedule>,
@@ -103,7 +120,7 @@ object Engine {
         Step.None -> Result(state)
     }
 
-    private fun switched(state: State, switch: Effect.Switch, made: Changes): Result = when (val then = switch.then) {
+    internal fun switched(state: State, switch: Effect.Switch, made: Changes): Result = when (val then = switch.then) {
         Then.Start -> state.started?.let { Result(state.copy(started = it.copy(changes = it.changes + made))) }
             ?: Result(state, listOf(Effect.Switch(false, made, Then.Undo)))
         is Then.End -> {
@@ -114,7 +131,7 @@ object Engine {
         Then.Undo -> Result(state)
     }
 
-    private fun forget(started: Started, schedules: List<Schedule>, device: Device): List<Effect> {
+    internal fun forget(started: Started, schedules: List<Schedule>, device: Device): List<Effect> {
         val schedule = ScheduleResolver.activeSchedule(schedules, started.window)
         val left = Boundary.leftSwitched(started, schedule?.enableWifi ?: true, device.airplaneOn, device.wifiOn)
         return listOfNotNull(Effect.MissedEnd(schedule, left).takeIf { !left.isEmpty })
