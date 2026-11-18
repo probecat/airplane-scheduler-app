@@ -56,6 +56,6 @@ class BackupTest {
             """{"started":{"window":"2026-10-09T23:00","changes":1,"wanted":1,"already":0}}""",
         )
         runBlocking { RootSwitcher(context, {}, shell = listOf("sh", "-c")).request() }
-        assertEquals(setOf("theme", "dynamicColor", "postponeMinutes"), prefs(Prefs.SETTINGS).all.keys)
+        assertEquals(setOf("theme", "dynamicColor", "postponeMinutes", "safeMode"), prefs(Prefs.SETTINGS).all.keys)
     }
 }

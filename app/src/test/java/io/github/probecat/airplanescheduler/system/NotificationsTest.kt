@@ -1,7 +1,12 @@
 package io.github.probecat.airplanescheduler.system
 
 import android.content.Intent
+import io.github.probecat.airplanescheduler.core.Boundary.Started
+import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
+import io.github.probecat.airplanescheduler.core.Engine
 import io.github.probecat.airplanescheduler.data.Schedule
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -66,5 +71,26 @@ class NotificationsTest {
         assertTrue(device.airplaneOn)
         assertNotNull(device.problem(1))
         assertNull(device.app.engine.state.started)
+    }
+
+    @Test
+    fun `end while phone off catches up with Safe mode off`() {
+        device.app.settings.update { it.copy(safeMode = false) }
+        val ended = Schedule(id = 1, start = device.minute(-90), end = device.minute(-30), disableWifi = false)
+        device.save(ended)
+        // As if the phone was off since the start of this window, which the app started.
+        val start = LocalDateTime.now().minusMinutes(90).truncatedTo(ChronoUnit.MINUTES)
+        device.airplaneOn = true
+        device.app.engine.state = Engine.State(Started(start, Changes(airplane = true, wifi = false)))
+        device.shizuku.works = false
+        device.alarm(Intent.ACTION_BOOT_COMPLETED)
+        assertTrue(device.airplaneOn)
+        assertNotNull(device.problem(1))
+
+        device.shizuku.works = true
+        device.app.refreshAccess()
+        device.idle()
+        assertFalse(device.airplaneOn)
+        assertNull(device.problem(1))
     }
 }

@@ -14,6 +14,8 @@ data class Settings(
     val postponeMinutes: Int = 30,
     val askedNotifications: Boolean = false,
     val backend: Backend = Backend.SHIZUKU,
+    // When off, ends switch to what the schedule asks for, and missed starts and ends are caught up.
+    val safeMode: Boolean = true,
 )
 
 // [firstBackend] picks the backend when none is saved yet. Choices the user made go in [prefs] and come back with a
@@ -46,6 +48,7 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
             putString("theme", settings.theme.name)
             putBoolean("dynamicColor", settings.dynamicColor)
             putInt("postponeMinutes", settings.postponeMinutes)
+            putBoolean("safeMode", settings.safeMode)
         }
         device.edit {
             putBoolean(HIDE_SHIZUKU_READY, settings.hideShizukuReady)
@@ -64,6 +67,7 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
             askedNotifications = device.getBoolean(ASKED_NOTIFICATIONS, default.askedNotifications),
             backend = device.getString(BACKEND, null)
                 ?.let { name -> Backend.entries.find { it.name == name } } ?: firstBackend(),
+            safeMode = prefs.getBoolean("safeMode", default.safeMode),
         )
     }
 

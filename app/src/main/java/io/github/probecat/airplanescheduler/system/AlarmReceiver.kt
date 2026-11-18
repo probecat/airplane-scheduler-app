@@ -31,6 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     if (action == Intent.ACTION_BOOT_COMPLETED) ScheduleUpdater.expire(app, now)
                 }
             }
+            AirplaneController.settleOwed(app)
             Notifier.refresh(app)
         }
     }

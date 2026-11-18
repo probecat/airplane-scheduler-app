@@ -7,6 +7,7 @@
     <string name="action_change">Change</string>
     <string name="action_delete">Delete</string>
     <string name="action_discard">Discard</string>
+    <string name="action_disable">Disable</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_end">End</string>
     <string name="action_get">Get</string>
@@ -14,6 +15,7 @@
     <string name="action_manage">Manage</string>
     <string name="action_ok">OK</string>
     <string name="action_open">Open</string>
+    <string name="action_report">Report</string>
     <!-- %1$s is a length, as in "Pause for 30 min". -->
     <string name="action_pause">Pause for %1$s</string>
     <string name="action_postpone">Postpone %1$s</string>
@@ -132,6 +134,9 @@
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_schedules">Schedules</string>
     <string name="settings_postpone">Postpone and pause</string>
+    <string name="settings_safe_mode">Safe mode (experimental)</string>
+    <string name="safe_mode_off_title">Disable Safe mode?</string>
+    <string name="safe_mode_off_text">With Safe mode disabled, the app catches up on missed schedules and matches the end state, such as airplane mode off and Wi-Fi on, regardless of your own toggles.\n\nThis is an experimental feature. Please report any unexpected behavior.</string>
     <string name="settings_backend">Permission mode</string>
     <string name="backend_shizuku">Shizuku</string>
     <string name="backend_sui">Sui</string>
@@ -244,6 +249,8 @@
     <string name="notification_wifi_was_off">Wi-Fi was off before the schedule.</string>
     <string name="notification_wifi_back_on">Wi-Fi turned on.</string>
     <string name="notification_missed_end">Schedule missed the end. No action taken.</string>
+    <!-- Follows a reason why a schedule could not switch, with Safe mode off. -->
+    <string name="notification_catches_up">Catches up when possible.</string>
 
     <!-- Reasons that end a sentence, as in "No action taken because Shizuku isn’t running." -->
     <string name="reason_shizuku_missing">Shizuku isn\'t installed</string>

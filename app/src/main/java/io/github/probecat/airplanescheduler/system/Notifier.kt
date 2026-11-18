@@ -220,7 +220,7 @@ object Notifier {
             Kind.PROBLEM,
             PROBLEMS,
             report.title,
-            text,
+            catchesUp(app, text),
             actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
             changes = failed,
         )
@@ -333,7 +333,7 @@ object Notifier {
             Kind.NOTICE,
             PROBLEMS,
             title,
-            problem?.let { app.getString(R.string.notification_missed_start_because, it) }
+            problem?.let { catchesUp(app, app.getString(R.string.notification_missed_start_because, it)) }
                 ?: app.getString(R.string.notification_missed_start_no_action),
             notice.date,
             listOfNotNull(
@@ -354,6 +354,12 @@ object Notifier {
             ),
             minutes = minutes,
         )
+    }
+
+    // With Safe mode off, the app switches what it owes once it can.
+    private fun catchesUp(app: App, text: String): String {
+        val owed = !app.settings.current.safeMode && app.engine.state.owed != null
+        return sentences(app, text, app.getString(R.string.notification_catches_up).takeIf { owed })
     }
 
     private fun sentences(context: Context, first: String, second: String?): String =

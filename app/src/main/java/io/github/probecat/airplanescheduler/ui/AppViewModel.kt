@@ -175,6 +175,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         app.settings.update(transform)
         if (before.backend != app.settings.current.backend) app.refreshAccess()
         if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
+        if (before.safeMode != app.settings.current.safeMode) {
+            AirplaneController.safeModeChanged(app, app.settings.current.safeMode)
+        }
     }
 
     fun resetSettings() = updateSettings { app.settings.defaults() }

@@ -29,7 +29,7 @@ object AirplaneController {
 
     suspend fun dispatch(app: App, event: Engine.Event) {
         holding {
-            val result = Engine.on(app.engine.state, event, device(app))
+            val result = Engine.on(app.engine.state, event, device(app), app.settings.current.safeMode)
             app.engine.state = result.state
             if (event is Engine.Event.Alarm && result.effects.isEmpty()) app.log.add("No switch needed")
             for (effect in result.effects) perform(app, effect)
@@ -50,6 +50,34 @@ object AirplaneController {
                 Notifier.missedEnd(app, effect.schedule, effect.left)
             }
         }
+    }
+
+    // Whether the app owes a switch with Safe mode off, and can make it now. While a switch runs, that switch settles
+    // what is owed or owes anew.
+    fun owes(app: App): Boolean =
+        !app.settings.current.safeMode && app.engine.state.owed != null && !switching && app.access.value.ready
+
+    // Switches to what the schedules ask for now.
+    suspend fun settleOwed(app: App) {
+        if (!owes(app)) return
+        app.log.add("Catching up owed switch")
+        dispatch(app, Engine.Event.Ready(app.schedules.all, LocalDateTime.now()))
+        Notifier.refresh(app)
+    }
+
+    // A switch that the user made while the app owes one is the user's choice. Switches of the app come while it is
+    // switching, or match what it saw after. Only airplane mode is observed. Wi-Fi counts only when it differs from
+    // what the app saw.
+    fun airplaneChanged(app: App) {
+        if (app.settings.current.safeMode || app.engine.state.owed == null || switching) return
+        app.launch { dispatch(app, Engine.Event.Touched) }
+    }
+
+    // Turning Safe mode on drops what the app owes, and turning it off does not catch up what it missed before.
+    fun safeModeChanged(app: App, on: Boolean) {
+        app.log.add("Safe mode ${Events.onOff(on)}")
+        if (on) app.engine.state = app.engine.state.copy(owed = null)
+        Notifier.refresh(app)
     }
 
     suspend fun undo(app: App, changes: Changes, report: Notifier.Report) {

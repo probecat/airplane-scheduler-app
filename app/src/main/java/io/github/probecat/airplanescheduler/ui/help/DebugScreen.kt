@@ -202,6 +202,11 @@ private fun windowSection(app: App, schedules: List<Schedule>, now: LocalDateTim
             started?.let { "Meant to change" to Events.changes(it.wanted) },
             started?.let { "Already set" to Events.changes(it.already) },
             app.engine.state.wifiKeptUntil?.let { "Wi-Fi kept on until" to moment.format(it) },
+            app.engine.state.owed?.let { owed ->
+                "Owed" to (owed.ended?.let { "END of ${moment.format(it.window)}" } ?: "START") +
+                    ", seen airplane ${Events.onOff(owed.seen.airplaneOn)} | Wi-Fi ${Events.onOff(owed.seen.wifiOn)}" +
+                    ", touched ${Events.changes(owed.touched)}"
+            },
         ),
     )
 }
@@ -212,6 +217,7 @@ private fun settingsSection(settings: Settings) = Section(
         "Theme" to settings.theme.name,
         "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
         "Postpone" to (settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"),
+        "Safe mode" to Events.onOff(settings.safeMode),
     ),
 )
 

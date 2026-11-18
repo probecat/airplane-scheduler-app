@@ -74,6 +74,7 @@ class App : Application() {
             object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean) {
                     airplaneState.value = AirplaneController.airplaneOn(this@App)
+                    AirplaneController.airplaneChanged(this@App)
                     Notifier.refresh(this@App)
                 }
             },
@@ -108,10 +109,13 @@ class App : Application() {
 
     fun refreshAccess() {
         val access = switcher.access()
-        if (access == accessState.value) return
-        accessState.value = access
-        log.add("Access changed: ${Events.access(access)}")
-        Notifier.refresh(this)
+        if (access != accessState.value) {
+            accessState.value = access
+            log.add("Access changed: ${Events.access(access)}")
+            Notifier.refresh(this)
+        }
+        // A new process can find access ready from its start, so this does not wait for a change.
+        if (AirplaneController.owes(this)) launch { AirplaneController.settleOwed(this@App) }
     }
 
     companion object {
