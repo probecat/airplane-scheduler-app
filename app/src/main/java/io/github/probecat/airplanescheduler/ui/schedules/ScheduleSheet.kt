@@ -31,8 +31,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -290,19 +291,18 @@ private fun SheetButtons(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Delete sits at the start, away from Save, as it acts without a confirmation.
         if (canDelete) {
-            FilledTonalButton(
+            FilledTonalIconButton(
                 onClick = onDelete,
-                colors = ButtonDefaults.filledTonalButtonColors(
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.error,
                 ),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.size(ButtonDefaults.MinHeight),
             ) {
-                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.action_delete))
+                Icon(painterResource(R.drawable.ic_delete), contentDescription = stringResource(R.string.action_delete))
             }
         }
         Button(onClick = onSave, enabled = canSave, modifier = Modifier.weight(1f)) {
