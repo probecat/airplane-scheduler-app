@@ -117,8 +117,8 @@
     <string name="sheet_repeats">Repeats</string>
     <string name="sheet_day_repeats">Repeats</string>
     <string name="sheet_day_doesnt_repeat">Doesn\'t repeat</string>
-    <string name="sheet_wifi_off">Turn off Wi-Fi at start</string>
-    <string name="sheet_wifi_on">Turn on Wi-Fi at end</string>
+    <string name="sheet_wifi_off">Wi-Fi off at start</string>
+    <string name="sheet_wifi_on">Wi-Fi on at end</string>
     <string name="sheet_name">Schedule name</string>
     <string name="sheet_name_placeholder">Unnamed</string>
 
@@ -170,7 +170,7 @@
     <string name="help_start_end_q">How do schedules work from start to end?</string>
     <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. The app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
     <string name="help_wifi_q">What do the Wi-Fi options do?</string>
-    <string name="help_wifi_a">“Turn off Wi-Fi at start” disables Wi-Fi before turning on airplane mode. “Turn on Wi-Fi at end” enables Wi-Fi again, but only if the app turned it off.</string>
+    <string name="help_wifi_a">“Wi-Fi off at start” disables Wi-Fi before turning on airplane mode. “Wi-Fi on at end” enables Wi-Fi again, but only if the app turned it off.</string>
     <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
     <!-- %1$s is 11 PM and %2$s is 7 AM. -->
     <string name="help_overnight_a">The day the schedule starts. For example, a Friday schedule running from %1$s to %2$s ends on Saturday morning.</string>
