@@ -24,6 +24,9 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
     private val device = Prefs.device(context, listOf(BACKEND, ASKED_NOTIFICATIONS, HIDE_SHIZUKU_READY))
     private val state = MutableStateFlow(read())
 
+    // Device state is never backed up, so a restored install starts like a new one.
+    val firstStart = !device.contains(BACKEND)
+
     init {
         // The first pick is saved, so it persists when Shizuku or root is installed later.
         if (!device.contains(BACKEND)) device.edit { putString(BACKEND, current.backend.name) }

@@ -8,11 +8,13 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.annotation.VisibleForTesting
+import io.github.probecat.airplanescheduler.core.ScheduleEdits
 import io.github.probecat.airplanescheduler.data.Backend
 import io.github.probecat.airplanescheduler.data.EngineRepository
 import io.github.probecat.airplanescheduler.data.EventLog
 import io.github.probecat.airplanescheduler.data.ScheduleRepository
 import io.github.probecat.airplanescheduler.data.SettingsRepository
+import java.time.LocalDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -54,6 +56,7 @@ class App : Application() {
         settings = SettingsRepository(this, ::firstBackend)
         engine = EngineRepository(this)
         log = EventLog(this)
+        if (settings.firstStart && engine.state.started == null) skipWindowsUnderWay()
         shizukuSwitcher = ShizukuSwitcher(this)
         rootSwitcher = RootSwitcher(this, ::refreshAccess)
         accessState.value = switcher.access()
@@ -75,6 +78,14 @@ class App : Application() {
                 }
             },
         )
+    }
+
+    // Restored schedules come without alarms, so the app cannot have started a window that is under way.
+    private fun skipWindowsUnderWay() {
+        val restored = ScheduleEdits.restored(schedules.all, LocalDateTime.now())
+        if (restored == schedules.all) return
+        schedules.replaceAll(restored)
+        log.add("Left out windows under way at first start")
     }
 
     private fun firstBackend(): Backend {

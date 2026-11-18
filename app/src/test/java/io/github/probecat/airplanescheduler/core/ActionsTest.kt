@@ -164,4 +164,21 @@ class ActionsTest {
         val off = ScheduleEdits.restore(listOf(night), overlapping, newId = 5, friday(12)) as ScheduleEdits.Result.Saved
         assertFalse(off.schedules.last().enabled)
     }
+
+    @Test
+    fun `restore leaves out window under way until turned on`() {
+        // The restored phone did not start it, so its end would have no start to undo.
+        val lunch = Schedule(id = 2, start = at(12), end = at(13))
+        val restored = ScheduleEdits.restored(listOf(night, lunch), friday(23, 30))
+        val phone = Phone(*restored.toTypedArray(), now = friday(23, 30))
+        assertEquals(lunch, phone.schedule(2))
+        assertTrue((phone.status() as ScheduleStatus.Skipped).underway)
+        assertTrue(phone.undo())
+        assertTrue(phone.airplaneOn)
+        phone.passTo(saturday(7))
+        assertFalse(phone.airplaneOn)
+
+        val once = night.copy(days = emptySet(), date = fridayDate)
+        assertFalse(ScheduleEdits.restored(listOf(once), friday(23, 30)).single().enabled)
+    }
 }
