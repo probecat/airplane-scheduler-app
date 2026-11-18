@@ -89,9 +89,8 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
             settings,
             format,
             onPostpone = { dialog = Dialog.POSTPONE },
-            onBackend = { dialog = Dialog.BACKEND },
         )
-        PermissionsSection(access, requestAccess)
+        PermissionsSection(settings, access, requestAccess, onBackend = { dialog = Dialog.BACKEND })
         AboutSection(onDebug)
     }
 
@@ -138,7 +137,6 @@ private fun SchedulesSection(
     settings: Settings,
     format: Format,
     onPostpone: () -> Unit,
-    onBackend: () -> Unit,
     modifier: Modifier = Modifier,
 ) = Column(modifier) {
     SectionHeader(stringResource(R.string.settings_schedules))
@@ -148,16 +146,16 @@ private fun SchedulesSection(
         text = postponeLabel(settings.postponeMinutes, format),
         onClick = onPostpone,
     )
-    SettingRow(
-        icon = R.drawable.ic_security,
-        title = stringResource(R.string.settings_backend),
-        text = stringResource(backendLabel(settings.backend)),
-        onClick = onBackend,
-    )
 }
 
 @Composable
-private fun PermissionsSection(access: Access, onRequestAccess: (Access) -> Unit, modifier: Modifier = Modifier) {
+private fun PermissionsSection(
+    settings: Settings,
+    access: Access,
+    onRequestAccess: (Access) -> Unit,
+    onBackend: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     var notifications by remember { mutableStateOf(notificationsAllowed(context)) }
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
@@ -170,6 +168,13 @@ private fun PermissionsSection(access: Access, onRequestAccess: (Access) -> Unit
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
     Column(modifier) {
         SectionHeader(stringResource(R.string.settings_permissions))
+        // First, as the mode decides which access the next row shows.
+        SettingRow(
+            icon = R.drawable.ic_security,
+            title = stringResource(R.string.settings_backend),
+            text = stringResource(backendLabel(settings.backend)),
+            trailing = { TextButton(onClick = onBackend) { Text(stringResource(R.string.action_change)) } },
+        )
         AccessRow(access, shizukuApp, onRequestAccess)
         SettingRow(
             icon = R.drawable.ic_notifications,
