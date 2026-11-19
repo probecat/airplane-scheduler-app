@@ -635,7 +635,8 @@ private fun Strip(
         color = container,
         contentColor = content,
     ) {
-        val end = if (onDismiss != null) 4.dp else 12.dp
+        // The close button's touch target pads its icon by 15 dp, so both trailing icons end 16 dp in.
+        val end = if (onDismiss != null) 1.dp else 16.dp
         Row(
             modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp + LIST_PADDING, end = end + LIST_PADDING),
             verticalAlignment = Alignment.CenterVertically,
