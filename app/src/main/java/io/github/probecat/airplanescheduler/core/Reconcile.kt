@@ -18,6 +18,8 @@ import java.time.LocalDateTime
 // end that the app could not switch, or that passed while the phone was off, is owed. Once the app can switch again,
 // it switches to what the schedules ask for now. A radio that the user switched since then stays as the user left it.
 object Reconcile {
+    private val AIRPLANE = Changes(airplane = true, wifi = false)
+
     // [seen] is the device when the switch became owed. [touched] holds the radios that the user switched since, for
     // when the user switched one back. [ended] is the window that an owed end ends, and [schedule] the id of its
     // schedule, which an early end leaves skipped or off.
@@ -44,7 +46,9 @@ object Reconcile {
         is Event.CatchUp -> conservative(state, event, device)
         is Event.Reset -> reset(state, event.schedules, event.now, device)
         is Event.Ready -> ready(state, event.schedules, event.now, device)
-        Event.Touched -> Result(state.copy(owed = state.owed?.let { it.copy(touched = it.touched(device)) }))
+        // Android delivers changes to a background app late and merged, so airplane mode switched off and on again
+        // can look unchanged.
+        Event.Touched -> Result(state.copy(owed = state.owed?.let { it.copy(touched = it.touched(device) + AIRPLANE) }))
         is Event.Switched -> switched(state, event, device)
     }
 

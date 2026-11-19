@@ -65,9 +65,9 @@ object AirplaneController {
         Notifier.refresh(app)
     }
 
-    // A switch that the user made while the app owes one is the user's choice. Switches of the app come while it is
-    // switching, or match what it saw after. Only airplane mode is observed. Wi-Fi counts only when it differs from
-    // what the app saw.
+    // A switch that the user made while the app owes one is the user's choice. A late change from a switch of the app
+    // counts too, but leaves airplane mode as that switch set it. Only airplane mode is observed. Wi-Fi counts only
+    // when it differs from what the app saw.
     fun airplaneChanged(app: App) {
         if (app.settings.current.safeMode || app.engine.state.owed == null || switching) return
         app.launch { dispatch(app, Engine.Event.Touched) }

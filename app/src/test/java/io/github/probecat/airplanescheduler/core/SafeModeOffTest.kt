@@ -108,12 +108,12 @@ class SafeModeOffTest {
 
     @Test
     fun `airplane mode switched back stays on when end catches up`() {
-        // Off and on again looks unchanged, so the app counts what it saw while running.
+        // Off and on again looks unchanged, and Android tells a background app once, after both.
         val phone = phone(night)
         phone.passTo(friday(23))
         phone.shizukuWorks = false
         phone.passTo(saturday(7))
-        phone.userSetsAirplane(false)
+        phone.airplaneOn = false
         phone.userSetsAirplane(true)
         phone.accessReturns()
         assertTrue(phone.airplaneOn)
