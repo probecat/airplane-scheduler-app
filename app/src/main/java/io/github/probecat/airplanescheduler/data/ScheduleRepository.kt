@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.decodeFromJsonElement
 
 // All schedules as one JSON list in SharedPreferences. The list is small, and receivers can read it synchronously.
 class ScheduleRepository(context: Context) {
@@ -64,7 +65,7 @@ class ScheduleRepository(context: Context) {
             } ?: return Read(emptyList(), lost = true)
             val schedules = elements.mapNotNull { element ->
                 try {
-                    json.decodeFromJsonElement(Schedule.serializer(), element)
+                    json.decodeFromJsonElement<Schedule>(element)
                 } catch (_: SerializationException) {
                     null
                 } catch (_: IllegalArgumentException) {

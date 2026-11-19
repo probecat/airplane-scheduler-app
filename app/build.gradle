@@ -104,6 +104,15 @@ detekt {
     parallel = true
 }
 
+// detekt skips Java sources, so it cannot resolve the generated BuildConfig and AIDL classes. Their compiled classes
+// are added here. Adding anything drops the plugin's default classpath, so the Kotlin compile libraries are added back.
+tasks.matching { it.name == 'detektDebug' }.configureEach {
+    classpath.from(
+        tasks.named('compileDebugKotlin').map { it.libraries },
+        tasks.named('compileDebugJavaWithJavac').map { it.destinationDirectory },
+    )
+}
+
 dependencies {
     detektPlugins libs.compose.rules.detekt
 
