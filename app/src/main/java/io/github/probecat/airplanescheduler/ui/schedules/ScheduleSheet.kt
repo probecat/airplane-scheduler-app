@@ -180,11 +180,12 @@ fun ScheduleSheet(
     }
 }
 
-// A new start moves the end with it. A new end keeps the start.
+// A new start moves the end with it. A new end keeps the start, even when both are equal, so the sheet shows why it
+// cannot save instead of moving the end silently.
 private fun picked(schedule: Schedule, start: Boolean, minute: Int): Schedule = if (start) {
     schedule.copy(start = minute, end = ScheduleTime.movedEnd(schedule.start, schedule.end, minute))
 } else {
-    schedule.copy(end = ScheduleTime.pickedEnd(schedule.start, minute))
+    schedule.copy(end = minute)
 }
 
 @Composable
