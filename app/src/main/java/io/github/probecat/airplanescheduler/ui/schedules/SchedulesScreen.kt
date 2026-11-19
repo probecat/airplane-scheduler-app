@@ -234,10 +234,10 @@ private fun SchedulesList(
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
+                top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             if (strips.any) {
                 item(key = "notices") {
@@ -247,7 +247,7 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().animateContentSize().padding(bottom = 8.dp),
+                        Modifier.animateItem().animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
@@ -701,7 +701,7 @@ private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, c
                 if (direction != SwipeToDismissBoxValue.Settled) {
                     val width = with(LocalDensity.current) { abs(state.requireOffset()).toDp() - 8.dp }
                     Surface(
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(CARD_CORNER),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxHeight().width(width.coerceAtLeast(0.dp)),
                     ) {
@@ -742,7 +742,7 @@ private fun ScheduleCard(
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(CARD_CORNER),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -794,6 +794,8 @@ private fun ScheduleCard(
 }
 
 private val TIME_SIZE = 46.sp
+
+private val CARD_CORNER = 24.dp
 
 @Composable
 private fun EndsIn(duration: String) = Status(
