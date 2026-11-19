@@ -424,13 +424,26 @@ object Notifier {
             putString(TITLE, content.subject)
             content.plain?.let { putString(PLAIN, it) }
         }
-        val open = Intent(app, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Clears Settings or Help above the schedules list, so the schedule's sheet opens there.
+        val open = Intent(app, MainActivity::class.java)
+            .setData("$tag:$id".toUri())
+            .putExtra(MainActivity.SCHEDULE, id)
+            .setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+            )
         val builder = NotificationCompat.Builder(app, content.channel)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(content.title(app))
             .setContentText(content.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(content.text))
-            .setContentIntent(PendingIntent.getActivity(app, 0, open, PendingIntent.FLAG_IMMUTABLE))
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    app,
+                    0,
+                    open,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
             .setOnlyAlertOnce(!alert)
             .setShowWhen(false)
             .setCategory(

@@ -58,6 +58,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -128,6 +129,8 @@ fun SchedulesScreen(
     onSettings: () -> Unit,
     onHelp: () -> Unit,
     modifier: Modifier = Modifier,
+    opening: Long? = null,
+    onOpen: () -> Unit = {},
 ) {
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val access by viewModel.access.collectAsStateWithLifecycle()
@@ -137,7 +140,7 @@ fun SchedulesScreen(
     val format = rememberFormat()
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
+    var editing by rememberEditing(opening, schedules, onOpen)
     val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -191,6 +194,20 @@ fun SchedulesScreen(
             onClose = { choosing = null },
         )
     }
+}
+
+// The schedule open in the sheet. A tapped notification opens its schedule, then [onOpen] clears the request. A
+// deleted schedule opens nothing.
+@Composable
+private fun rememberEditing(opening: Long?, schedules: List<Schedule>, onOpen: () -> Unit): MutableState<Schedule?> {
+    val editing = rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
+    if (opening != null) {
+        SideEffect {
+            schedules.find { it.id == opening }?.let { editing.value = it }
+            onOpen()
+        }
+    }
+    return editing
 }
 
 @Composable
