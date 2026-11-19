@@ -15,6 +15,7 @@ import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AirplaneController
+import io.github.probecat.airplanescheduler.system.AlarmScheduler
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
@@ -152,9 +153,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             .also { if (it == null) app.log.add("Schedule #${edited.id} $verb") }
     }
 
-    // True once, when the first schedule is saved and notifications are not allowed yet.
+    // True once, when schedules exist and notifications were not asked for yet. A restore brings back schedules
+    // without that flag.
     fun asksNotifications(): Boolean {
-        if (app.settings.current.askedNotifications) return false
+        if (app.settings.current.askedNotifications || app.schedules.all.isEmpty()) return false
         updateSettings { it.copy(askedNotifications = true) }
         return !notificationsAllowed(app)
     }
@@ -174,9 +176,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         app.settings.update(transform)
         if (before.backend != app.settings.current.backend) app.refreshAccess()
         if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
+        if (before.alertMinutes != app.settings.current.alertMinutes) {
+            AlarmScheduler.scheduleAll(app)
+            Notifier.refresh(app)
+        }
+        if (before.safeMode != app.settings.current.safeMode) {
+            AirplaneController.safeModeChanged(app, app.settings.current.safeMode)
+        }
     }
 
-    fun resetSettings() = updateSettings { Settings() }
+    fun resetSettings() = updateSettings { app.settings.defaults() }
 
     private fun commit(result: ScheduleEdits.Result) {
         ScheduleUpdater.launch(app, result)

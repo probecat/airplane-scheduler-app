@@ -30,7 +30,5 @@ object ScheduleTime {
     fun movedEnd(start: Int, end: Int, newStart: Int): Int =
         Math.floorMod(newStart + (duration(start, end).takeIf { it > 0 } ?: HOUR), DAY)
 
-    fun pickedEnd(start: Int, end: Int): Int = if (end == start) (start + HOUR) % DAY else end
-
     fun format(minute: Int): String = String.format(Locale.ROOT, "%02d:%02d", minute / 60, minute % 60)
 }

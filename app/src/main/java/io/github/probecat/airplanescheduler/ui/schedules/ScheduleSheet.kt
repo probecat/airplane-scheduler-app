@@ -31,8 +31,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
@@ -75,6 +76,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -179,11 +181,12 @@ fun ScheduleSheet(
     }
 }
 
-// A new start moves the end with it. A new end keeps the start.
+// A new start moves the end with it. A new end keeps the start, even when both are equal, so the sheet shows why it
+// cannot save instead of moving the end silently.
 private fun picked(schedule: Schedule, start: Boolean, minute: Int): Schedule = if (start) {
     schedule.copy(start = minute, end = ScheduleTime.movedEnd(schedule.start, schedule.end, minute))
 } else {
-    schedule.copy(end = ScheduleTime.pickedEnd(schedule.start, minute))
+    schedule.copy(end = minute)
 }
 
 @Composable
@@ -290,19 +293,18 @@ private fun SheetButtons(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Delete sits at the start, away from Save, as it acts without a confirmation.
         if (canDelete) {
-            FilledTonalButton(
+            FilledTonalIconButton(
                 onClick = onDelete,
-                colors = ButtonDefaults.filledTonalButtonColors(
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.error,
                 ),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.size(ButtonDefaults.MinHeight),
             ) {
-                Icon(painterResource(R.drawable.ic_delete), contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.action_delete))
+                Icon(painterResource(R.drawable.ic_delete), contentDescription = stringResource(R.string.action_delete))
             }
         }
         Button(onClick = onSave, enabled = canSave, modifier = Modifier.weight(1f)) {
@@ -361,15 +363,15 @@ private fun TimeButton(
             Text(
                 format.time(minute, Format.MARKER),
                 style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(
-                    minFontSize = 16.sp,
-                    maxFontSize = MaterialTheme.typography.displaySmall.fontSize,
-                ),
+                autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = TIME_SIZE),
             )
         }
     }
 }
+
+private val TIME_SIZE = 42.sp
 
 @Composable
 private fun DayChips(

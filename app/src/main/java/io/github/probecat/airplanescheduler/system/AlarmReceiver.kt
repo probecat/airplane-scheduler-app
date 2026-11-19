@@ -11,10 +11,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val action = intent.action
         // Read the time before the Shizuku wait. Otherwise an end that arrives during the wait counts as missed.
         val now = LocalDateTime.now()
+        val app =
+            appOrRetry(context, intent, again = action == AlarmScheduler.CHANGE || action == AlarmScheduler.NOTICE)
+                ?: return
         val zone = if (action == Intent.ACTION_TIMEZONE_CHANGED) " (${ZoneId.systemDefault()})" else ""
-        App.from(context).log.add(Events.received(action) + zone)
+        app.log.add(Events.received(action) + zone)
         AlarmScheduler.scheduleAll(context)
-        val app = App.from(context)
         app.finishAfter(this) {
             // Notices tell whether Shizuku is ready. A new process learns this only after a short time.
             app.switcher.connect()
@@ -29,6 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
                     if (action == Intent.ACTION_BOOT_COMPLETED) ScheduleUpdater.expire(app, now)
                 }
             }
+            AirplaneController.settleOwed(app)
             Notifier.refresh(app)
         }
     }

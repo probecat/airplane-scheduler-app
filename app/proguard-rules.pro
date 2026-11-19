@@ -1,2 +1,2 @@
-# Shizuku creates the user service from its class name, in the Shizuku process.
+# reason: Shizuku starts AirplaneService in its own process.
 -keep class io.github.probecat.airplanescheduler.system.AirplaneService { <init>(); }

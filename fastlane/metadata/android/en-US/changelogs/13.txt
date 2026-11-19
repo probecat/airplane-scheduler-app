@@ -1,0 +1,7 @@
+• NOTICE: this version makes changes to some of the existing behavior. Downgrading version is not tested.
+• New: added support for android backup.
+• New: you can configure when/if you want to receive notices for upcoming schedules.
+• New: experimental Safe mode toggle if you dislike the default conservative behavior.
+• Tapping a notification opens its schedule.
+• Refreshed look: updated font, tighter cards and edge-to-edge notices.
+• Cards show how long ago a schedule ended early.

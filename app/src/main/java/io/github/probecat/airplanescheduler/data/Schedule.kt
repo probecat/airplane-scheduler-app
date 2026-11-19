@@ -29,8 +29,12 @@ data class Schedule(
     val skipped: Set<SerializableDate> = emptySet(),
     // Of those, the windows that were running, so they ended early. A missed start was never running.
     val endedEarly: Set<SerializableDate> = emptySet(),
+    // Of those, minutes after the planned start when each was ended. If missing, that time is unknown.
+    val endedAfter: Map<SerializableDate, Int> = emptyMap(),
     // Minutes that postponing or pausing moved a window's start, by its start date. Its end stays.
     val delayed: Map<SerializableDate, Int> = emptyMap(),
+    // Of those, the windows that were paused while running.
+    val paused: Set<SerializableDate> = emptySet(),
 ) {
     val once: Boolean get() = days.isEmpty()
 

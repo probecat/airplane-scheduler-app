@@ -11,18 +11,29 @@ import org.junit.Test
 // What Skip, Postpone, Pause, Undo, and Turn on do, and when the card and the notification offer them.
 class ActionsTest {
     @Test
-    fun `a window can be skipped or postponed only in the hour before it starts`() {
-        // Its notification also shows at that hour.
+    fun `skip or postpone only in hour before start`() {
         val phone = Phone(night, now = friday(21, 59))
         assertEquals(emptySet<Action>(), phone.status()!!.actions)
-        assertNull(Notice.of(phone.status()))
         phone.now = friday(22)
         assertEquals(setOf(Action.SKIP, Action.POSTPONE), phone.status()!!.actions)
-        assertTrue(Notice.of(phone.status()) is Notice.Upcoming)
     }
 
     @Test
-    fun `skipping leaves out only the next window`() {
+    fun `skipped or postponed window has no notice until it runs`() {
+        val phone = Phone(night, now = friday(22, 30))
+        phone.postpone()
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
+        phone.passTo(friday(23))
+        assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
+        phone.passTo(friday(23, 30))
+        assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Active)
+        phone.skip()
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
+    }
+
+    @Test
+    fun `skip leaves out next window only`() {
         val phone = Phone(night, now = friday(22, 30))
         assertTrue(phone.skip())
         phone.passTo(friday(23, 30))
@@ -32,8 +43,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `a skip can be undone until the window would have ended`() {
-        // Undo after the planned start turns airplane mode on immediately.
+    fun `skip undoable until window would end`() {
         val phone = Phone(night, now = friday(22, 30))
         phone.skip()
         phone.passTo(friday(23, 30))
@@ -47,8 +57,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `postponing moves only the start, and only once`() {
-        // The window still ends on time. After one postpone, the card and the notification offer only Undo and Skip.
+    fun `postpone moves start only and only once`() {
         val phone = Phone(night, now = friday(22, 30))
         assertTrue(phone.postpone(minutes = 30))
         assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
@@ -62,32 +71,33 @@ class ActionsTest {
     }
 
     @Test
-    fun `Postpone isn't offered when it would leave nothing of the window`() {
-        // A postpone past the end of a short window only skips it, so the card skips without a question.
+    fun `no Postpone when nothing of window would remain`() {
         val short = night.copy(end = at(23, 20))
         assertNull(ScheduleResolver.postponedTo(short, friday(22, 30), 30))
         assertEquals(setOf(fridayDate), ScheduleResolver.postpone(short, friday(22, 30), 30).skipped)
     }
 
     @Test
-    fun `a postpone setting of zero turns Postpone and Pause off`() {
+    fun `zero postpone setting turns Postpone and Pause off`() {
         assertNull(ScheduleResolver.postponedTo(night, friday(22, 30), 0))
     }
 
     @Test
-    fun `pausing counts from now and keeps the end`() {
+    fun `pause counts from now and keeps end`() {
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 40))
         phone.postpone(minutes = 30)
-        assertEquals(ScheduleStatus.Paused(fridayDate, saturday(0, 10)), phone.status())
+        assertEquals(ScheduleStatus.Paused(fridayDate, saturday(0, 10), postponed = false), phone.status())
+        assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Paused)
         assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
         assertEquals(saturday(7), ScheduleResolver.windowEnd(phone.schedule(), fridayDate))
+        assertTrue(phone.undo())
+        assertTrue(phone.schedule().paused.isEmpty())
     }
 
     @Test
-    fun `a running window ends early, but one whose start was missed is skipped`() {
-        // The app never started a missed window, so there is nothing to end or pause. The card offers Skip and Turn on,
-        // and a later Undo does not count the window as ended early.
+    fun `running window ends early but missed one is skipped`() {
+        // The app never started a missed window, so there is nothing to end or pause.
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 30))
         assertEquals(setOf(Action.SKIP, Action.POSTPONE), phone.status()!!.actions)
@@ -103,8 +113,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `skipping a schedule that runs once switches it off`() {
-        // Its only window is gone, so it stays off and does not wait for a date that will not come.
+    fun `skipping once schedule switches it off`() {
         val phone = Phone(night.copy(days = emptySet(), date = fridayDate), now = friday(22, 30))
         phone.skip()
         assertFalse(phone.schedule().enabled)
@@ -113,9 +122,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `a dialog left open doesn't postpone again after the notification did`() {
-        // The user opened the dialog on the card and then tapped Postpone on the notification. The choices in the
-        // dialog were for the earlier state, so they do nothing.
+    fun `stale dialog does not postpone after notification did`() {
         val phone = Phone(night, now = friday(22, 30))
         val dialog = phone.status()
         assertTrue(phone.notificationTap(Action.POSTPONE, night.id, fridayDate))
@@ -125,7 +132,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `a dialog left open doesn't skip the following window after the notification skipped`() {
+    fun `stale dialog does not skip after notification did`() {
         val phone = Phone(night, now = friday(22, 30))
         val dialog = phone.status()
         assertTrue(phone.notificationTap(Action.SKIP, night.id, fridayDate))
@@ -134,8 +141,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `a notification tap acts only on its own window and state`() {
-        // A notification for the window of yesterday, or a notification with a used Postpone, does nothing.
+    fun `notification tap acts only on own window and state`() {
         val phone = Phone(night, now = friday(22, 30))
         assertFalse(phone.notificationTap(Action.SKIP, night.id, fridayDate.minusDays(1)))
         phone.notificationTap(Action.POSTPONE, night.id, fridayDate)
@@ -144,7 +150,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `saving the sheet keeps skips and delays a notification made while it was open`() {
+    fun `sheet save keeps skips and delays from notification`() {
         val phone = Phone(night, now = friday(22, 30))
         val open = phone.schedule()
         phone.notificationTap(Action.SKIP, night.id, fridayDate)
@@ -154,7 +160,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `new times drop the delays, which were for the old ones`() {
+    fun `new times drop delays`() {
         val phone = Phone(night, now = friday(22, 30))
         phone.postpone()
         phone.save(phone.schedule().copy(end = at(8)))
@@ -164,7 +170,7 @@ class ActionsTest {
     }
 
     @Test
-    fun `a deleted schedule comes back with a new id if its own was reused, and off if it now overlaps`() {
+    fun `restored schedule gets new id or turns off on overlap`() {
         val reused = Schedule(id = night.id, start = at(12), end = at(13))
         val restored = ScheduleEdits.restore(listOf(reused), night, newId = 5, friday(12)) as ScheduleEdits.Result.Saved
         assertEquals(5L, restored.schedules.last().id)
@@ -172,5 +178,22 @@ class ActionsTest {
         val overlapping = Schedule(id = 3, start = at(22), end = at(23, 30))
         val off = ScheduleEdits.restore(listOf(night), overlapping, newId = 5, friday(12)) as ScheduleEdits.Result.Saved
         assertFalse(off.schedules.last().enabled)
+    }
+
+    @Test
+    fun `restore leaves out window under way until turned on`() {
+        // The restored phone did not start it, so its end would have no start to undo.
+        val lunch = Schedule(id = 2, start = at(12), end = at(13))
+        val restored = ScheduleEdits.restored(listOf(night, lunch), friday(23, 30))
+        val phone = Phone(*restored.toTypedArray(), now = friday(23, 30))
+        assertEquals(lunch, phone.schedule(2))
+        assertTrue((phone.status() as ScheduleStatus.Skipped).underway)
+        assertTrue(phone.undo())
+        assertTrue(phone.airplaneOn)
+        phone.passTo(saturday(7))
+        assertFalse(phone.airplaneOn)
+
+        val once = night.copy(days = emptySet(), date = fridayDate)
+        assertFalse(ScheduleEdits.restored(listOf(once), friday(23, 30)).single().enabled)
     }
 }

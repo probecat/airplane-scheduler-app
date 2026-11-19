@@ -1,6 +1,8 @@
 package io.github.probecat.airplanescheduler.ui.settings
 
 import android.content.Intent
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -48,6 +51,7 @@ import io.github.probecat.airplanescheduler.system.exactAlarmsDeniable
 import io.github.probecat.airplanescheduler.system.notificationsAllowed
 import io.github.probecat.airplanescheduler.ui.AppViewModel
 import io.github.probecat.airplanescheduler.ui.Format
+import io.github.probecat.airplanescheduler.ui.ISSUES_URL
 import io.github.probecat.airplanescheduler.ui.LinkRow
 import io.github.probecat.airplanescheduler.ui.MenuItem
 import io.github.probecat.airplanescheduler.ui.OverflowMenu
@@ -63,7 +67,7 @@ import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
-private enum class Dialog { THEME, POSTPONE, BACKEND, RESET }
+private enum class Dialog { THEME, POSTPONE, ALERTS, BACKEND, RESET, SAFE_MODE }
 
 @Composable
 fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -88,10 +92,12 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
         SchedulesSection(
             settings,
             format,
+            onAlerts = { dialog = Dialog.ALERTS },
             onPostpone = { dialog = Dialog.POSTPONE },
-            onBackend = { dialog = Dialog.BACKEND },
+            // Turning it off asks first, as it changes what schedules switch.
+            onSafeMode = { on -> if (on) update { it.copy(safeMode = true) } else dialog = Dialog.SAFE_MODE },
         )
-        PermissionsSection(access, requestAccess)
+        PermissionsSection(settings, access, requestAccess, onBackend = { dialog = Dialog.BACKEND })
         AboutSection(onDebug)
     }
 
@@ -137,27 +143,40 @@ private fun AppearanceSection(
 private fun SchedulesSection(
     settings: Settings,
     format: Format,
+    onAlerts: () -> Unit,
     onPostpone: () -> Unit,
-    onBackend: () -> Unit,
+    onSafeMode: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) = Column(modifier) {
     SectionHeader(stringResource(R.string.settings_schedules))
     SettingRow(
-        icon = R.drawable.ic_snooze,
-        title = stringResource(R.string.settings_postpone),
-        text = postponeLabel(settings.postponeMinutes, format),
-        onClick = onPostpone,
+        icon = R.drawable.ic_notifications_active,
+        title = stringResource(R.string.settings_alerts),
+        text = minutesLabel(settings.alertMinutes, format),
+        onClick = onAlerts,
     )
     SettingRow(
-        icon = R.drawable.ic_security,
-        title = stringResource(R.string.settings_backend),
-        text = stringResource(backendLabel(settings.backend)),
-        onClick = onBackend,
+        icon = R.drawable.ic_snooze,
+        title = stringResource(R.string.settings_postpone),
+        text = minutesLabel(settings.postponeMinutes, format),
+        onClick = onPostpone,
+    )
+    SwitchRow(
+        icon = R.drawable.ic_lock,
+        title = stringResource(R.string.settings_safe_mode),
+        checked = settings.safeMode,
+        onChange = onSafeMode,
     )
 }
 
 @Composable
-private fun PermissionsSection(access: Access, onRequestAccess: (Access) -> Unit, modifier: Modifier = Modifier) {
+private fun PermissionsSection(
+    settings: Settings,
+    access: Access,
+    onRequestAccess: (Access) -> Unit,
+    onBackend: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     var notifications by remember { mutableStateOf(notificationsAllowed(context)) }
     var exactAlarms by remember { mutableStateOf(exactAlarmsAllowed(context)) }
@@ -170,6 +189,13 @@ private fun PermissionsSection(access: Access, onRequestAccess: (Access) -> Unit
     val requestNotifications = rememberNotificationRequest { notifications = notificationsAllowed(context) }
     Column(modifier) {
         SectionHeader(stringResource(R.string.settings_permissions))
+        // First, as the mode decides which access the next row shows.
+        SettingRow(
+            icon = R.drawable.ic_security,
+            title = stringResource(R.string.settings_backend),
+            text = stringResource(backendLabel(settings.backend)),
+            trailing = { TextButton(onClick = onBackend) { Text(stringResource(R.string.action_change)) } },
+        )
         AccessRow(access, shizukuApp, onRequestAccess)
         SettingRow(
             icon = R.drawable.ic_notifications,
@@ -223,6 +249,13 @@ private fun SettingsDialog(
     onDismiss: () -> Unit,
 ) {
     when (dialog) {
+        Dialog.SAFE_MODE -> SafeModeOff(
+            onDisable = {
+                onUpdate { it.copy(safeMode = false) }
+                onDismiss()
+            },
+            onDismiss = onDismiss,
+        )
         Dialog.RESET -> AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.settings_reset_title)) },
@@ -237,16 +270,12 @@ private fun SettingsDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             },
         )
-        Dialog.POSTPONE -> Choices(
-            title = stringResource(R.string.settings_postpone),
-            options = POSTPONE_MINUTES.map { it to postponeLabel(it, format) },
-            selected = settings.postponeMinutes,
-            onSelect = { minutes ->
-                onUpdate { it.copy(postponeMinutes = minutes) }
-                onDismiss()
-            },
-            onDismiss = onDismiss,
-        )
+        Dialog.POSTPONE -> MinutesChoices(R.string.settings_postpone, settings.postponeMinutes, format, onDismiss) {
+            onUpdate { old -> old.copy(postponeMinutes = it) }
+        }
+        Dialog.ALERTS -> MinutesChoices(R.string.settings_alerts, settings.alertMinutes, format, onDismiss) {
+            onUpdate { old -> old.copy(alertMinutes = it) }
+        }
         Dialog.BACKEND -> Choices(
             title = stringResource(R.string.settings_backend),
             options = Backend.entries.map { it to stringResource(backendLabel(it)) },
@@ -269,6 +298,30 @@ private fun SettingsDialog(
             onDismiss = onDismiss,
         )
     }
+}
+
+@Composable
+private fun SafeModeOff(onDisable: () -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.safe_mode_off_title)) },
+        text = { Text(stringResource(R.string.safe_mode_off_text)) },
+        confirmButton = {
+            TextButton(
+                onClick = onDisable,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.action_disable)) }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, ISSUES_URL.toUri())) }) {
+                    Text(stringResource(R.string.action_report))
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            }
+        },
+    )
 }
 
 @Composable
@@ -319,11 +372,30 @@ private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> 
 private fun backendLabel(backend: Backend): Int =
     if (backend == Backend.SHIZUKU && ShizukuStatus.sui) R.string.backend_sui else backend.label
 
-private val POSTPONE_MINUTES = listOf(0, 15, 30, 45, 60)
+// Upcoming notices stop at 60, as the notification's Skip and Postpone work only in the hour before a start.
+private val MINUTES = listOf(0, 15, 30, 45, 60)
 
 @Composable
-private fun postponeLabel(minutes: Int, format: Format) =
-    if (minutes == 0) stringResource(R.string.settings_postpone_off) else format.duration(minutes)
+private fun MinutesChoices(
+    @StringRes title: Int,
+    selected: Int,
+    format: Format,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) = Choices(
+    title = stringResource(title),
+    options = MINUTES.map { it to minutesLabel(it, format) },
+    selected = selected,
+    onSelect = { minutes ->
+        onSelect(minutes)
+        onDismiss()
+    },
+    onDismiss = onDismiss,
+)
+
+@Composable
+private fun minutesLabel(minutes: Int, format: Format) =
+    if (minutes == 0) stringResource(R.string.settings_off) else format.duration(minutes)
 
 @Composable
 private fun <T> Choices(

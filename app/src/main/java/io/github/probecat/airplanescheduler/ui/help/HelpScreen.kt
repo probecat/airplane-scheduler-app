@@ -65,6 +65,7 @@ private fun schedules(format: Format) = listOf(
     topic(R.string.help_pause_q, R.string.help_pause_a),
     topic(R.string.help_change_active_q, R.string.help_change_active_a),
     topic(R.string.help_overlap_q, R.string.help_overlap_a),
+    topic(R.string.help_safe_mode_q, R.string.help_safe_mode_a),
 )
 
 @Composable
@@ -86,9 +87,8 @@ private fun troubleshooting(format: Format, kind: Access.Kind): List<Pair<String
             },
         ),
         if (batteryOptimizationDelays) topic(R.string.help_late_q, R.string.help_late_a) else null,
-        // Sui and root run from boot, so these are about Shizuku only.
+        // Sui and root run from boot, so this is about Shizuku only.
         if (kind != Access.Kind.SHIZUKU) null else stringResource(R.string.help_shizuku_stopped_q) to shizukuStopped,
-        if (kind != Access.Kind.SHIZUKU) null else topic(R.string.help_root_q, R.string.help_root_a),
     )
 }
 

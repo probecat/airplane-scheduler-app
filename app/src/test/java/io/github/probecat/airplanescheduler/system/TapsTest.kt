@@ -18,7 +18,7 @@ class TapsTest {
     private val viewModel = AppViewModel(device.app)
 
     @Test
-    fun `a saved schedule is there as soon as Save returns`() {
+    fun `saved schedule exists when Save returns`() {
         // The screen tells when the new schedule starts, and the next new schedule needs a new id.
         val schedule = viewModel.newSchedule()
         assertNull(viewModel.save(schedule))
@@ -27,8 +27,7 @@ class TapsTest {
     }
 
     @Test
-    fun `a double tap on Postpone postpones once`() {
-        // The second tap was offered for the state before the first one, so it does nothing.
+    fun `double Postpone tap postpones once`() {
         device.save(Schedule(id = 1, start = device.minute(30), end = device.minute(90)))
         val offered = ScheduleUpdater.status(device.app, device.schedules.single(), LocalDateTime.now())!!
         assertTrue(viewModel.postpone(1, offered))

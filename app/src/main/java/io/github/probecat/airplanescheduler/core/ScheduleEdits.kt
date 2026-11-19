@@ -22,7 +22,8 @@ object ScheduleEdits {
     fun save(all: List<Schedule>, edited: Schedule, now: LocalDateTime): Result {
         val old = all.find { it.id == edited.id }
         val retimed = old != null && (old.start != edited.start || old.end != edited.end)
-        val schedule = ScheduleResolver.dated(if (retimed) edited.copy(delayed = emptyMap()) else edited, now)
+        val kept = if (retimed) edited.copy(delayed = emptyMap(), paused = emptySet()) else edited
+        val schedule = ScheduleResolver.dated(kept, now)
         conflict(all, schedule, now)?.let { return Result.Overlaps(it) }
         return Result.Saved(if (old != null) all.map { if (it.id == schedule.id) schedule else it } else all + schedule)
     }
@@ -32,7 +33,14 @@ object ScheduleEdits {
     fun saveSheet(all: List<Schedule>, edited: Schedule, now: LocalDateTime): Result {
         val stored = all.find { it.id == edited.id }
         val schedule = stored?.let {
-            edited.copy(enabled = it.enabled, skipped = it.skipped, endedEarly = it.endedEarly, delayed = it.delayed)
+            edited.copy(
+                enabled = it.enabled,
+                skipped = it.skipped,
+                endedEarly = it.endedEarly,
+                endedAfter = it.endedAfter,
+                delayed = it.delayed,
+                paused = it.paused,
+            )
         } ?: edited
         return save(all, schedule, now)
     }
@@ -56,6 +64,16 @@ object ScheduleEdits {
 
     fun unskip(all: List<Schedule>, schedule: Schedule, now: LocalDateTime): Result =
         save(all, ScheduleResolver.unskip(schedule, now), now)
+
+    // After a restore, the app has started no window on this phone. A window that is under way is left out as a missed
+    // start is, so it starts only once the user turns it on, and its end then has a start to undo.
+    fun restored(all: List<Schedule>, now: LocalDateTime): List<Schedule> = all.map {
+        when {
+            !it.enabled || !ScheduleResolver.isActive(it, now) -> it
+            it.once -> it.copy(enabled = false)
+            else -> ScheduleResolver.skip(it, now)
+        }
+    }
 
     fun delete(all: List<Schedule>, id: Long): Result = Result.Saved(all.filterNot { it.id == id })
 

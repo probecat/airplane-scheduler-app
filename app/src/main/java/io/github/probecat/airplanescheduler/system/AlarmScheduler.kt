@@ -18,10 +18,11 @@ object AlarmScheduler {
     // Sets only the next alarm of each kind. Every alarm computes it again in local time, so clock and time-zone
     // changes stay correct.
     fun scheduleAll(context: Context) {
-        val schedules = App.from(context).schedules.all
+        val app = App.from(context)
+        val schedules = app.schedules.all
         val now = ZonedDateTime.now()
         set(context, CHANGE, ScheduleResolver.nextChange(schedules, now))
-        set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, ScheduleResolver.AHEAD_MINUTES))
+        set(context, NOTICE, ScheduleResolver.nextNotice(schedules, now, app.settings.current.alertMinutes.toLong()))
     }
 
     // The last alarm that this process set for each kind. Only a force stop or an update removes alarms, and both end

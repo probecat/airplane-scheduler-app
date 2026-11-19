@@ -41,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -58,6 +59,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,7 +71,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
@@ -81,7 +85,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -128,6 +134,8 @@ fun SchedulesScreen(
     onSettings: () -> Unit,
     onHelp: () -> Unit,
     modifier: Modifier = Modifier,
+    opening: Long? = null,
+    onOpen: () -> Unit = {},
 ) {
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val access by viewModel.access.collectAsStateWithLifecycle()
@@ -137,12 +145,12 @@ fun SchedulesScreen(
     val format = rememberFormat()
     val snackbar = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    var editing by rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
+    var editing by rememberEditing(opening, schedules, onOpen)
     val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
     var choosing by rememberSaveable { mutableStateOf<Long?>(null) }
     val phone = rememberPhoneState()
-    val requestNotifications = rememberNotificationRequest(fallback = false) {}
+    val requestNotifications = rememberNotificationAsk(viewModel)
     val actions = rememberScheduleActions(viewModel, format, snackbar)
 
     Scaffold(
@@ -175,7 +183,7 @@ fun SchedulesScreen(
             now = now,
             conflictOf = viewModel::conflict,
             onDismiss = { editing = null },
-            onSave = { edited -> actions.save(edited, onFirst = requestNotifications) },
+            onSave = { edited -> actions.save(edited, onAsk = requestNotifications) },
             onDelete = actions::delete,
         )
     }
@@ -191,6 +199,20 @@ fun SchedulesScreen(
             onClose = { choosing = null },
         )
     }
+}
+
+// The schedule open in the sheet. A tapped notification opens its schedule, then [onOpen] clears the request. A
+// deleted schedule opens nothing.
+@Composable
+private fun rememberEditing(opening: Long?, schedules: List<Schedule>, onOpen: () -> Unit): MutableState<Schedule?> {
+    val editing = rememberSaveable(stateSaver = ScheduleSaver) { mutableStateOf<Schedule?>(null) }
+    if (opening != null) {
+        SideEffect {
+            schedules.find { it.id == opening }?.let { editing.value = it }
+            onOpen()
+        }
+    }
+    return editing
 }
 
 @Composable
@@ -215,12 +237,12 @@ private fun SchedulesList(
         LazyColumn(
             modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
+                start = LIST_PADDING,
+                end = LIST_PADDING,
+                top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             if (strips.any) {
                 item(key = "notices") {
@@ -230,7 +252,7 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().animateContentSize().padding(bottom = 8.dp),
+                        Modifier.animateItem().bleed(LIST_PADDING).animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
@@ -355,12 +377,11 @@ private class ScheduleActions(
         if (conflict != null) showConflict() else showStart(schedule.id)
     }
 
-    // Returns true when saved. [onFirst] runs after a new schedule saves while the app still asks for notifications.
-    fun save(edited: Schedule, onFirst: () -> Unit): Boolean {
-        val isNew = viewModel.isNew(edited)
+    // Returns true when saved.
+    fun save(edited: Schedule, onAsk: () -> Unit): Boolean {
         val saved = viewModel.save(edited) == null
         if (saved) showStart(edited.id)
-        if (saved && isNew && viewModel.asksNotifications()) onFirst()
+        if (saved && viewModel.asksNotifications()) onAsk()
         return saved
     }
 
@@ -458,7 +479,7 @@ private fun NoticeStrips(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(1.dp)) {
         if (strips.alarms) {
             Strip(
                 label = stringResource(R.string.strip_alarms),
@@ -611,13 +632,14 @@ private fun Strip(
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RectangleShape,
         color = container,
         contentColor = content,
     ) {
-        val end = if (onDismiss != null) 4.dp else 12.dp
+        // The close button's touch target pads its icon by 15 dp, so both trailing icons end 16 dp in.
+        val end = if (onDismiss != null) 1.dp else 16.dp
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp, end = end),
+            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp + LIST_PADDING, end = end + LIST_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -685,7 +707,7 @@ private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, c
                 if (direction != SwipeToDismissBoxValue.Settled) {
                     val width = with(LocalDensity.current) { abs(state.requireOffset()).toDp() - 8.dp }
                     Surface(
-                        shape = RoundedCornerShape(28.dp),
+                        shape = RoundedCornerShape(CARD_CORNER),
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.fillMaxHeight().width(width.coerceAtLeast(0.dp)),
                     ) {
@@ -722,11 +744,11 @@ private fun ScheduleCard(
     val container by animateColorAsState(if (on) colors.primaryContainer else colors.surfaceContainer)
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
-    val weight by animateIntAsState(if (on) 450 else 200)
+    val weight by animateIntAsState(if (on) ON_WEIGHT else 200)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(CARD_CORNER),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -736,13 +758,7 @@ private fun ScheduleCard(
                         if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
                     ),
                 ) {
-                    // Like Clock, a name that does not fit beside the days moves to a line of its own.
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
-                        if (schedule.name.isNotBlank()) {
-                            Text(schedule.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
+                    DaysAndName(format.repeats(schedule, today), schedule.name)
                     when {
                         missed != null -> Missed(missed, shizukuInstalled)
                         endsIn != null -> EndsIn(format.duration(endsIn))
@@ -756,7 +772,8 @@ private fun ScheduleCard(
             }
             Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    format.window(schedule, Format.MARKER),
+                    // The marker keeps its weight, so only the digits look lighter while off.
+                    format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
                     style = MaterialTheme.typography.displayMedium,
                     color = time,
                     fontWeight = FontWeight((weight + 25) / 50 * 50),
@@ -777,7 +794,37 @@ private fun ScheduleCard(
     }
 }
 
-private val TIME_SIZE = 36.sp
+// A name that does not fit beside the days moves to a line of its own.
+@Composable
+private fun DaysAndName(days: String, name: String) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+        Text(days, style = MaterialTheme.typography.bodyLarge)
+        if (name.isNotBlank()) {
+            Text(
+                name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = LocalContentColor.current.copy(alpha = NAME_ALPHA),
+            )
+        }
+    }
+}
+
+private val TIME_SIZE = 46.sp
+
+private val CARD_CORNER = 24.dp
+
+private const val NAME_ALPHA = 0.84f
+
+private const val ON_WEIGHT = 500
+
+private val LIST_PADDING = 16.dp
+
+// Widens the content past the list's side padding, so it reaches the screen edges.
+private fun Modifier.bleed(horizontal: Dp) = layout { measurable, constraints ->
+    val extra = horizontal.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = 2 * extra))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra, 0) }
+}
 
 @Composable
 private fun EndsIn(duration: String) = Status(
@@ -833,7 +880,7 @@ private fun Status(
     }
 }
 
-// Like Clock's Dismiss. Shifted by its padding so the label lines up with the switch.
+// Shifted by its padding so the label lines up with the switch.
 @Composable
 private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     TextButton(
@@ -908,8 +955,11 @@ private fun PostponeDialog(
 ) {
     val next = if (schedule.once) null else ScheduleResolver.nextWindow(ScheduleResolver.skip(schedule, now), now)
     val resumes = next?.let {
-        stringResource(R.string.postpone_starts, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
-    } ?: stringResource(R.string.postpone_switches_off)
+        stringResource(
+            if (ending) R.string.postpone_starts else R.string.postpone_skip_starts,
+            format.upcomingDay(it.toLocalDate(), now.toLocalDate()),
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(format.title(schedule)) },
@@ -940,10 +990,10 @@ private fun PostponeDialog(
 }
 
 @Composable
-private fun DialogChoice(icon: Int, title: String, text: String, onClick: () -> Unit) {
+private fun DialogChoice(icon: Int, title: String, text: String?, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(text) },
+        supportingContent = text?.let { { Text(it) } },
         leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onClick),
@@ -958,4 +1008,12 @@ private fun minutesLeft(schedule: Schedule, now: LocalDateTime): Int? =
 private fun minutesUntil(now: LocalDateTime, next: (ZonedDateTime) -> ZonedDateTime?): Int? {
     val minute = now.truncatedTo(ChronoUnit.MINUTES).atZone(ZoneId.systemDefault())
     return next(minute)?.let { Duration.between(minute, it).toMinutes().toInt() }
+}
+
+// Asks on opening when restored schedules exist. The returned request asks after a save.
+@Composable
+private fun rememberNotificationAsk(viewModel: AppViewModel): () -> Unit {
+    val request = rememberNotificationRequest(fallback = false) {}
+    SideEffect { if (viewModel.asksNotifications()) request() }
+    return request
 }

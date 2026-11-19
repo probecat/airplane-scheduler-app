@@ -5,6 +5,7 @@ import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
+import io.github.probecat.airplanescheduler.data.Prefs
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -18,7 +19,7 @@ class RootSwitcher(
     @VisibleForTesting private val shell: List<String> = listOf("su", "-c"),
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) : Switcher {
-    private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    private val prefs = Prefs.device(context, listOf(GRANTED))
 
     // Root managers can show a toast each time su runs, so access is not checked on its own. It is what the last
     // su call found.

@@ -17,7 +17,8 @@ object ScheduleResolver {
     // Windows repeat weekly. A search also covers the day before, because an overnight window started then.
     private const val WEEK_DAYS = 7L
 
-    // How many minutes before a start the user can skip or postpone it, and its notification shows.
+    // How many minutes before a start the user can skip or postpone it in the app. A warning that the app could
+    // miss the start also shows this early, whatever the user set for upcoming notices.
     const val AHEAD_MINUTES = 60L
 
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
@@ -60,6 +61,13 @@ object ScheduleResolver {
     fun startOf(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(schedule.delayed[date]?.toLong() ?: 0)
 
+    private fun minutesAfterStart(schedule: Schedule, date: LocalDate, now: LocalDateTime): Int =
+        Duration.between(plannedStart(schedule, date), now).toMinutes().toInt()
+
+    // When the window that started on [date] was ended early, if known.
+    fun endedAt(schedule: Schedule, date: LocalDate): LocalDateTime? =
+        schedule.endedAfter[date]?.let { plannedStart(schedule, date).plusMinutes(it.toLong()) }
+
     fun windowEnd(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(ScheduleTime.duration(schedule.start, schedule.end).toLong())
 
@@ -79,7 +87,10 @@ object ScheduleResolver {
         return schedule.copy(
             skipped = recent(schedule.skipped, now) + date,
             delayed = recent(schedule.delayed, now),
+            paused = recent(schedule.paused, now),
             endedEarly = recent(schedule.endedEarly, now) + setOfNotNull(date.takeIf { running }),
+            endedAfter = recent(schedule.endedAfter, now) +
+                listOfNotNull(date.takeIf { running }?.let { it to minutesAfterStart(schedule, it, now) }),
         )
     }
 
@@ -88,9 +99,14 @@ object ScheduleResolver {
     fun postpone(schedule: Schedule, now: LocalDateTime, minutes: Int): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
         val start = postponedStart(schedule, date, now, minutes)
-        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now, running = isActive(schedule, now))
+        val running = isActive(schedule, now)
+        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now, running)
         val delay = Duration.between(plannedStart(schedule, date), start).toMinutes().toInt()
-        return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
+        val paused = recent(schedule.paused, now) - date
+        return schedule.copy(
+            delayed = recent(schedule.delayed, now) + (date to delay),
+            paused = if (running) paused + date else paused,
+        )
     }
 
     // Null if a postpone skips the window, or if [minutes] turns postponing off.
@@ -104,7 +120,9 @@ object ScheduleResolver {
     fun unskip(schedule: Schedule, now: LocalDateTime): Schedule = schedule.copy(
         skipped = schedule.skipped - pendingSkips(schedule, now),
         endedEarly = schedule.endedEarly - pendingSkips(schedule, now),
+        endedAfter = schedule.endedAfter - pendingSkips(schedule, now),
         delayed = schedule.delayed.filterKeys { !windowEnd(schedule, it).isAfter(now) },
+        paused = schedule.paused.filterTo(mutableSetOf()) { !windowEnd(schedule, it).isAfter(now) },
     )
 
     fun expire(schedules: List<Schedule>, now: LocalDateTime): List<Schedule> =
@@ -165,8 +183,11 @@ object ScheduleResolver {
     fun nextChange(schedules: List<Schedule>, now: ZonedDateTime): ZonedDateTime? =
         live(schedules).flatMap { listOfNotNull(nextStart(it, now), nextEnd(it, now)) }.minOrNull()
 
-    fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
-        nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes)
+    // The next time a notice can show: [alertMinutes] before a start, or [AHEAD_MINUTES] before for a warning.
+    fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, alertMinutes: Long): ZonedDateTime? =
+        setOf(AHEAD_MINUTES, alertMinutes).filter { it > 0 }
+            .mapNotNull { minutes -> nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes) }
+            .minOrNull()
 
     private fun nextAt(
         schedule: Schedule,

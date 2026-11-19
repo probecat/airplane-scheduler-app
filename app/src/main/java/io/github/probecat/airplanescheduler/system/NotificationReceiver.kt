@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 // updates the notification.
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val app = App.from(context)
+        val app = appOrRetry(context, intent) ?: return
         val id = intent.getLongExtra(Notifier.ID, 0)
         if (intent.action == Notifier.DISMISSED) {
             intent.getStringExtra(Notifier.KEY)?.let { Notifier.dismissed(app, id, it) }
@@ -44,11 +44,9 @@ class NotificationReceiver : BroadcastReceiver() {
         val status = ScheduleUpdater.status(app, schedule, now)
         val all = app.schedules.all
         return when (intent.action) {
-            // After Skip or End, the only action left is Undo, and only the app has Undo.
             Notifier.SKIP, Notifier.END -> if (status?.allows(Action.SKIP, date) == true) {
                 val missed = (status as? ScheduleStatus.Running)?.missed == true
                 ScheduleUpdater.commit(app, ScheduleEdits.skip(all, schedule, now, missed))
-                Notifier.dismiss(app, id)
                 true
             } else {
                 false

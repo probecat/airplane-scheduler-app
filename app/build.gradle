@@ -17,8 +17,8 @@ android {
         applicationId 'io.github.probecat.airplanescheduler'
         minSdk 28
         targetSdk 37
-        versionCode 12
-        versionName '3.0.1'
+        versionCode 13
+        versionName '4.0'
         manifestPlaceholders = [appLabel: 'Airplane Scheduler']
     }
 
@@ -54,8 +54,8 @@ android {
     }
 
     packaging {
-        // APK is downloaded from F-Droid or GitHub. This halves the size of it.
         dex {
+            // APK is downloaded from F-Droid or GitHub. This halves the size of it.
             useLegacyPackaging = true
         }
         resources {
@@ -76,6 +76,7 @@ android {
 
     testOptions {
         unitTests.includeAndroidResources = true
+        // Robolectric needs JDK internals.
         unitTests.all { jvmArgs '--add-exports=java.base/jdk.internal.access=ALL-UNNAMED' }
     }
 
@@ -101,6 +102,15 @@ detekt {
     buildUponDefaultConfig = true
     config.setFrom(rootProject.file('config/detekt.yml'))
     parallel = true
+}
+
+// detekt skips Java sources, so it cannot resolve the generated BuildConfig and AIDL classes. Their compiled classes
+// are added here. Adding anything drops the plugin's default classpath, so the Kotlin compile libraries are added back.
+tasks.matching { it.name == 'detektDebug' }.configureEach {
+    classpath.from(
+        tasks.named('compileDebugKotlin').map { it.libraries },
+        tasks.named('compileDebugJavaWithJavac').map { it.destinationDirectory },
+    )
 }
 
 dependencies {

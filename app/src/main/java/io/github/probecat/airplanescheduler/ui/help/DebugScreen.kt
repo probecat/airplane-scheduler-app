@@ -64,7 +64,7 @@ fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit, modifier: Modifier 
     val sections = listOf(
         appSection(context, zoned),
         accessSection(context, settings, access, airplane, switching > 0),
-        alarmsSection(context, schedules, zoned),
+        alarmsSection(context, schedules, settings, zoned),
         windowSection(app, schedules, now),
         settingsSection(settings),
     ) + schedules.map { scheduleSection(it, zoned) } +
@@ -168,9 +168,14 @@ private fun accessSection(context: Context, settings: Settings, access: Access, 
         ),
     )
 
-private fun alarmsSection(context: Context, schedules: List<Schedule>, zoned: ZonedDateTime): Section {
+private fun alarmsSection(
+    context: Context,
+    schedules: List<Schedule>,
+    settings: Settings,
+    zoned: ZonedDateTime,
+): Section {
     val change = ScheduleResolver.nextChange(schedules, zoned)
-    val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
+    val notice = ScheduleResolver.nextNotice(schedules, zoned, settings.alertMinutes.toLong())
     val blocked = NotificationManagerCompat.from(context).notificationChannelsCompat
         .filter { it.importance == NotificationManagerCompat.IMPORTANCE_NONE }
         .joinToString(" | ") { it.name.toString() }
@@ -202,6 +207,11 @@ private fun windowSection(app: App, schedules: List<Schedule>, now: LocalDateTim
             started?.let { "Meant to change" to Events.changes(it.wanted) },
             started?.let { "Already set" to Events.changes(it.already) },
             app.engine.state.wifiKeptUntil?.let { "Wi-Fi kept on until" to moment.format(it) },
+            app.engine.state.owed?.let { owed ->
+                "Owed" to (owed.ended?.let { "END of ${moment.format(it.window)}" } ?: "START") +
+                    ", seen airplane ${Events.onOff(owed.seen.airplaneOn)} | Wi-Fi ${Events.onOff(owed.seen.wifiOn)}" +
+                    ", touched ${Events.changes(owed.touched)}"
+            },
         ),
     )
 }
@@ -211,9 +221,17 @@ private fun settingsSection(settings: Settings) = Section(
     listOf(
         "Theme" to settings.theme.name,
         "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
-        "Postpone" to (settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"),
+        "Postpone" to minutes(settings.postponeMinutes),
+        "Upcoming notices" to minutes(settings.alertMinutes),
+        "Safe mode" to Events.onOff(settings.safeMode),
     ),
 )
+
+private fun delays(schedule: Schedule) = schedule.delayed.toSortedMap().entries.joinToString(" ") { (date, minutes) ->
+    "$date+${minutes}min" + if (date in schedule.paused) " paused" else ""
+}
+
+private fun minutes(minutes: Int) = minutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"
 
 private fun scheduleSection(schedule: Schedule, zoned: ZonedDateTime): Section {
     val name = if (schedule.name.isBlank()) "" else " “${schedule.name}”"
@@ -234,7 +252,7 @@ private fun scheduleRows(schedule: Schedule, now: ZonedDateTime): List<Pair<Stri
     add("Wi-Fi at end" to if (schedule.disableWifi && schedule.enableWifi) "ON" else "UNCHANGED")
     if (!schedule.enabled) return@buildList
     if (schedule.delayed.isNotEmpty()) {
-        add("Delayed" to schedule.delayed.toSortedMap().entries.joinToString(" ") { "${it.key}+${it.value}min" })
+        add("Delayed" to delays(schedule))
     }
     val skipped = schedule.skipped - schedule.endedEarly
     if (skipped.isNotEmpty()) add("Skipped" to dates(skipped))
