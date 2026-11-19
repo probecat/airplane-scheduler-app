@@ -1,6 +1,8 @@
 package io.github.probecat.airplanescheduler.system
 
+import android.app.Notification
 import android.content.Intent
+import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.Boundary.Started
 import io.github.probecat.airplanescheduler.core.ConnectivityPlan.Changes
 import io.github.probecat.airplanescheduler.core.Engine
@@ -73,17 +75,20 @@ class NotificationsTest {
         assertNull(device.app.engine.state.started)
     }
 
-    @Test
-    fun `end while phone off catches up with Safe mode off`() {
+    // As if the phone was off since the start of a window that the app started, and Shizuku did not run at boot.
+    private fun endMissedWithSafeModeOff() {
         device.app.settings.update { it.copy(safeMode = false) }
-        val ended = Schedule(id = 1, start = device.minute(-90), end = device.minute(-30), disableWifi = false)
-        device.save(ended)
-        // As if the phone was off since the start of this window, which the app started.
+        device.save(Schedule(id = 1, start = device.minute(-90), end = device.minute(-30), disableWifi = false))
         val start = LocalDateTime.now().minusMinutes(90).truncatedTo(ChronoUnit.MINUTES)
         device.airplaneOn = true
         device.app.engine.state = Engine.State(Started(start, Changes(airplane = true, wifi = false)))
         device.shizuku.works = false
         device.alarm(Intent.ACTION_BOOT_COMPLETED)
+    }
+
+    @Test
+    fun `end while phone off catches up with Safe mode off`() {
+        endMissedWithSafeModeOff()
         assertTrue(device.airplaneOn)
         assertNotNull(device.problem(1))
 
@@ -93,4 +98,19 @@ class NotificationsTest {
         assertFalse(device.airplaneOn)
         assertNull(device.problem(1))
     }
+
+    @Test
+    fun `problem stops promising catch-up when Safe mode turns on`() {
+        endMissedWithSafeModeOff()
+        val catchesUp = device.app.getString(R.string.notification_catches_up)
+        assertTrue(text(device.problem(1)).contains(catchesUp))
+
+        device.app.settings.update { it.copy(safeMode = true) }
+        AirplaneController.safeModeChanged(device.app, true)
+        assertFalse(text(device.problem(1)).contains(catchesUp))
+        assertEquals(listOf(Notifier.RETRY), device.buttons(device.problem(1)))
+    }
+
+    private fun text(notification: Notification?) =
+        notification?.extras?.getCharSequence(Notification.EXTRA_TEXT).toString()
 }

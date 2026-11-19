@@ -48,6 +48,7 @@ object Notifier {
     const val CHANGES = "changes"
     const val TITLE = "title"
     const val KEY = "key"
+    private const val PLAIN = "plain"
 
     private const val SCHEDULES = "schedules_v2"
     private const val PROBLEMS = "problems"
@@ -56,6 +57,7 @@ object Notifier {
     private const val KIND = "kind"
     private const val CHANNEL = "channel"
     private const val CLEAN_END_SHOWS_MINUTES = 60L
+    private const val LATEST_MILLIS = 5_000L
 
     private enum class Kind { NOTICE, REPORT, PROBLEM }
 
@@ -66,8 +68,14 @@ object Notifier {
 
     private val latest = ConcurrentHashMap<Long, Latest>()
 
+    // The same for problems, which use their own tag.
+    private val latestProblems = ConcurrentHashMap<Long, Latest>()
+
     @VisibleForTesting
-    internal fun forgetPosts() = latest.clear()
+    internal fun forgetPosts() {
+        latest.clear()
+        latestProblems.clear()
+    }
 
     // Who a report is about. The schedule can be deleted before the user taps Retry.
     data class Report(val id: Long, val title: String)
@@ -85,6 +93,8 @@ object Notifier {
         val until: LocalDateTime? = null,
         val minutes: Int = 0,
         val changes: Changes = Changes.NONE,
+        // The text without the catch-up promise, which the app drops once it owes nothing.
+        val plain: String? = null,
     ) {
         fun title(context: Context): String =
             if (kind == Kind.NOTICE) subject else context.getString(R.string.notification_ended, subject)
@@ -124,9 +134,7 @@ object Notifier {
         val now = LocalDateTime.now()
         val wanted = wanted(app, now)
         val active = manager.activeNotifications
-        val posted = active.filter { it.tag == TAG }
-            .associate { it.id.toLong() to it.notification.extras } +
-            latest.filterValues { SystemClock.elapsedRealtime() - it.at < 5_000 }.mapValues { it.value.extras }
+        val posted = posted(active, TAG, latest)
         val dismissed = keepDismissed(app, wanted)
         for ((id, content) in wanted) {
             val key = content.toString()
@@ -142,6 +150,22 @@ object Notifier {
             }
         }
         cancelSettled(app, manager, active)
+        dropCatchUp(app, active, now)
+    }
+
+    private fun posted(active: List<StatusBarNotification>, tag: String, latest: Map<Long, Latest>) =
+        active.filter { it.tag == tag }.associate { it.id.toLong() to it.notification.extras } +
+            latest.filterValues { SystemClock.elapsedRealtime() - it.at < LATEST_MILLIS }.mapValues { it.value.extras }
+
+    // A problem stops promising a catch-up once the app owes nothing, for example after Safe mode was turned on or a
+    // new window replaced what the app owed.
+    private fun dropCatchUp(app: App, active: List<StatusBarNotification>, now: LocalDateTime) {
+        if (owes(app)) return
+        for ((id, extras) in posted(active, PROBLEM_TAG, latestProblems)) {
+            val plain = extras.getString(PLAIN) ?: continue
+            val changes = Changes.of(extras.getInt(CHANGES))
+            post(app, id, problem(app, extras.getString(TITLE).orEmpty(), plain, changes), now)
+        }
     }
 
     // A dismissal holds only while the notice it took down is still what the schedule would show.
@@ -163,7 +187,10 @@ object Notifier {
             val left = Changes.of(problem.notification.extras.getInt(CHANGES))
             val airplaneSettled = !left.airplane || !airplane
             val wifiSettled = !left.wifi || wifi
-            if (airplaneSettled && wifiSettled) manager.cancel(PROBLEM_TAG, problem.id)
+            if (airplaneSettled && wifiSettled) {
+                manager.cancel(PROBLEM_TAG, problem.id)
+                latestProblems[problem.id.toLong()] = Latest(Bundle())
+            }
         }
     }
 
@@ -201,7 +228,10 @@ object Notifier {
         val app = App.from(context)
         if (!canPost(app)) return
         val content = if (ending.failed.isEmpty) endReport(app, report, ending) else endProblem(app, report, ending)
-        if (content.kind != Kind.PROBLEM) NotificationManagerCompat.from(app).cancel(PROBLEM_TAG, report.id.toInt())
+        if (content.kind != Kind.PROBLEM) {
+            NotificationManagerCompat.from(app).cancel(PROBLEM_TAG, report.id.toInt())
+            latestProblems[report.id] = Latest(Bundle())
+        }
         if (shows(app, content.channel)) post(app, report.id, content, LocalDateTime.now())
     }
 
@@ -216,13 +246,19 @@ object Notifier {
                     else -> R.string.notification_failed_wifi
                 },
             )
+        return problem(app, report.title, text, failed)
+    }
+
+    private fun problem(app: App, subject: String, text: String, failed: Changes): Content {
+        val shown = catchesUp(app, text)
         return Content(
             Kind.PROBLEM,
             PROBLEMS,
-            report.title,
-            catchesUp(app, text),
+            subject,
+            shown,
             actions = listOf(Action(RETRY, app.getString(R.string.notification_retry))),
             changes = failed,
+            plain = text.takeIf { shown != text },
         )
     }
 
@@ -357,10 +393,10 @@ object Notifier {
     }
 
     // With Safe mode off, the app switches what it owes once it can.
-    private fun catchesUp(app: App, text: String): String {
-        val owed = !app.settings.current.safeMode && app.engine.state.owed != null
-        return sentences(app, text, app.getString(R.string.notification_catches_up).takeIf { owed })
-    }
+    private fun catchesUp(app: App, text: String): String =
+        sentences(app, text, app.getString(R.string.notification_catches_up).takeIf { owes(app) })
+
+    private fun owes(app: App) = !app.settings.current.safeMode && app.engine.state.owed != null
 
     private fun sentences(context: Context, first: String, second: String?): String =
         second?.let { context.getString(R.string.sentences, first, it) } ?: first
@@ -403,6 +439,8 @@ object Notifier {
             putString(KIND, content.kind.name)
             putString(CHANNEL, content.channel)
             putInt(CHANGES, content.changes.bits)
+            putString(TITLE, content.subject)
+            content.plain?.let { putString(PLAIN, it) }
         }
         val open = Intent(app, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         val builder = NotificationCompat.Builder(app, content.channel)
@@ -429,7 +467,7 @@ object Notifier {
             builder.addAction(0, action.label, broadcast(app, action.action, id, content) {})
         }
         NotificationManagerCompat.from(app).notify(tag, id.toInt(), builder.build())
-        if (tag == TAG) latest[id] = Latest(extras)
+        (if (tag == TAG) latest else latestProblems)[id] = Latest(extras)
     }
 
     private fun broadcast(app: App, action: String, id: Long, content: Content, extras: Intent.() -> Unit) =
