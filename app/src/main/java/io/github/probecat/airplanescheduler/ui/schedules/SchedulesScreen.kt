@@ -796,7 +796,7 @@ private fun ScheduleCard(
 // A name that does not fit beside the days moves to a line of its own.
 @Composable
 private fun DaysAndName(days: String, name: String) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
         Text(days, style = MaterialTheme.typography.bodyLarge)
         if (name.isNotBlank()) {
             Text(
