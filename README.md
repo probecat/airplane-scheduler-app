@@ -45,6 +45,10 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 
 The toolchain is managed with [mise](https://mise.jdx.dev/). Check [mise.toml](mise.toml) for setup and build commands.
 
+## Credits
+
+The app UI is directly inspired by the design of Google's Clock app.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE).
