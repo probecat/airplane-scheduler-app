@@ -17,7 +17,7 @@ fun appOrRetry(context: Context, intent: Intent, again: Boolean = true): App? {
     val pending = PendingIntent.getBroadcast(
         context,
         RETRY_REQUEST,
-        Intent(intent),
+        Intent(intent).setPackage(context.packageName),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
     val alarms = context.getSystemService(AlarmManager::class.java)
