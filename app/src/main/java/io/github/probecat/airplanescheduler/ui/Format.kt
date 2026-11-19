@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
@@ -77,10 +76,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun window(schedule: Schedule, markerSize: TextUnit): AnnotatedString = buildAnnotatedString {
         append(time(schedule.start, markerSize))
-        append(" ")
-        // Raised to sit level with the middle of the digits.
-        withStyle(SpanStyle(fontSize = SMALL, baselineShift = BaselineShift(0.2f))) { append("–") }
-        append(" ")
+        append("   ")
         append(time(schedule.end, markerSize))
     }
 
@@ -180,7 +176,6 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
     }
 
     companion object {
-        val SMALL = 0.5.em
         val MARKER = 0.35.em
 
         // Keeps "11:00 PM" on one line.
