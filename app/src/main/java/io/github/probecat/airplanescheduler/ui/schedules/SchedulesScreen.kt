@@ -744,7 +744,7 @@ private fun ScheduleCard(
     val container by animateColorAsState(if (on) colors.primaryContainer else colors.surfaceContainer)
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
-    val weight by animateIntAsState(if (on) 500 else 200)
+    val weight by animateIntAsState(if (on) ON_WEIGHT else 200)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -772,7 +772,8 @@ private fun ScheduleCard(
             }
             Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    format.window(schedule, Format.MARKER),
+                    // The marker keeps its weight, so only the digits look lighter while off.
+                    format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
                     style = MaterialTheme.typography.displayMedium,
                     color = time,
                     fontWeight = FontWeight((weight + 25) / 50 * 50),
@@ -813,6 +814,8 @@ private val TIME_SIZE = 46.sp
 private val CARD_CORNER = 24.dp
 
 private const val NAME_ALPHA = 0.84f
+
+private const val ON_WEIGHT = 500
 
 private val LIST_PADDING = 16.dp
 

@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
@@ -58,14 +59,16 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun time(time: LocalDateTime): String = time(ScheduleTime.minuteOf(time))
 
-    fun time(minute: Int, markerSize: TextUnit): AnnotatedString {
+    fun time(minute: Int, markerSize: TextUnit, markerWeight: FontWeight? = null): AnnotatedString {
         val time = LocalTime.of(minute / 60, minute % 60)
         return buildAnnotatedString {
             append(clock.format(time))
             if (!is24Hour) {
                 // A narrow space keeps the marker close to the digits when it is smaller than them.
                 val space = if (markerSize.isSpecified) NARROW_NBSP else NBSP
-                withStyle(SpanStyle(fontSize = markerSize)) { append("$space${marker.format(time)}") }
+                withStyle(SpanStyle(fontSize = markerSize, fontWeight = markerWeight)) {
+                    append("$space${marker.format(time)}")
+                }
             }
         }
     }
@@ -74,11 +77,12 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     fun window(schedule: Schedule): String = "${time(schedule.start)} – ${time(schedule.end)}"
 
-    fun window(schedule: Schedule, markerSize: TextUnit): AnnotatedString = buildAnnotatedString {
-        append(time(schedule.start, markerSize))
-        append("   ")
-        append(time(schedule.end, markerSize))
-    }
+    fun window(schedule: Schedule, markerSize: TextUnit, markerWeight: FontWeight? = null): AnnotatedString =
+        buildAnnotatedString {
+            append(time(schedule.start, markerSize, markerWeight))
+            append("   ")
+            append(time(schedule.end, markerSize, markerWeight))
+        }
 
     // A single run of three or more days as a range, otherwise each day.
     fun days(days: Set<DayOfWeek>): String {
