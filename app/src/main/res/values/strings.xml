@@ -106,7 +106,7 @@
     <string name="card_missed_permission">Missed (no Shizuku access)</string>
     <string name="card_missed_permission_sui">Missed (no Sui access)</string>
     <string name="card_missed_permission_root">Missed (no root access)</string>
-    <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
+    <string name="card_missed_description">Active now. %1$s</string>
     <string name="postpone_resumes_at">Resumes at %1$s</string>
     <string name="postpone_starts">Starts again %1$s</string>
     <string name="postpone_skip_starts">Starts %1$s</string>
@@ -193,7 +193,7 @@
     <string name="help_change_active_q">Do changes take effect immediately?</string>
     <string name="help_change_active_a">Yes. Turning off or deleting an active schedule ends it just like a normal schedule ending. Enabling or adding a schedule that covers the current time starts it immediately. Changing a schedule\'s time also starts or ends it as needed to match the updated schedule.</string>
     <string name="help_safe_mode_q">What is Safe mode?</string>
-    <string name="help_safe_mode_a">Safe mode is on by default. The app only reverts changes it made, and missed schedule changes are not retried. With Safe mode off, app always matches the schedules end state: airplane mode off and Wi-Fi on at the end, for example. Missed starts and ends are caught up once possible.</string>
+    <string name="help_safe_mode_a">Safe mode is on by default. The app only reverts changes it made, and missed schedule changes are not retried. With Safe mode off, the app always matches the schedule\'s end state: airplane mode off and Wi-Fi on at the end, for example. Missed starts and ends are caught up once possible.</string>
     <string name="help_overlap_q">Can schedules overlap?</string>
     <string name="help_overlap_a">No. Only one schedule can control airplane mode at a time. Back-to-back schedules are treated as one continuous schedule, so airplane mode stays on between them. Wi-Fi follows the start option of the first schedule and the end option of the last one.</string>
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
@@ -228,11 +228,11 @@
     <string name="notification_ended">%1$s ended</string>
     <!-- Stands in for a schedule that was deleted. -->
     <string name="notification_unknown_schedule">A schedule</string>
-    <string name="notification_ends_at">Schedule ends at %1$s</string>
-    <string name="notification_starts_at">Schedule starts at %1$s</string>
-    <string name="notification_resumes_at">Schedule resumes at %1$s</string>
-    <!-- %2$s is a reason below, as in "Schedule at 11:00 PM could miss the start because Shizuku isn’t running." -->
-    <string name="notification_could_miss">Schedule at %1$s could miss the start because %2$s.</string>
+    <string name="notification_ends_at">Ends at %1$s</string>
+    <string name="notification_starts_at">Starts at %1$s</string>
+    <string name="notification_resumes_at">Resumes at %1$s</string>
+    <!-- %2$s is a reason below, as in "Could miss the 11:00 PM start because Shizuku isn’t running." -->
+    <string name="notification_could_miss">Could miss the %1$s start because %2$s.</string>
     <string name="notification_missed_start_because">Schedule missed the start because %1$s.</string>
     <string name="notification_no_action_because">No action taken because %1$s.</string>
     <string name="notification_retry">Retry</string>
@@ -242,12 +242,12 @@
     <string name="notification_failed_airplane">Failed to turn off airplane mode.</string>
     <string name="notification_failed_wifi">Failed to turn on Wi-Fi.</string>
     <string name="notification_missed_start">Schedule missed the start.</string>
-    <string name="notification_missed_start_no_action">Schedule missed the start. No action taken.</string>
+    <string name="notification_missed_start_no_action">Schedule missed the start. Airplane mode is off.</string>
     <string name="notification_airplane_was_on">Airplane mode was on before the schedule.</string>
     <string name="notification_airplane_turned_off">Airplane mode was turned off during the schedule.</string>
     <string name="notification_airplane_stays_on">Airplane mode was turned on during the schedule.</string>
     <string name="notification_airplane_off">Airplane mode turned off.</string>
-    <string name="notification_both_were_set">Airplane mode and Wi-Fi were set before the schedule. No action taken.</string>
+    <string name="notification_both_were_set">Airplane mode and Wi-Fi were manually set before the schedule. No action taken.</string>
     <string name="notification_wifi_was_off">Wi-Fi was off before the schedule.</string>
     <string name="notification_wifi_back_on">Wi-Fi turned on.</string>
     <string name="notification_missed_end">Schedule missed the end. No action taken.</string>
