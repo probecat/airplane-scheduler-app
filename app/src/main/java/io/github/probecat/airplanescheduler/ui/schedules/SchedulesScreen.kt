@@ -41,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -757,13 +758,7 @@ private fun ScheduleCard(
                         if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
                     ),
                 ) {
-                    // A name that does not fit beside the days moves to a line of its own.
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
-                        if (schedule.name.isNotBlank()) {
-                            Text(schedule.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
+                    DaysAndName(format.repeats(schedule, today), schedule.name)
                     when {
                         missed != null -> Missed(missed, shizukuInstalled)
                         endsIn != null -> EndsIn(format.duration(endsIn))
@@ -798,9 +793,26 @@ private fun ScheduleCard(
     }
 }
 
+// A name that does not fit beside the days moves to a line of its own.
+@Composable
+private fun DaysAndName(days: String, name: String) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(days, style = MaterialTheme.typography.bodyLarge)
+        if (name.isNotBlank()) {
+            Text(
+                name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = LocalContentColor.current.copy(alpha = NAME_ALPHA),
+            )
+        }
+    }
+}
+
 private val TIME_SIZE = 46.sp
 
 private val CARD_CORNER = 24.dp
+
+private const val NAME_ALPHA = 0.84f
 
 private val LIST_PADDING = 16.dp
 
