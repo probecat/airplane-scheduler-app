@@ -70,7 +70,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
@@ -82,7 +84,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -232,8 +236,8 @@ private fun SchedulesList(
         LazyColumn(
             modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
+                start = LIST_PADDING,
+                end = LIST_PADDING,
                 top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
@@ -247,7 +251,7 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().animateContentSize().padding(bottom = 18.dp),
+                        Modifier.animateItem().bleed(LIST_PADDING).animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
@@ -474,7 +478,7 @@ private fun NoticeStrips(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(1.dp)) {
         if (strips.alarms) {
             Strip(
                 label = stringResource(R.string.strip_alarms),
@@ -627,13 +631,13 @@ private fun Strip(
         onClick = onClick ?: {},
         enabled = onClick != null,
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RectangleShape,
         color = container,
         contentColor = content,
     ) {
         val end = if (onDismiss != null) 4.dp else 12.dp
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp, end = end),
+            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp + LIST_PADDING, end = end + LIST_PADDING),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -796,6 +800,15 @@ private fun ScheduleCard(
 private val TIME_SIZE = 46.sp
 
 private val CARD_CORNER = 24.dp
+
+private val LIST_PADDING = 16.dp
+
+// Widens the content past the list's side padding, so it reaches the screen edges.
+private fun Modifier.bleed(horizontal: Dp) = layout { measurable, constraints ->
+    val extra = horizontal.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = 2 * extra))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra, 0) }
+}
 
 @Composable
 private fun EndsIn(duration: String) = Status(
