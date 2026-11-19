@@ -39,8 +39,8 @@
     <string name="starts_at">Starts at %1$s</string>
     <string name="schedules_overlap">Overlapping schedule can\'t be turned on</string>
     <string name="schedules_overlaps_other">Overlaps another schedule</string>
-    <!-- In the schedule sheet, as in "Can’t overlap “Sleep”". -->
-    <string name="sheet_overlaps">Can\'t overlap %1$s</string>
+    <!-- In the schedule sheet, as in "Cannot overlap another schedule: “Sleep”". -->
+    <string name="sheet_overlaps">Cannot overlap another schedule: %1$s</string>
     <!-- Joins two whole sentences. -->
     <string name="sentences">%1$s %2$s</string>
 
