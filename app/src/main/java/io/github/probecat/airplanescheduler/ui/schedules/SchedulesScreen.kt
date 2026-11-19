@@ -752,7 +752,7 @@ private fun ScheduleCard(
                         if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
                     ),
                 ) {
-                    // Like Clock, a name that does not fit beside the days moves to a line of its own.
+                    // A name that does not fit beside the days moves to a line of its own.
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(format.repeats(schedule, today), style = MaterialTheme.typography.bodyLarge)
                         if (schedule.name.isNotBlank()) {
@@ -851,7 +851,7 @@ private fun Status(
     }
 }
 
-// Like Clock's Dismiss. Shifted by its padding so the label lines up with the switch.
+// Shifted by its padding so the label lines up with the switch.
 @Composable
 private fun ActionButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     TextButton(
