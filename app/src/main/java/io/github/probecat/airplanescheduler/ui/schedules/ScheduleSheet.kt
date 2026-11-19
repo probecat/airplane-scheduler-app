@@ -76,6 +76,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -362,15 +363,15 @@ private fun TimeButton(
             Text(
                 format.time(minute, Format.MARKER),
                 style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(
-                    minFontSize = 16.sp,
-                    maxFontSize = MaterialTheme.typography.displaySmall.fontSize,
-                ),
+                autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = TIME_SIZE),
             )
         }
     }
 }
+
+private val TIME_SIZE = 42.sp
 
 @Composable
 private fun DayChips(

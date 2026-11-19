@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.isSpecified
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
@@ -63,7 +64,9 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         return buildAnnotatedString {
             append(clock.format(time))
             if (!is24Hour) {
-                withStyle(SpanStyle(fontSize = markerSize)) { append("$NBSP${marker.format(time)}") }
+                // A narrow space keeps the marker close to the digits when it is smaller than them.
+                val space = if (markerSize.isSpecified) NARROW_NBSP else NBSP
+                withStyle(SpanStyle(fontSize = markerSize)) { append("$space${marker.format(time)}") }
             }
         }
     }
@@ -182,6 +185,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
         // Keeps "11:00 PM" on one line.
         private const val NBSP = '\u00A0'
+        private const val NARROW_NBSP = '\u202F'
     }
 }
 

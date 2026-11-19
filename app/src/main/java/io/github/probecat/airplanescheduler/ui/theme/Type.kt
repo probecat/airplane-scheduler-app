@@ -8,21 +8,23 @@ import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import io.github.probecat.airplanescheduler.R
 
-// Cut down to Latin; width, roundness, slant and optical size fixed at defaults (opsz 18).
-private val GoogleSansFlex = FontFamily(
+// Cut down to Latin, with width and slant fixed. Optical size ranges 11 to 46, and roundness 0 to 100.
+private fun googleSansFlex(vararg settings: FontVariation.Setting) = FontFamily(
     (100..700 step 50).map { weight ->
         Font(
             R.font.google_sans_flex,
             FontWeight(weight),
-            variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+            variationSettings = FontVariation.Settings(FontVariation.weight(weight), *settings),
         )
     },
 )
 
-private fun TextStyle.sansFlex() = copy(fontFamily = GoogleSansFlex)
+private fun TextStyle.sansFlex() = copy(fontFamily = googleSansFlex(FontVariation.opticalSizing(fontSize)))
 
-// Display styles only show times, so their digits keep one width and times line up across cards.
-private fun TextStyle.time() = sansFlex().copy(fontFeatureSettings = "tnum")
+// Display styles only show times.
+private fun TextStyle.time() = copy(
+    fontFamily = googleSansFlex(FontVariation.opticalSizing(fontSize), FontVariation.Setting("ROND", 100f)),
+)
 
 internal val AppTypography = Typography().run {
     copy(

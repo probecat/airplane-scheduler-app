@@ -738,7 +738,7 @@ private fun ScheduleCard(
     val container by animateColorAsState(if (on) colors.primaryContainer else colors.surfaceContainer)
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
-    val weight by animateIntAsState(if (on) 450 else 200)
+    val weight by animateIntAsState(if (on) 500 else 200)
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -793,7 +793,7 @@ private fun ScheduleCard(
     }
 }
 
-private val TIME_SIZE = 36.sp
+private val TIME_SIZE = 46.sp
 
 @Composable
 private fun EndsIn(duration: String) = Status(
