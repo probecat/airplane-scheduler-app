@@ -109,7 +109,7 @@
     <string name="card_missed_description">Active now, but airplane mode is off. %1$s</string>
     <string name="postpone_resumes_at">Resumes at %1$s</string>
     <string name="postpone_starts">Starts again %1$s</string>
-    <string name="postpone_switches_off">Schedule turns off</string>
+    <string name="postpone_skip_starts">Starts %1$s</string>
 
     <string name="sheet_starts">Starts</string>
     <string name="sheet_ends">Ends</string>

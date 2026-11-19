@@ -926,8 +926,11 @@ private fun PostponeDialog(
 ) {
     val next = if (schedule.once) null else ScheduleResolver.nextWindow(ScheduleResolver.skip(schedule, now), now)
     val resumes = next?.let {
-        stringResource(R.string.postpone_starts, format.upcomingDay(it.toLocalDate(), now.toLocalDate()))
-    } ?: stringResource(R.string.postpone_switches_off)
+        stringResource(
+            if (ending) R.string.postpone_starts else R.string.postpone_skip_starts,
+            format.upcomingDay(it.toLocalDate(), now.toLocalDate()),
+        )
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(format.title(schedule)) },
@@ -958,10 +961,10 @@ private fun PostponeDialog(
 }
 
 @Composable
-private fun DialogChoice(icon: Int, title: String, text: String, onClick: () -> Unit) {
+private fun DialogChoice(icon: Int, title: String, text: String?, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = { Text(text) },
+        supportingContent = text?.let { { Text(it) } },
         leadingContent = { Icon(painterResource(icon), contentDescription = null) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onClick),
