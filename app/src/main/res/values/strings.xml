@@ -58,6 +58,9 @@
     <string name="skipped">Skipped</string>
     <string name="skipped_resumes">Skipped until %1$s</string>
     <string name="ended_early">Ended early</string>
+    <string name="ended_early_now">Ended early just now</string>
+    <!-- %1$s is a length, as in "Ended early 5 min ago". -->
+    <string name="ended_early_ago">Ended early %1$s ago</string>
     <string name="postponed_to">Postponed until %1$s</string>
     <!-- No-break spaces keep a number and its unit together. -->
     <plurals name="duration_days">

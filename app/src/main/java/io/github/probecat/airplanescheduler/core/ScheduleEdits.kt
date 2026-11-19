@@ -37,6 +37,7 @@ object ScheduleEdits {
                 enabled = it.enabled,
                 skipped = it.skipped,
                 endedEarly = it.endedEarly,
+                endedAfter = it.endedAfter,
                 delayed = it.delayed,
                 paused = it.paused,
             )

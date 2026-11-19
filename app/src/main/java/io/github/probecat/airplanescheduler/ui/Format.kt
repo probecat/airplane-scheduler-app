@@ -22,12 +22,14 @@ import io.github.probecat.airplanescheduler.core.ScheduleResolver
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -112,9 +114,9 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
     }
 
     // "Skipped until tomorrow" for the window that started on [date]. A window later today gives its time instead.
-    // A window ended early gives no next start.
+    // A window ended early gives how long ago instead of the next start.
     fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
-        if (date in schedule.endedEarly) return strings.get(R.string.ended_early)
+        if (date in schedule.endedEarly) return endedEarly(schedule, date, now)
         val next = ScheduleResolver.nextWindow(schedule, now) ?: return strings.get(R.string.skipped)
         val day = if (next.toLocalDate() == now.toLocalDate()) {
             time(next)
@@ -122,6 +124,16 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
             upcomingDay(next.toLocalDate(), now.toLocalDate())
         }
         return strings.get(R.string.skipped_resumes, day)
+    }
+
+    private fun endedEarly(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
+        val at = ScheduleResolver.endedAt(schedule, date) ?: return strings.get(R.string.ended_early)
+        val ago = Duration.between(at.truncatedTo(ChronoUnit.MINUTES), now.truncatedTo(ChronoUnit.MINUTES)).toMinutes()
+        return when {
+            ago < 0 -> strings.get(R.string.ended_early)
+            ago == 0L -> strings.get(R.string.ended_early_now)
+            else -> strings.get(R.string.ended_early_ago, duration(ago.toInt()))
+        }
     }
 
     fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))

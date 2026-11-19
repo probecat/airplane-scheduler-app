@@ -61,6 +61,13 @@ object ScheduleResolver {
     fun startOf(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(schedule.delayed[date]?.toLong() ?: 0)
 
+    private fun minutesAfterStart(schedule: Schedule, date: LocalDate, now: LocalDateTime): Int =
+        Duration.between(plannedStart(schedule, date), now).toMinutes().toInt()
+
+    // When the window that started on [date] was ended early, if known.
+    fun endedAt(schedule: Schedule, date: LocalDate): LocalDateTime? =
+        schedule.endedAfter[date]?.let { plannedStart(schedule, date).plusMinutes(it.toLong()) }
+
     fun windowEnd(schedule: Schedule, date: LocalDate): LocalDateTime =
         plannedStart(schedule, date).plusMinutes(ScheduleTime.duration(schedule.start, schedule.end).toLong())
 
@@ -82,6 +89,8 @@ object ScheduleResolver {
             delayed = recent(schedule.delayed, now),
             paused = recent(schedule.paused, now),
             endedEarly = recent(schedule.endedEarly, now) + setOfNotNull(date.takeIf { running }),
+            endedAfter = recent(schedule.endedAfter, now) +
+                listOfNotNull(date.takeIf { running }?.let { it to minutesAfterStart(schedule, it, now) }),
         )
     }
 
@@ -111,6 +120,7 @@ object ScheduleResolver {
     fun unskip(schedule: Schedule, now: LocalDateTime): Schedule = schedule.copy(
         skipped = schedule.skipped - pendingSkips(schedule, now),
         endedEarly = schedule.endedEarly - pendingSkips(schedule, now),
+        endedAfter = schedule.endedAfter - pendingSkips(schedule, now),
         delayed = schedule.delayed.filterKeys { !windowEnd(schedule, it).isAfter(now) },
         paused = schedule.paused.filterTo(mutableSetOf()) { !windowEnd(schedule, it).isAfter(now) },
     )
