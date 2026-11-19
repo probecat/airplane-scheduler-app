@@ -12,6 +12,8 @@ data class Settings(
     val hideShizukuReady: Boolean = false,
     // How long Postpone and Pause wait. 0 turns them off.
     val postponeMinutes: Int = 30,
+    // How long before a start its notification shows. 0 turns it off.
+    val alertMinutes: Int = 60,
     val askedNotifications: Boolean = false,
     val backend: Backend = Backend.SHIZUKU,
     // When off, ends switch to what the schedule asks for, and missed starts and ends are caught up.
@@ -48,6 +50,7 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
             putString("theme", settings.theme.name)
             putBoolean("dynamicColor", settings.dynamicColor)
             putInt("postponeMinutes", settings.postponeMinutes)
+            putInt("alertMinutes", settings.alertMinutes)
             putBoolean("safeMode", settings.safeMode)
         }
         device.edit {
@@ -64,6 +67,7 @@ class SettingsRepository(context: Context, private val firstBackend: () -> Backe
             dynamicColor = prefs.getBoolean("dynamicColor", default.dynamicColor),
             hideShizukuReady = device.getBoolean(HIDE_SHIZUKU_READY, default.hideShizukuReady),
             postponeMinutes = prefs.getInt("postponeMinutes", default.postponeMinutes),
+            alertMinutes = prefs.getInt("alertMinutes", default.alertMinutes),
             askedNotifications = device.getBoolean(ASKED_NOTIFICATIONS, default.askedNotifications),
             backend = device.getString(BACKEND, null)
                 ?.let { name -> Backend.entries.find { it.name == name } } ?: firstBackend(),

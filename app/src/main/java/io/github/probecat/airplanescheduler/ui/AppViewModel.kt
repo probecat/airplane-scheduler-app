@@ -15,6 +15,7 @@ import io.github.probecat.airplanescheduler.data.Schedule
 import io.github.probecat.airplanescheduler.data.Settings
 import io.github.probecat.airplanescheduler.system.Access
 import io.github.probecat.airplanescheduler.system.AirplaneController
+import io.github.probecat.airplanescheduler.system.AlarmScheduler
 import io.github.probecat.airplanescheduler.system.App
 import io.github.probecat.airplanescheduler.system.Notifier
 import io.github.probecat.airplanescheduler.system.ScheduleUpdater
@@ -175,6 +176,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         app.settings.update(transform)
         if (before.backend != app.settings.current.backend) app.refreshAccess()
         if (before.postponeMinutes != app.settings.current.postponeMinutes) Notifier.refresh(app)
+        if (before.alertMinutes != app.settings.current.alertMinutes) {
+            AlarmScheduler.scheduleAll(app)
+            Notifier.refresh(app)
+        }
         if (before.safeMode != app.settings.current.safeMode) {
             AirplaneController.safeModeChanged(app, app.settings.current.safeMode)
         }

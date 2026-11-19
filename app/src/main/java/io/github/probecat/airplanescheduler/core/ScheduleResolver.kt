@@ -17,7 +17,8 @@ object ScheduleResolver {
     // Windows repeat weekly. A search also covers the day before, because an overnight window started then.
     private const val WEEK_DAYS = 7L
 
-    // How many minutes before a start the user can skip or postpone it, and its notification shows.
+    // How many minutes before a start the user can skip or postpone it in the app. A warning that the app could
+    // miss the start also shows this early, whatever the user set for upcoming alerts.
     const val AHEAD_MINUTES = 60L
 
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
@@ -165,8 +166,11 @@ object ScheduleResolver {
     fun nextChange(schedules: List<Schedule>, now: ZonedDateTime): ZonedDateTime? =
         live(schedules).flatMap { listOfNotNull(nextStart(it, now), nextEnd(it, now)) }.minOrNull()
 
-    fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, minutes: Long): ZonedDateTime? =
-        nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes)
+    // The next time a notice can show: [alertMinutes] before a start, or [AHEAD_MINUTES] before for a warning.
+    fun nextNotice(schedules: List<Schedule>, now: ZonedDateTime, alertMinutes: Long): ZonedDateTime? =
+        setOf(AHEAD_MINUTES, alertMinutes).filter { it > 0 }
+            .mapNotNull { minutes -> nextStart(schedules, now.plusMinutes(minutes))?.minusMinutes(minutes) }
+            .minOrNull()
 
     private fun nextAt(
         schedule: Schedule,

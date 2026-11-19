@@ -133,7 +133,8 @@
     <string name="theme_black">Black</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <string name="settings_schedules">Schedules</string>
-    <string name="settings_postpone">Postpone and pause</string>
+    <string name="settings_postpone">Postpone &amp; pause</string>
+    <string name="settings_alerts">Upcoming alerts</string>
     <string name="settings_safe_mode">Safe mode (experimental)</string>
     <string name="safe_mode_off_title">Disable Safe mode?</string>
     <string name="safe_mode_off_text">With Safe mode disabled, the app catches up on missed schedules and matches the end state, such as airplane mode off and Wi-Fi on, regardless of your own toggles.\n\nThis is an experimental feature. Please report any unexpected behavior.</string>
@@ -141,7 +142,7 @@
     <string name="backend_shizuku">Shizuku</string>
     <string name="backend_sui">Sui</string>
     <string name="backend_root">Root</string>
-    <string name="settings_postpone_off">Off</string>
+    <string name="settings_off">Off</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_shizuku">Shizuku</string>
     <string name="settings_sui">Sui</string>
@@ -185,7 +186,7 @@
     <string name="help_skip_q">Can a schedule be skipped or postponed?</string>
     <string name="help_skip_a">Yes, during the hour before it starts. A postponed schedule still ends at its original time.</string>
     <string name="help_pause_q">How does pausing a schedule work?</string>
-    <string name="help_pause_a">Pausing a running schedule turns airplane mode off for the time set in “Postpone and pause” in Settings. A running schedule can also be ended early.</string>
+    <string name="help_pause_a">Pausing a running schedule turns airplane mode off for the time set in “Postpone &amp; pause” in Settings. A running schedule can also be ended early.</string>
     <string name="help_change_active_q">Do changes take effect immediately?</string>
     <string name="help_change_active_a">Yes. Turning off or deleting an active schedule ends it just like a normal schedule ending. Enabling or adding a schedule that covers the current time starts it immediately. Changing a schedule\'s time also starts or ends it as needed to match the updated schedule.</string>
     <string name="help_safe_mode_q">What is Safe mode?</string>
@@ -226,11 +227,7 @@
     <string name="notification_unknown_schedule">A schedule</string>
     <string name="notification_ends_at">Schedule ends at %1$s</string>
     <string name="notification_starts_at">Schedule starts at %1$s</string>
-    <string name="notification_postponed_to">Schedule postponed until %1$s</string>
     <string name="notification_resumes_at">Schedule resumes at %1$s</string>
-    <string name="notification_skipped">Schedule skipped</string>
-    <string name="notification_skipped_until">Schedule skipped until %1$s</string>
-    <string name="notification_ended_early">Schedule ended early</string>
     <!-- %2$s is a reason below, as in "Schedule at 11:00 PM could miss the start because Shizuku isn’t running." -->
     <string name="notification_could_miss">Schedule at %1$s could miss the start because %2$s.</string>
     <string name="notification_missed_start_because">Schedule missed the start because %1$s.</string>

@@ -44,11 +44,9 @@ class NotificationReceiver : BroadcastReceiver() {
         val status = ScheduleUpdater.status(app, schedule, now)
         val all = app.schedules.all
         return when (intent.action) {
-            // After Skip or End, the only action left is Undo, and only the app has Undo.
             Notifier.SKIP, Notifier.END -> if (status?.allows(Action.SKIP, date) == true) {
                 val missed = (status as? ScheduleStatus.Running)?.missed == true
                 ScheduleUpdater.commit(app, ScheduleEdits.skip(all, schedule, now, missed))
-                Notifier.dismiss(app, id)
                 true
             } else {
                 false

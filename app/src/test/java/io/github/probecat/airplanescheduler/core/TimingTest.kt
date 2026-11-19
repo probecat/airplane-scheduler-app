@@ -125,6 +125,13 @@ class TimingTest {
     }
 
     @Test
+    fun `notice alarm hour before for warning then at alert`() {
+        val notice = { now: LocalDateTime -> ScheduleResolver.nextNotice(listOf(night), now.atZone(utc), 15) }
+        assertEquals(friday(22), notice(friday(13))?.toLocalDateTime())
+        assertEquals(friday(22, 45), notice(friday(22))?.toLocalDateTime())
+    }
+
+    @Test
     fun `skip drops start alarm and postpone delays start only`() {
         val skipped = ScheduleResolver.skip(night, friday(12))
         assertEquals(saturday(23), ScheduleResolver.nextStart(skipped, friday(12).atZone(utc))?.toLocalDateTime())

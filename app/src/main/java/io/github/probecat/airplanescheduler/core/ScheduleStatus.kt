@@ -25,7 +25,6 @@ sealed interface ScheduleStatus {
         val until: LocalDateTime,
         val endedEarly: Boolean,
         val underway: Boolean,
-        val soon: Boolean,
     ) : ScheduleStatus
 
     enum class Action { SKIP, POSTPONE, UNDO, TURN_ON }
@@ -63,7 +62,6 @@ sealed interface ScheduleStatus {
                 ScheduleResolver.windowEnd(schedule, skipped),
                 endedEarly = skips.any { it in schedule.endedEarly },
                 underway = skips.any { !ScheduleResolver.plannedStart(schedule, it).isAfter(now) },
-                soon = !ScheduleResolver.plannedStart(schedule, skipped).isAfter(ahead),
             )
         }
     }

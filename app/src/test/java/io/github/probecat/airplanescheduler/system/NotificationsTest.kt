@@ -26,7 +26,6 @@ class NotificationsTest {
 
     @Test
     fun `notice Skip skips and removes notice`() {
-        // The skipped notice would offer nothing, and the card has Undo.
         device.save(soon)
         val notice = device.notice(1)
         assertEquals(listOf(Notifier.POSTPONE, Notifier.SKIP), device.buttons(notice))
@@ -42,7 +41,18 @@ class NotificationsTest {
         device.tap(notice, Notifier.POSTPONE)
         device.tap(notice, Notifier.POSTPONE)
         assertEquals(listOf(30), device.schedules.single().delayed.values.toList())
-        assertEquals(listOf(Notifier.SKIP), device.buttons(device.notice(1)))
+        assertNull(device.notice(1))
+    }
+
+    @Test
+    fun `warning comes hour before with alerts off`() {
+        device.app.settings.update { it.copy(alertMinutes = 0) }
+        device.shizuku.works = false
+        device.save(soon)
+        assertNotNull(device.notice(1))
+        device.shizuku.works = true
+        Notifier.refresh(device.app)
+        assertNull(device.notice(1))
     }
 
     @Test

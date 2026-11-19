@@ -194,22 +194,13 @@ object Notifier {
         }
     }
 
-    // Takes down a schedule's notification as if swiped away, so what it shows now does not come back.
-    fun dismiss(context: Context, id: Long) {
-        val app = App.from(context)
-        if (!canPost(app)) return
-        wanted(app, LocalDateTime.now())[id]?.let { dismissed(app, id, it.toString()) }
-        NotificationManagerCompat.from(app).cancel(TAG, id.toInt())
-        latest[id] = Latest(Bundle())
-    }
-
     private fun wanted(app: App, now: LocalDateTime): Map<Long, Content> {
         val schedules = app.schedules.all
         val missed = AirplaneController.missedSchedule(app, now)?.id
         val notices = Notices(app, now)
         val shown = listOf(SCHEDULES, PROBLEMS).filter { shows(app, it) }
         return schedules.mapNotNull { schedule ->
-            Notice.of(schedule, now, schedule.id == missed)
+            Notice.of(schedule, now, schedule.id == missed, notices.lead)
                 ?.let { notices.content(schedule, it) }
                 ?.takeIf { it.channel in shown }
                 ?.let { schedule.id to it }
@@ -314,12 +305,14 @@ object Notifier {
         private val problem = accessProblem(app)
         private val minutes = app.settings.current.postponeMinutes
 
+        // A warning comes early enough to fix the problem.
+        val lead = if (problem != null) ScheduleResolver.AHEAD_MINUTES else app.settings.current.alertMinutes.toLong()
+
         fun content(schedule: Schedule, notice: Notice): Content {
             val title = format.title(schedule)
             val postpone = ScheduleResolver.postponedTo(schedule, now, minutes) != null
             return when (notice) {
-                // A window can be postponed only once, as in the app.
-                is Notice.Upcoming -> upcoming(title, notice, postpone && !notice.postponed)
+                is Notice.Upcoming -> upcoming(title, notice, postpone)
                 is Notice.Paused -> Content(
                     Kind.NOTICE,
                     SCHEDULES,
@@ -332,24 +325,13 @@ object Notifier {
                     ),
                 )
                 is Notice.Active -> if (notice.missed) missed(title, notice) else active(title, notice, postpone)
-                is Notice.Skipped -> Content(
-                    Kind.NOTICE,
-                    SCHEDULES,
-                    title,
-                    format.skippedNotice(schedule, notice.date, now),
-                    notice.date,
-                    until = notice.until,
-                )
             }
         }
 
         private fun upcoming(title: String, notice: Notice.Upcoming, postponable: Boolean): Content {
             val time = format.time(notice.start)
-            val text = when {
-                problem != null -> app.getString(R.string.notification_could_miss, time, problem)
-                notice.postponed -> app.getString(R.string.notification_postponed_to, time)
-                else -> app.getString(R.string.notification_starts_at, time)
-            }
+            val text = problem?.let { app.getString(R.string.notification_could_miss, time, it) }
+                ?: app.getString(R.string.notification_starts_at, time)
             return Content(
                 Kind.NOTICE,
                 if (problem != null) PROBLEMS else SCHEDULES,

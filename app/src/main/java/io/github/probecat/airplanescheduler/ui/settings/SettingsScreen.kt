@@ -1,6 +1,7 @@
 package io.github.probecat.airplanescheduler.ui.settings
 
 import android.content.Intent
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +67,7 @@ import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
 import io.github.probecat.airplanescheduler.ui.theme.hasDynamicColor
 
-private enum class Dialog { THEME, POSTPONE, BACKEND, RESET, SAFE_MODE }
+private enum class Dialog { THEME, POSTPONE, ALERTS, BACKEND, RESET, SAFE_MODE }
 
 @Composable
 fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> Unit, modifier: Modifier = Modifier) {
@@ -91,6 +92,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
         SchedulesSection(
             settings,
             format,
+            onAlerts = { dialog = Dialog.ALERTS },
             onPostpone = { dialog = Dialog.POSTPONE },
             // Turning it off asks first, as it changes what schedules switch.
             onSafeMode = { on -> if (on) update { it.copy(safeMode = true) } else dialog = Dialog.SAFE_MODE },
@@ -141,15 +143,22 @@ private fun AppearanceSection(
 private fun SchedulesSection(
     settings: Settings,
     format: Format,
+    onAlerts: () -> Unit,
     onPostpone: () -> Unit,
     onSafeMode: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) = Column(modifier) {
     SectionHeader(stringResource(R.string.settings_schedules))
     SettingRow(
+        icon = R.drawable.ic_notifications_active,
+        title = stringResource(R.string.settings_alerts),
+        text = minutesLabel(settings.alertMinutes, format),
+        onClick = onAlerts,
+    )
+    SettingRow(
         icon = R.drawable.ic_snooze,
         title = stringResource(R.string.settings_postpone),
-        text = postponeLabel(settings.postponeMinutes, format),
+        text = minutesLabel(settings.postponeMinutes, format),
         onClick = onPostpone,
     )
     SwitchRow(
@@ -261,16 +270,12 @@ private fun SettingsDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             },
         )
-        Dialog.POSTPONE -> Choices(
-            title = stringResource(R.string.settings_postpone),
-            options = POSTPONE_MINUTES.map { it to postponeLabel(it, format) },
-            selected = settings.postponeMinutes,
-            onSelect = { minutes ->
-                onUpdate { it.copy(postponeMinutes = minutes) }
-                onDismiss()
-            },
-            onDismiss = onDismiss,
-        )
+        Dialog.POSTPONE -> MinutesChoices(R.string.settings_postpone, settings.postponeMinutes, format, onDismiss) {
+            onUpdate { old -> old.copy(postponeMinutes = it) }
+        }
+        Dialog.ALERTS -> MinutesChoices(R.string.settings_alerts, settings.alertMinutes, format, onDismiss) {
+            onUpdate { old -> old.copy(alertMinutes = it) }
+        }
         Dialog.BACKEND -> Choices(
             title = stringResource(R.string.settings_backend),
             options = Backend.entries.map { it to stringResource(backendLabel(it)) },
@@ -367,11 +372,30 @@ private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> 
 private fun backendLabel(backend: Backend): Int =
     if (backend == Backend.SHIZUKU && ShizukuStatus.sui) R.string.backend_sui else backend.label
 
-private val POSTPONE_MINUTES = listOf(0, 15, 30, 45, 60)
+// Upcoming alerts stop at 60, as the notification's Skip and Postpone work only in the hour before a start.
+private val MINUTES = listOf(0, 15, 30, 45, 60)
 
 @Composable
-private fun postponeLabel(minutes: Int, format: Format) =
-    if (minutes == 0) stringResource(R.string.settings_postpone_off) else format.duration(minutes)
+private fun MinutesChoices(
+    @StringRes title: Int,
+    selected: Int,
+    format: Format,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) = Choices(
+    title = stringResource(title),
+    options = MINUTES.map { it to minutesLabel(it, format) },
+    selected = selected,
+    onSelect = { minutes ->
+        onSelect(minutes)
+        onDismiss()
+    },
+    onDismiss = onDismiss,
+)
+
+@Composable
+private fun minutesLabel(minutes: Int, format: Format) =
+    if (minutes == 0) stringResource(R.string.settings_off) else format.duration(minutes)
 
 @Composable
 private fun <T> Choices(

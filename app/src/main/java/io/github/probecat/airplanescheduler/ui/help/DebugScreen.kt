@@ -64,7 +64,7 @@ fun DebugScreen(viewModel: AppViewModel, onBack: () -> Unit, modifier: Modifier 
     val sections = listOf(
         appSection(context, zoned),
         accessSection(context, settings, access, airplane, switching > 0),
-        alarmsSection(context, schedules, zoned),
+        alarmsSection(context, schedules, settings, zoned),
         windowSection(app, schedules, now),
         settingsSection(settings),
     ) + schedules.map { scheduleSection(it, zoned) } +
@@ -168,9 +168,14 @@ private fun accessSection(context: Context, settings: Settings, access: Access, 
         ),
     )
 
-private fun alarmsSection(context: Context, schedules: List<Schedule>, zoned: ZonedDateTime): Section {
+private fun alarmsSection(
+    context: Context,
+    schedules: List<Schedule>,
+    settings: Settings,
+    zoned: ZonedDateTime,
+): Section {
     val change = ScheduleResolver.nextChange(schedules, zoned)
-    val notice = ScheduleResolver.nextNotice(schedules, zoned, ScheduleResolver.AHEAD_MINUTES)
+    val notice = ScheduleResolver.nextNotice(schedules, zoned, settings.alertMinutes.toLong())
     val blocked = NotificationManagerCompat.from(context).notificationChannelsCompat
         .filter { it.importance == NotificationManagerCompat.IMPORTANCE_NONE }
         .joinToString(" | ") { it.name.toString() }
@@ -216,10 +221,13 @@ private fun settingsSection(settings: Settings) = Section(
     listOf(
         "Theme" to settings.theme.name,
         "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
-        "Postpone" to (settings.postponeMinutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"),
+        "Postpone" to minutes(settings.postponeMinutes),
+        "Upcoming alerts" to minutes(settings.alertMinutes),
         "Safe mode" to Events.onOff(settings.safeMode),
     ),
 )
+
+private fun minutes(minutes: Int) = minutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"
 
 private fun scheduleSection(schedule: Schedule, zoned: ZonedDateTime): Section {
     val name = if (schedule.name.isBlank()) "" else " “${schedule.name}”"

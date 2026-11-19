@@ -113,31 +113,15 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
 
     // "Skipped until tomorrow" for the window that started on [date]. A window later today gives its time instead.
     // A window ended early gives no next start.
-    fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String =
-        skipped(schedule, date, now, SkipText.CARD)
-
-    // "Schedule skipped until tomorrow", for a notification.
-    fun skippedNotice(schedule: Schedule, date: LocalDate, now: LocalDateTime): String =
-        skipped(schedule, date, now, SkipText.NOTICE)
-
-    private enum class SkipText(
-        @param:StringRes val skipped: Int,
-        @param:StringRes val until: Int,
-        @param:StringRes val endedEarly: Int,
-    ) {
-        CARD(R.string.skipped, R.string.skipped_resumes, R.string.ended_early),
-        NOTICE(R.string.notification_skipped, R.string.notification_skipped_until, R.string.notification_ended_early),
-    }
-
-    private fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime, text: SkipText): String {
-        if (date in schedule.endedEarly) return strings.get(text.endedEarly)
-        val next = ScheduleResolver.nextWindow(schedule, now) ?: return strings.get(text.skipped)
+    fun skipped(schedule: Schedule, date: LocalDate, now: LocalDateTime): String {
+        if (date in schedule.endedEarly) return strings.get(R.string.ended_early)
+        val next = ScheduleResolver.nextWindow(schedule, now) ?: return strings.get(R.string.skipped)
         val day = if (next.toLocalDate() == now.toLocalDate()) {
             time(next)
         } else {
             upcomingDay(next.toLocalDate(), now.toLocalDate())
         }
-        return strings.get(text.until, day)
+        return strings.get(R.string.skipped_resumes, day)
     }
 
     fun delayed(start: LocalDateTime): String = strings.get(R.string.postponed_to, time(start))

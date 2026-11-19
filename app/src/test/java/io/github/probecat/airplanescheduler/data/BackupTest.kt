@@ -41,7 +41,14 @@ class BackupTest {
         val state = EngineRepository(context).state
         val root = RootSwitcher(context, {}).access().state
 
-        assertEquals(Settings(ThemeMode.DARK, true, true, 15, true, Backend.ROOT), settings)
+        val expected = Settings(
+            ThemeMode.DARK,
+            hideShizukuReady = true,
+            postponeMinutes = 15,
+            askedNotifications = true,
+            backend = Backend.ROOT,
+        )
+        assertEquals(expected, settings)
         assertEquals(EngineRepository.decode(engine), state)
         assertEquals(AccessState.READY, root)
         assertEquals(setOf("theme", "postponeMinutes"), prefs(Prefs.SETTINGS).all.keys)
@@ -51,11 +58,14 @@ class BackupTest {
     fun `settings file only holds restored values`() {
         // A new setting fails here until it is placed. Device state goes in Prefs.DEVICE.
         val settings = SettingsRepository(context)
-        settings.update { Settings(ThemeMode.DARK, false, true, 15, true, Backend.ROOT) }
+        settings.update {
+            Settings(ThemeMode.DARK, false, true, 15, 45, true, Backend.ROOT, safeMode = false)
+        }
         EngineRepository(context).state = EngineRepository.decode(
             """{"started":{"window":"2026-10-09T23:00","changes":1,"wanted":1,"already":0}}""",
         )
         runBlocking { RootSwitcher(context, {}, shell = listOf("sh", "-c")).request() }
-        assertEquals(setOf("theme", "dynamicColor", "postponeMinutes", "safeMode"), prefs(Prefs.SETTINGS).all.keys)
+        val restored = setOf("theme", "dynamicColor", "postponeMinutes", "alertMinutes", "safeMode")
+        assertEquals(restored, prefs(Prefs.SETTINGS).all.keys)
     }
 }

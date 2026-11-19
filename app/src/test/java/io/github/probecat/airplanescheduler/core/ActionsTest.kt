@@ -14,10 +14,19 @@ class ActionsTest {
     fun `skip or postpone only in hour before start`() {
         val phone = Phone(night, now = friday(21, 59))
         assertEquals(emptySet<Action>(), phone.status()!!.actions)
-        assertNull(Notice.of(phone.status()))
         phone.now = friday(22)
         assertEquals(setOf(Action.SKIP, Action.POSTPONE), phone.status()!!.actions)
-        assertTrue(Notice.of(phone.status()) is Notice.Upcoming)
+    }
+
+    @Test
+    fun `skipped or postponed window has no notice until it runs`() {
+        val phone = Phone(night, now = friday(22, 30))
+        phone.postpone()
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
+        phone.passTo(friday(23, 30))
+        assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Active)
+        phone.skip()
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
     }
 
     @Test
@@ -76,6 +85,7 @@ class ActionsTest {
         phone.passTo(friday(23, 40))
         phone.postpone(minutes = 30)
         assertEquals(ScheduleStatus.Paused(fridayDate, saturday(0, 10)), phone.status())
+        assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Paused)
         assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
         assertEquals(saturday(7), ScheduleResolver.windowEnd(phone.schedule(), fridayDate))
     }
