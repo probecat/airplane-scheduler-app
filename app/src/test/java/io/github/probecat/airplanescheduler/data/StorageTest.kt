@@ -23,7 +23,7 @@ class StorageTest {
         // existing users.
         val stored = """[{"id":1,"name":"Night","start":1380,"end":420,"days":["MONDAY"],"date":"2026-10-09",""" +
             """"enabled":false,"disableWifi":false,"enableWifi":false,"skipped":["2026-10-09"],""" +
-            """"endedEarly":["2026-10-09"],"delayed":{"2026-10-10":30}}]"""
+            """"endedEarly":["2026-10-09"],"delayed":{"2026-10-10":30},"paused":["2026-10-10"]}]"""
         val date = LocalDate.of(2026, 10, 9)
         val schedule = Schedule(
             id = 1,
@@ -38,6 +38,7 @@ class StorageTest {
             skipped = setOf(date),
             endedEarly = setOf(date),
             delayed = mapOf(date.plusDays(1) to 30),
+            paused = setOf(date.plusDays(1)),
         )
         assertEquals(ScheduleRepository.Read(listOf(schedule), lost = false), ScheduleRepository.read(stored))
         assertEquals(listOf(schedule), ScheduleRepository.read(ScheduleRepository.encode(listOf(schedule))).schedules)

@@ -80,6 +80,7 @@ object ScheduleResolver {
         return schedule.copy(
             skipped = recent(schedule.skipped, now) + date,
             delayed = recent(schedule.delayed, now),
+            paused = recent(schedule.paused, now),
             endedEarly = recent(schedule.endedEarly, now) + setOfNotNull(date.takeIf { running }),
         )
     }
@@ -89,9 +90,14 @@ object ScheduleResolver {
     fun postpone(schedule: Schedule, now: LocalDateTime, minutes: Int): Schedule {
         val date = nextDate(schedule, now) ?: return schedule
         val start = postponedStart(schedule, date, now, minutes)
-        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now, running = isActive(schedule, now))
+        val running = isActive(schedule, now)
+        if (!start.isBefore(windowEnd(schedule, date))) return skip(schedule, now, running)
         val delay = Duration.between(plannedStart(schedule, date), start).toMinutes().toInt()
-        return schedule.copy(delayed = recent(schedule.delayed, now) + (date to delay))
+        val paused = recent(schedule.paused, now) - date
+        return schedule.copy(
+            delayed = recent(schedule.delayed, now) + (date to delay),
+            paused = if (running) paused + date else paused,
+        )
     }
 
     // Null if a postpone skips the window, or if [minutes] turns postponing off.
@@ -106,6 +112,7 @@ object ScheduleResolver {
         skipped = schedule.skipped - pendingSkips(schedule, now),
         endedEarly = schedule.endedEarly - pendingSkips(schedule, now),
         delayed = schedule.delayed.filterKeys { !windowEnd(schedule, it).isAfter(now) },
+        paused = schedule.paused.filterTo(mutableSetOf()) { !windowEnd(schedule, it).isAfter(now) },
     )
 
     fun expire(schedules: List<Schedule>, now: LocalDateTime): List<Schedule> =

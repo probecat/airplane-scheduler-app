@@ -22,7 +22,8 @@ object ScheduleEdits {
     fun save(all: List<Schedule>, edited: Schedule, now: LocalDateTime): Result {
         val old = all.find { it.id == edited.id }
         val retimed = old != null && (old.start != edited.start || old.end != edited.end)
-        val schedule = ScheduleResolver.dated(if (retimed) edited.copy(delayed = emptyMap()) else edited, now)
+        val kept = if (retimed) edited.copy(delayed = emptyMap(), paused = emptySet()) else edited
+        val schedule = ScheduleResolver.dated(kept, now)
         conflict(all, schedule, now)?.let { return Result.Overlaps(it) }
         return Result.Saved(if (old != null) all.map { if (it.id == schedule.id) schedule else it } else all + schedule)
     }
@@ -32,7 +33,13 @@ object ScheduleEdits {
     fun saveSheet(all: List<Schedule>, edited: Schedule, now: LocalDateTime): Result {
         val stored = all.find { it.id == edited.id }
         val schedule = stored?.let {
-            edited.copy(enabled = it.enabled, skipped = it.skipped, endedEarly = it.endedEarly, delayed = it.delayed)
+            edited.copy(
+                enabled = it.enabled,
+                skipped = it.skipped,
+                endedEarly = it.endedEarly,
+                delayed = it.delayed,
+                paused = it.paused,
+            )
         } ?: edited
         return save(all, schedule, now)
     }

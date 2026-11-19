@@ -227,6 +227,10 @@ private fun settingsSection(settings: Settings) = Section(
     ),
 )
 
+private fun delays(schedule: Schedule) = schedule.delayed.toSortedMap().entries.joinToString(" ") { (date, minutes) ->
+    "$date+${minutes}min" + if (date in schedule.paused) " paused" else ""
+}
+
 private fun minutes(minutes: Int) = minutes.takeIf { it > 0 }?.let { "$it min" } ?: "OFF"
 
 private fun scheduleSection(schedule: Schedule, zoned: ZonedDateTime): Section {
@@ -248,7 +252,7 @@ private fun scheduleRows(schedule: Schedule, now: ZonedDateTime): List<Pair<Stri
     add("Wi-Fi at end" to if (schedule.disableWifi && schedule.enableWifi) "ON" else "UNCHANGED")
     if (!schedule.enabled) return@buildList
     if (schedule.delayed.isNotEmpty()) {
-        add("Delayed" to schedule.delayed.toSortedMap().entries.joinToString(" ") { "${it.key}+${it.value}min" })
+        add("Delayed" to delays(schedule))
     }
     val skipped = schedule.skipped - schedule.endedEarly
     if (skipped.isNotEmpty()) add("Skipped" to dates(skipped))

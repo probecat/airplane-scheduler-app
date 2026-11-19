@@ -23,6 +23,9 @@ class ActionsTest {
         val phone = Phone(night, now = friday(22, 30))
         phone.postpone()
         assertNull(Notice.of(phone.status(), phone.now, lead = 60))
+        phone.passTo(friday(23))
+        assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
+        assertNull(Notice.of(phone.status(), phone.now, lead = 60))
         phone.passTo(friday(23, 30))
         assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Active)
         phone.skip()
@@ -84,10 +87,12 @@ class ActionsTest {
         val phone = Phone(night, now = friday(22))
         phone.passTo(friday(23, 40))
         phone.postpone(minutes = 30)
-        assertEquals(ScheduleStatus.Paused(fridayDate, saturday(0, 10)), phone.status())
+        assertEquals(ScheduleStatus.Paused(fridayDate, saturday(0, 10), postponed = false), phone.status())
         assertTrue(Notice.of(phone.status(), phone.now, lead = 60) is Notice.Paused)
         assertEquals(setOf(Action.SKIP, Action.UNDO), phone.status()!!.actions)
         assertEquals(saturday(7), ScheduleResolver.windowEnd(phone.schedule(), fridayDate))
+        assertTrue(phone.undo())
+        assertTrue(phone.schedule().paused.isEmpty())
     }
 
     @Test

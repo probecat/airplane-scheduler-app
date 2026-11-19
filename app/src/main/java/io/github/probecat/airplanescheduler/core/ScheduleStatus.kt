@@ -15,7 +15,8 @@ sealed interface ScheduleStatus {
         val soon: Boolean,
     ) : ScheduleStatus
 
-    data class Paused(override val date: LocalDate, val until: LocalDateTime) : ScheduleStatus
+    // [postponed] is true when the window was postponed before its start, so it never ran.
+    data class Paused(override val date: LocalDate, val until: LocalDateTime, val postponed: Boolean) : ScheduleStatus
 
     data class Running(override val date: LocalDate, val end: LocalDateTime, val missed: Boolean) : ScheduleStatus
 
@@ -51,7 +52,7 @@ sealed interface ScheduleStatus {
                 val start = ScheduleResolver.startOf(schedule, date)
                 if (!start.isAfter(now)) return Running(date, ScheduleResolver.windowEnd(schedule, date), missed)
                 val delay = ScheduleResolver.delay(schedule, now)
-                if (delay?.due == true) return Paused(date, start)
+                if (delay?.due == true) return Paused(date, start, postponed = date !in schedule.paused)
                 Upcoming(date, start, postponed = delay != null, soon = !start.isAfter(ahead))
             }
             if (upcoming?.soon == true) return upcoming

@@ -21,7 +21,7 @@ sealed interface Notice {
 
         fun of(status: ScheduleStatus?, now: LocalDateTime, lead: Long): Notice? = when (status) {
             is ScheduleStatus.Running -> Active(status.date, status.end, status.missed)
-            is ScheduleStatus.Paused -> Paused(status.date, status.until)
+            is ScheduleStatus.Paused -> Paused(status.date, status.until).takeIf { !status.postponed }
             is ScheduleStatus.Upcoming -> Upcoming(status.date, status.start)
                 .takeIf { lead > 0 && !status.postponed && !status.start.isAfter(now.plusMinutes(lead)) }
             is ScheduleStatus.Skipped, null -> null

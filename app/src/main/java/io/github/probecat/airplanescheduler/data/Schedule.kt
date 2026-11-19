@@ -31,6 +31,8 @@ data class Schedule(
     val endedEarly: Set<SerializableDate> = emptySet(),
     // Minutes that postponing or pausing moved a window's start, by its start date. Its end stays.
     val delayed: Map<SerializableDate, Int> = emptyMap(),
+    // Of those, the windows that were paused while running.
+    val paused: Set<SerializableDate> = emptySet(),
 ) {
     val once: Boolean get() = days.isEmpty()
 
