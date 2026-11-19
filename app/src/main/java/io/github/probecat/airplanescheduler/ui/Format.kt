@@ -86,7 +86,7 @@ class Format(val is24Hour: Boolean, val locale: Locale, private val strings: Str
         val ordered = week.filter { it in days }
         if (ordered.isEmpty()) return strings.get(R.string.days_once)
         val run = ordered.size >= 3 && week.indexOf(ordered.last()) - week.indexOf(ordered.first()) == ordered.size - 1
-        if (run) return "${short(ordered.first())}–${short(ordered.last())}"
+        if (run) return "${short(ordered.first())}-${short(ordered.last())}"
         return ordered.joinToString(" ", transform = ::short)
     }
 
