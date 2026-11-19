@@ -372,7 +372,7 @@ private fun AccessRow(access: Access, shizukuApp: Intent?, request: (Access) -> 
 private fun backendLabel(backend: Backend): Int =
     if (backend == Backend.SHIZUKU && ShizukuStatus.sui) R.string.backend_sui else backend.label
 
-// Upcoming alerts stop at 60, as the notification's Skip and Postpone work only in the hour before a start.
+// Upcoming notices stop at 60, as the notification's Skip and Postpone work only in the hour before a start.
 private val MINUTES = listOf(0, 15, 30, 45, 60)
 
 @Composable

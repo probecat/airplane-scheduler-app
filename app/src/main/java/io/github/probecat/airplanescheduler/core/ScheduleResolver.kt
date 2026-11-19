@@ -18,7 +18,7 @@ object ScheduleResolver {
     private const val WEEK_DAYS = 7L
 
     // How many minutes before a start the user can skip or postpone it in the app. A warning that the app could
-    // miss the start also shows this early, whatever the user set for upcoming alerts.
+    // miss the start also shows this early, whatever the user set for upcoming notices.
     const val AHEAD_MINUTES = 60L
 
     // Windows that touch act as one chain. [start] is where the chain began, [inFirst] says whether
