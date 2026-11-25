@@ -5,7 +5,6 @@ import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -766,7 +765,6 @@ private fun ScheduleCard(
     val container by animateColorAsState(if (on) colors.primaryContainer else colors.surfaceContainer)
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
-    val weight by animateIntAsState(if (on) ON_WEIGHT else 200)
     val shape = RoundedCornerShape(CARD_CORNER)
     // Long enough that a long-press is deliberate, since it only shows a joke.
     val config = LocalViewConfiguration.current
@@ -813,7 +811,7 @@ private fun ScheduleCard(
                         format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
                         style = MaterialTheme.typography.displayMedium,
                         color = time,
-                        fontWeight = FontWeight((weight + 25) / 50 * 50),
+                        fontWeight = FontWeight(if (on) ON_WEIGHT else 200),
                         maxLines = 1,
                         autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = TIME_SIZE),
                         modifier = Modifier.weight(1f),
