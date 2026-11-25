@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,9 +60,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -77,6 +81,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -290,8 +296,9 @@ private fun rememberScheduleActions(
 ): ScheduleActions {
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
+    val longPresses = rememberSaveable { mutableIntStateOf(0) }
     return remember(viewModel, resources, format, snackbar, scope) {
-        ScheduleActions(viewModel, resources, format, snackbar, scope)
+        ScheduleActions(viewModel, resources, format, snackbar, scope, longPresses)
     }
 }
 
@@ -302,6 +309,8 @@ private class ScheduleActions(
     private val format: Format,
     private val snackbar: SnackbarHostState,
     private val scope: CoroutineScope,
+    // Long-presses on any card since the app opened
+    private val longPresses: MutableIntState,
 ) {
     private val now get() = viewModel.now.value
 
@@ -377,12 +386,23 @@ private class ScheduleActions(
         if (conflict != null) showConflict() else showStart(schedule.id)
     }
 
-    // Returns true when saved.
     fun save(edited: Schedule, onAsk: () -> Unit): Boolean {
         val saved = viewModel.save(edited) == null
         if (saved) showStart(edited.id)
         if (saved && viewModel.asksNotifications()) onAsk()
         return saved
+    }
+
+    fun longPress() {
+        val count = ++longPresses.intValue
+        val jokes = resources.getStringArray(R.array.schedules_long_press)
+        show(
+            if (count > 9) {
+                resources.getString(R.string.schedules_long_press_hint)
+            } else {
+                jokes[minOf(count, jokes.size) - 1]
+            },
+        )
     }
 
     fun delete(schedule: Schedule) {
@@ -543,6 +563,7 @@ private fun ScheduleItem(
             today = now.toLocalDate(),
             format = format,
             onClick = onEdit,
+            onLongClick = actions::longPress,
             onAction = { status?.let { actions.act(schedule, it, action, postponeMinutes, onChoose) } },
             onToggle = { enabled -> actions.setEnabled(schedule, enabled) },
         )
@@ -735,6 +756,7 @@ private fun ScheduleCard(
     today: LocalDate,
     format: Format,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onAction: () -> Unit,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -745,50 +767,66 @@ private fun ScheduleCard(
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
     val weight by animateIntAsState(if (on) ON_WEIGHT else 200)
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(CARD_CORNER),
-        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.heightIn(min = 48.dp)) {
-                Column(
-                    Modifier.weight(1f).then(
-                        if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
-                    ),
-                ) {
-                    DaysAndName(format.repeats(schedule, today), schedule.name)
-                    when {
-                        missed != null -> Missed(missed, shizukuInstalled)
-                        endsIn != null -> EndsIn(format.duration(endsIn))
-                        note != null -> Status(note.first, note.second)
+    val shape = RoundedCornerShape(CARD_CORNER)
+    // Long enough that a long-press is deliberate, since it only shows a joke.
+    val config = LocalViewConfiguration.current
+    val slow = remember(config) {
+        object : ViewConfiguration by config {
+            override val longPressTimeoutMillis = 1500L
+        }
+    }
+    CompositionLocalProvider(LocalViewConfiguration provides slow) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            shape = shape,
+            colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.heightIn(min = 48.dp)) {
+                    Column(
+                        Modifier.weight(1f).then(
+                            if (action != null) {
+                                Modifier.alignByBaseline()
+                            } else {
+                                Modifier.align(Alignment.CenterVertically)
+                            },
+                        ),
+                    ) {
+                        DaysAndName(format.repeats(schedule, today), schedule.name)
+                        when {
+                            missed != null -> Missed(missed, shizukuInstalled)
+                            endsIn != null -> EndsIn(format.duration(endsIn))
+                            note != null -> Status(note.first, note.second)
+                        }
+                    }
+                    if (action != null) {
+                        Spacer(Modifier.width(8.dp))
+                        ActionButton(stringResource(action.label), onAction, Modifier.alignByBaseline())
                     }
                 }
-                if (action != null) {
-                    Spacer(Modifier.width(8.dp))
-                    ActionButton(stringResource(action.label), onAction, Modifier.alignByBaseline())
+                Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        // The marker keeps its weight, so only the digits look lighter while off.
+                        format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
+                        style = MaterialTheme.typography.displayMedium,
+                        color = time,
+                        fontWeight = FontWeight((weight + 25) / 50 * 50),
+                        maxLines = 1,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = TIME_SIZE),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = schedule.enabled,
+                        onCheckedChange = onToggle,
+                        modifier = Modifier.semantics {
+                            contentDescription = "${format.window(schedule)}, ${format.repeats(schedule, today)}"
+                        },
+                    )
                 }
-            }
-            Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    // The marker keeps its weight, so only the digits look lighter while off.
-                    format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = time,
-                    fontWeight = FontWeight((weight + 25) / 50 * 50),
-                    maxLines = 1,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = TIME_SIZE),
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(12.dp))
-                Switch(
-                    checked = schedule.enabled,
-                    onCheckedChange = onToggle,
-                    modifier = Modifier.semantics {
-                        contentDescription = "${format.window(schedule)}, ${format.repeats(schedule, today)}"
-                    },
-                )
             }
         }
     }

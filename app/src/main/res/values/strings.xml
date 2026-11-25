@@ -88,6 +88,15 @@
     <string name="schedules_paused">Schedule paused</string>
     <string name="schedules_turn_on_failed">Failed to turn on airplane mode</string>
     <string name="schedules_deleted">Schedule deleted</string>
+    <string-array name="schedules_long_press">
+        <item>Maybe you should touch grass instead?</item>
+        <item>Didst thou drink water?</item>
+        <item>Hi, mom!</item>
+        <item>Thank you for sharing your personal data with our 420 partners. Just kidding.</item>
+        <item>Stop! Get some help.</item>
+        <item>Insanity is doing the same thing over and over and expecting different results.</item>
+    </string-array>
+    <string name="schedules_long_press_hint">OK, you clearly want something. Swipe card to delete.</string>
     <string name="strip_alarms">Alarms aren\'t allowed</string>
     <string name="strip_battery">Battery optimization is on</string>
     <string name="strip_shizuku_ready">Shizuku is active</string>
