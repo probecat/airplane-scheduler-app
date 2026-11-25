@@ -3,7 +3,8 @@
 naming:
   FunctionNaming:
     # Composables are PascalCase.
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated:
+      - "Composable"
 
 complexity:
   TooManyFunctions:
@@ -11,7 +12,8 @@ complexity:
     active: false
   LongParameterList:
     # Composables take state and event lambdas as parameters instead of a ViewModel.
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated:
+      - "Composable"
     # Parameters with defaults are optional, so callers do not have to pass them.
     ignoreDefaultParameters: true
 
@@ -22,12 +24,23 @@ style:
     excludeGuardClauses: true
   MagicNumber:
     # Minutes per hour and hours per day read more clearly as numbers.
-    ignoreNumbers: ['-1', '0', '1', '2', '24', '60']
+    ignoreNumbers:
+      - "-1"
+      - "0"
+      - "1"
+      - "2"
+      - "24"
+      - "60"
     # Setting excludes replaces the defaults, so the test paths repeat here.
     # Layout and type values in Compose read more clearly inline.
-    excludes: ['**/test/**', '**/androidTest/**', '**/ui/**']
+    excludes:
+      - "**/test/**"
+      - "**/androidTest/**"
+      - "**/ui/**"
 
 Compose:
   CompositionLocalAllowlist:
     # Theme colors that MaterialTheme does not cover.
-    allowedCompositionLocals: ['LocalWarningColors', 'LocalSuccessColors']
+    allowedCompositionLocals:
+      - "LocalWarningColors"
+      - "LocalSuccessColors"
