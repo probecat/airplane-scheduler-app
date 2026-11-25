@@ -79,7 +79,7 @@ fun SettingsScreen(viewModel: AppViewModel, onDebug: () -> Unit, onBack: () -> U
     val update: ((Settings) -> Settings) -> Unit = viewModel::updateSettings
 
     val menu = listOf(
-        MenuItem(stringResource(R.string.settings_reset), R.drawable.ic_settings_backup_restore) {
+        MenuItem(stringResource(R.string.settings_reset), R.drawable.ic_reset_settings) {
             dialog = Dialog.RESET
         },
     )
@@ -150,7 +150,7 @@ private fun SchedulesSection(
 ) = Column(modifier) {
     SectionHeader(stringResource(R.string.settings_schedules))
     SettingRow(
-        icon = R.drawable.ic_notifications_active,
+        icon = R.drawable.ic_alarm,
         title = stringResource(R.string.settings_alerts),
         text = minutesLabel(settings.alertMinutes, format),
         onClick = onAlerts,
@@ -162,7 +162,7 @@ private fun SchedulesSection(
         onClick = onPostpone,
     )
     SwitchRow(
-        icon = R.drawable.ic_lock,
+        icon = R.drawable.ic_security,
         title = stringResource(R.string.settings_safe_mode),
         checked = settings.safeMode,
         onChange = onSafeMode,
@@ -191,7 +191,7 @@ private fun PermissionsSection(
         SectionHeader(stringResource(R.string.settings_permissions))
         // First, as the mode decides which access the next row shows.
         SettingRow(
-            icon = R.drawable.ic_security,
+            icon = R.drawable.ic_shield,
             title = stringResource(R.string.settings_backend),
             text = stringResource(backendLabel(settings.backend)),
             trailing = { TextButton(onClick = onBackend) { Text(stringResource(R.string.action_change)) } },
@@ -213,7 +213,7 @@ private fun PermissionsSection(
         )
         if (exactAlarmsDeniable) {
             SettingRow(
-                icon = R.drawable.ic_alarm,
+                icon = R.drawable.ic_alarm_on,
                 title = stringResource(R.string.settings_alarms),
                 text = stringResource(if (exactAlarms) R.string.status_allowed else R.string.status_not_allowed),
                 trailing = {
