@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -172,6 +173,7 @@ fun ScheduleSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars),
         contentWindowInsets = { sheetInsets() },
     ) {
         BackHandler(enabled = dirty && !closing) { discarding = true }
@@ -222,8 +224,7 @@ private fun sheetInsets(): WindowInsets {
     val margin = (window - with(density) { BottomSheetDefaults.SheetMaxWidth.roundToPx() }).coerceAtLeast(0) / 2
     val left = (sides.getLeft(density, direction) - margin).coerceAtLeast(0)
     val right = (sides.getRight(density, direction) - margin).coerceAtLeast(0)
-    return WindowInsets.navigationBars.union(WindowInsets.statusBars).only(WindowInsetsSides.Vertical)
-        .union(WindowInsets(left = left, right = right))
+    return WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).union(WindowInsets(left = left, right = right))
 }
 
 // The buttons stay below the scrolling fields, so Save is reachable in a short window and above the keyboard.
