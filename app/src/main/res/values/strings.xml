@@ -4,10 +4,8 @@
 
     <string name="action_allow">Allow</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_change">Change</string>
     <string name="action_delete">Delete</string>
     <string name="action_discard">Discard</string>
-    <string name="action_disable">Disable</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_end">End</string>
     <string name="action_get">Get</string>
@@ -15,7 +13,6 @@
     <string name="action_manage">Manage</string>
     <string name="action_ok">OK</string>
     <string name="action_open">Open</string>
-    <string name="action_report">Report</string>
     <!-- %1$s is a length, as in "Pause for 30 min". -->
     <string name="action_pause">Pause for %1$s</string>
     <string name="action_postpone">Postpone %1$s</string>
@@ -26,7 +23,6 @@
     <string name="action_save">Save</string>
     <string name="action_skip">Skip</string>
     <string name="action_turn_on">Turn on</string>
-    <string name="action_undo">Undo</string>
     <string name="action_unskip">Unskip</string>
     <string name="back">Back</string>
     <string name="more_options">More options</string>
@@ -87,7 +83,15 @@
     <string name="schedules_postponed">Schedule postponed</string>
     <string name="schedules_paused">Schedule paused</string>
     <string name="schedules_turn_on_failed">Failed to turn on airplane mode</string>
-    <string name="schedules_deleted">Schedule deleted</string>
+    <string-array name="schedules_long_press">
+        <item>Maybe you should touch grass instead?</item>
+        <item>Didst thou drink water?</item>
+        <item>Hi, mom!</item>
+        <item>Thank you for sharing your personal data with our 420 partners. Just kidding.</item>
+        <item>Stop! Get some help.</item>
+        <item>Insanity is doing the same thing over and over and expecting different results.</item>
+    </string-array>
+    <string name="schedules_long_press_hint">OK, you clearly want something. Swipe card to delete.</string>
     <string name="strip_alarms">Alarms aren\'t allowed</string>
     <string name="strip_battery">Battery optimization is on</string>
     <string name="strip_shizuku_ready">Shizuku is active</string>
@@ -117,6 +121,8 @@
     <string name="sheet_end_time">End time</string>
     <string name="sheet_discard_title">Discard changes?</string>
     <string name="sheet_discard_text">Your changes won\'t be saved.</string>
+    <string name="delete_title">Delete schedule?</string>
+    <string name="delete_text">This can\'t be undone.</string>
     <string name="sheet_same_times">Start and end can\'t be the same time</string>
     <!-- %1$s is a length, as in "Duration: 8 h". -->
     <string name="sheet_lasts">Duration: %1$s</string>
@@ -138,10 +144,10 @@
     <string name="settings_schedules">Schedules</string>
     <string name="settings_postpone">Postpone &amp; pause</string>
     <string name="settings_alerts">Upcoming notices</string>
-    <string name="settings_safe_mode">Safe mode</string>
-    <string name="safe_mode_off_title">Disable Safe mode?</string>
-    <string name="safe_mode_off_text">With Safe mode disabled, the app catches up on missed schedules and matches the end state, such as airplane mode off and Wi-Fi on, regardless of your own toggles.\n\nThis is an experimental feature. Please report any unexpected behavior.</string>
-    <string name="settings_backend">Permission mode</string>
+    <string name="settings_behavior">Behavior</string>
+    <string name="behavior_conservative">Conservative</string>
+    <string name="behavior_strict">Strict</string>
+    <string name="settings_backend">Access provider</string>
     <string name="backend_shizuku">Shizuku</string>
     <string name="backend_sui">Sui</string>
     <string name="backend_root">Root</string>
@@ -178,9 +184,9 @@
     <string name="help_collapsed">Collapsed</string>
 
     <string name="help_start_end_q">How do schedules work from start to end?</string>
-    <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. In Safe mode, the app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
+    <string name="help_start_end_a">Airplane mode is turned on when the schedule starts and off when it ends. With Conservative behavior, the app only reverts changes it made. For example, if airplane mode was already on, it will stay on. If you turn it off while a schedule is running, it will stay off.</string>
     <string name="help_wifi_q">What do the Wi-Fi options do?</string>
-    <string name="help_wifi_a">“Wi-Fi off at start” disables Wi-Fi before turning on airplane mode. “Wi-Fi on at end” enables Wi-Fi again. In Safe mode, only if the app turned it off.</string>
+    <string name="help_wifi_a">“Wi-Fi off at start” disables Wi-Fi before turning on airplane mode. “Wi-Fi on at end” enables Wi-Fi again. With Conservative behavior, only if the app turned it off.</string>
     <string name="help_overnight_q">Which day does an overnight schedule belong to?</string>
     <!-- %1$s is 11 PM and %2$s is 7 AM. -->
     <string name="help_overnight_a">The day the schedule starts. For example, a Friday schedule running from %1$s to %2$s ends on Saturday morning.</string>
@@ -192,14 +198,14 @@
     <string name="help_pause_a">Pausing a running schedule turns airplane mode off for the time set in “Postpone &amp; pause” in Settings. A running schedule can also be ended early.</string>
     <string name="help_change_active_q">Do changes take effect immediately?</string>
     <string name="help_change_active_a">Yes. Turning off or deleting an active schedule ends it just like a normal schedule ending. Enabling or adding a schedule that covers the current time starts it immediately. Changing a schedule\'s time also starts or ends it as needed to match the updated schedule.</string>
-    <string name="help_safe_mode_q">What is Safe mode?</string>
-    <string name="help_safe_mode_a">Safe mode is on by default. The app only reverts changes it made, and missed schedule changes are not retried. With Safe mode off, the app always matches the schedule\'s end state: airplane mode off and Wi-Fi on at the end, for example. Missed starts and ends are caught up once possible.</string>
+    <string name="help_behavior_q">What is the difference between Conservative and Strict?</string>
+    <string name="help_behavior_a">Choose either in “Behavior” in Settings. Conservative is the default: the app only reverts changes it made, and missed schedule changes are not retried. With Strict, the app always matches the schedule\'s end state, such as airplane mode off and Wi-Fi on, even if you changed them yourself. Missed starts and ends are caught up once possible. Switching to Strict doesn\'t catch up what was already missed, and switching back to Conservative cancels pending catch-ups.</string>
     <string name="help_overlap_q">Can schedules overlap?</string>
     <string name="help_overlap_a">No. Only one schedule can control airplane mode at a time. Back-to-back schedules are treated as one continuous schedule, so airplane mode stays on between them. Wi-Fi follows the start option of the first schedule and the end option of the last one.</string>
     <string name="help_missed_q">Why didn\'t airplane mode switch?</string>
-    <string name="help_missed_a">Shizuku may not have been running or allowed, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
-    <string name="help_missed_a_sui">Sui may not have been authorized, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
-    <string name="help_missed_a_root">Root access may not have been granted, or your phone may have been turned off. In Safe mode, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a">Shizuku may not have been running or allowed, or your phone may have been turned off. With Conservative behavior, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a_sui">Sui may not have been authorized, or your phone may have been turned off. With Conservative behavior, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
+    <string name="help_missed_a_root">Root access may not have been granted, or your phone may have been turned off. With Conservative behavior, the app doesn\'t retry missed schedule changes. If notifications are enabled, you\'ll receive an alert instead.</string>
     <!-- Shown below Android 12 only. -->
     <string name="help_late_q">Why did a schedule start late?</string>
     <string name="help_late_a">Battery optimization may delay schedules by up to 2 hours if you don\'t open the app often. Try disabling battery optimization for Airplane Scheduler.</string>
@@ -251,7 +257,7 @@
     <string name="notification_wifi_was_off">Wi-Fi was off before the schedule.</string>
     <string name="notification_wifi_back_on">Wi-Fi turned on.</string>
     <string name="notification_missed_end">Schedule missed the end. No action taken.</string>
-    <!-- Follows a reason why a schedule could not switch, with Safe mode off. -->
+    <!-- Follows a reason why a schedule could not switch, with Strict behavior. -->
     <string name="notification_catches_up">Catches up when possible.</string>
 
     <!-- Reasons that end a sentence, as in "No action taken because Shizuku isn’t running." -->

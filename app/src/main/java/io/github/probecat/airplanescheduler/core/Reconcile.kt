@@ -12,11 +12,12 @@ import io.github.probecat.airplanescheduler.core.Engine.Then
 import io.github.probecat.airplanescheduler.data.Schedule
 import java.time.LocalDateTime
 
-// What the app does with Safe mode off. Starts work as in Safe mode, and nothing switches during a window. The end of
-// a window that the app started switches to what the schedule asks for, whatever was set before the start and
-// whoever switched it. A window that the app has no start of, as for a second alarm, ends as in Safe mode. A start or
-// end that the app could not switch, or that passed while the phone was off, is owed. Once the app can switch again,
-// it switches to what the schedules ask for now. A radio that the user switched since then stays as the user left it.
+// What the app does with Strict behavior. Starts work as with Conservative, and nothing switches during a window. The
+// end of a window that the app started switches to what the schedule asks for, whatever was set before the start and
+// whoever switched it. A window that the app has no start of, as for a second alarm, ends as with Conservative. A
+// start or end that the app could not switch, or that passed while the phone was off, is owed. Once the app can switch
+// again, it switches to what the schedules ask for now. A radio that the user switched since then stays as the user
+// left it.
 object Reconcile {
     private val AIRPLANE = Changes(airplane = true, wifi = false)
 

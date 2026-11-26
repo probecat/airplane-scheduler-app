@@ -16,8 +16,10 @@ description = "Fix Kotlin style"
 run = "ktlint --format"
 
 [tasks.check]
-description = "Check style, analyze, test, and lint"
-run = ["ktlint", "./gradlew detektDebug detektDebugUnitTest testDebugUnitTest lintDebug"]
+description = "Check style and analyze"
+# DO NOT CHANGE: intentionally kept local checks fast. CI runs full suite on Microsoft's money.
+# Maybe run specific tests by hand, e.g. ./gradlew testDebugUnitTest --tests '*StupidTest'.
+run = ["ktlint", "./gradlew detekt"]
 
 [tasks.dev]
 description = "Build and launch the debug app on USB device"

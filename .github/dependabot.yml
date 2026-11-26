@@ -8,7 +8,8 @@ updates:
       default-days: 3
     groups:
       actions:
-        patterns: ['*']
+        patterns:
+          - "*"
   - package-ecosystem: gradle
     directory: /
     schedule:
@@ -17,4 +18,5 @@ updates:
       default-days: 3
     groups:
       gradle:
-        patterns: ['*']
+        patterns:
+          - "*"

@@ -86,7 +86,7 @@ class NotificationsTest {
     }
 
     // As if the phone was off since the start of a window that the app started, and Shizuku did not run at boot.
-    private fun endMissedWithSafeModeOff() {
+    private fun endMissedWithStrictBehavior() {
         device.app.settings.update { it.copy(safeMode = false) }
         device.save(Schedule(id = 1, start = device.minute(-90), end = device.minute(-30), disableWifi = false))
         val start = LocalDateTime.now().minusMinutes(90).truncatedTo(ChronoUnit.MINUTES)
@@ -97,8 +97,8 @@ class NotificationsTest {
     }
 
     @Test
-    fun `end while phone off catches up with Safe mode off`() {
-        endMissedWithSafeModeOff()
+    fun `end while phone off catches up with Strict behavior`() {
+        endMissedWithStrictBehavior()
         assertTrue(device.airplaneOn)
         assertNotNull(device.problem(1))
 
@@ -110,8 +110,8 @@ class NotificationsTest {
     }
 
     @Test
-    fun `problem stops promising catch-up when Safe mode turns on`() {
-        endMissedWithSafeModeOff()
+    fun `problem stops promising catch-up when switching to Conservative`() {
+        endMissedWithStrictBehavior()
         val catchesUp = device.app.getString(R.string.notification_catches_up)
         assertTrue(text(device.problem(1)).contains(catchesUp))
 

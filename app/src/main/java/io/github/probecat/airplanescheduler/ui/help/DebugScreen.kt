@@ -223,7 +223,7 @@ private fun settingsSection(settings: Settings) = Section(
         "Dynamic color" to if (hasDynamicColor) Events.onOff(settings.dynamicColor) else "UNSUPPORTED",
         "Postpone" to minutes(settings.postponeMinutes),
         "Upcoming notices" to minutes(settings.alertMinutes),
-        "Safe mode" to Events.onOff(settings.safeMode),
+        "Behavior" to if (settings.safeMode) "CONSERVATIVE" else "STRICT",
     ),
 )
 

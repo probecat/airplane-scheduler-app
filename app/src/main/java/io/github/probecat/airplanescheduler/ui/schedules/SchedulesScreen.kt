@@ -5,15 +5,22 @@ import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,14 +52,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxDefaults
-import androidx.compose.material3.SwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,9 +61,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,19 +80,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -106,6 +121,7 @@ import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
 import io.github.probecat.airplanescheduler.system.stopBatteryOptimization
 import io.github.probecat.airplanescheduler.ui.AppViewModel
+import io.github.probecat.airplanescheduler.ui.CompactHeight
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
@@ -113,6 +129,7 @@ import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.rememberAccessRequest
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.rememberTopBarScroll
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
 import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColors
 import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
@@ -124,7 +141,9 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,7 +163,7 @@ fun SchedulesScreen(
     val missed by viewModel.missed.collectAsStateWithLifecycle()
     val format = rememberFormat()
     val snackbar = remember { SnackbarHostState() }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberTopBarScroll()
     var editing by rememberEditing(opening, schedules, onOpen)
     val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
@@ -216,6 +235,18 @@ private fun rememberEditing(opening: Long?, schedules: List<Schedule>, onOpen: (
 }
 
 @Composable
+private fun rememberDeleteAsk(schedules: List<Schedule>, onDelete: (Schedule) -> Unit): MutableState<Long?> {
+    val deleting = rememberSaveable { mutableStateOf<Long?>(null) }
+    deleting.value?.let { id ->
+        DeleteDialog(
+            onClose = { deleting.value = null },
+            onDelete = { schedules.find { it.id == id }?.let(onDelete) },
+        )
+    }
+    return deleting
+}
+
+@Composable
 private fun SchedulesList(
     padding: PaddingValues,
     schedules: List<Schedule>,
@@ -232,13 +263,21 @@ private fun SchedulesList(
     onChoose: (Long) -> Unit,
 ) {
     val active = ScheduleResolver.activeSchedule(schedules, now)
+    var deleting by rememberDeleteAsk(schedules, actions::delete)
     val strips = Strips.of(phone, access, settings, schedules)
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    val direction = LocalLayoutDirection.current
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .padding(start = padding.calculateStartPadding(direction), end = padding.calculateEndPadding(direction)),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        val margin = (maxWidth - ContentWidth).coerceAtLeast(0.dp) / 2
+        val lane = if (maxHeight < CompactHeight && margin < ADD_LANE) ADD_LANE - margin else 0.dp
+        val column = Modifier.column(lane)
         LazyColumn(
-            modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = LIST_PADDING,
-                end = LIST_PADDING,
                 top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
@@ -252,12 +291,13 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().bleed(LIST_PADDING).animateContentSize().padding(bottom = 18.dp),
+                        lane,
+                        Modifier.animateItem().animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
             if (schedules.isEmpty()) {
-                item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f)) }
+                item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f).then(column)) }
             }
             items(schedules, key = { it.id }) { schedule ->
                 val isActive = schedule.id == active?.id
@@ -273,7 +313,8 @@ private fun SchedulesList(
                     actions = actions,
                     onEdit = { onEdit(schedule) },
                     onChoose = { onChoose(schedule.id) },
-                    modifier = Modifier.animateItem(),
+                    onDelete = { deleting = schedule.id },
+                    modifier = Modifier.animateItem().then(column),
                 )
             }
         }
@@ -290,8 +331,9 @@ private fun rememberScheduleActions(
 ): ScheduleActions {
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()
+    val longPresses = rememberSaveable { mutableIntStateOf(0) }
     return remember(viewModel, resources, format, snackbar, scope) {
-        ScheduleActions(viewModel, resources, format, snackbar, scope)
+        ScheduleActions(viewModel, resources, format, snackbar, scope, longPresses)
     }
 }
 
@@ -302,6 +344,8 @@ private class ScheduleActions(
     private val format: Format,
     private val snackbar: SnackbarHostState,
     private val scope: CoroutineScope,
+    // Long-presses on any card since the app opened
+    private val longPresses: MutableIntState,
 ) {
     private val now get() = viewModel.now.value
 
@@ -377,7 +421,6 @@ private class ScheduleActions(
         if (conflict != null) showConflict() else showStart(schedule.id)
     }
 
-    // Returns true when saved.
     fun save(edited: Schedule, onAsk: () -> Unit): Boolean {
         val saved = viewModel.save(edited) == null
         if (saved) showStart(edited.id)
@@ -385,19 +428,18 @@ private class ScheduleActions(
         return saved
     }
 
-    fun delete(schedule: Schedule) {
-        viewModel.delete(schedule)
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            val result = snackbar.showSnackbar(
-                resources.getString(R.string.schedules_deleted),
-                resources.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.restore(schedule)
-            }
-        }
+    fun delete(schedule: Schedule) = viewModel.delete(schedule)
+
+    fun longPress() {
+        val count = ++longPresses.intValue
+        val jokes = resources.getStringArray(R.array.schedules_long_press)
+        show(
+            if (count > 9) {
+                resources.getString(R.string.schedules_long_press_hint)
+            } else {
+                jokes[minOf(count, jokes.size) - 1]
+            },
+        )
     }
 }
 
@@ -476,6 +518,7 @@ private fun NoticeStrips(
     shizukuInstalled: Boolean,
     onAccess: () -> Unit,
     onHideReady: () -> Unit,
+    lane: Dp,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -485,6 +528,7 @@ private fun NoticeStrips(
                 label = stringResource(R.string.strip_alarms),
                 icon = R.drawable.ic_error,
                 tone = Tone.ERROR,
+                lane = lane,
                 onClick = { context.startActivity(exactAlarmSettings(context)) },
             )
         }
@@ -493,6 +537,7 @@ private fun NoticeStrips(
                 label = stringResource(statusStrip(access, shizukuInstalled)),
                 icon = access.state.icon,
                 tone = Tone.ERROR,
+                lane = lane,
                 onClick = onAccess,
             )
         }
@@ -501,6 +546,7 @@ private fun NoticeStrips(
                 label = stringResource(R.string.strip_battery),
                 icon = R.drawable.ic_warning,
                 tone = Tone.WARNING,
+                lane = lane,
                 onClick = { stopBatteryOptimization(context) },
             )
         }
@@ -509,6 +555,7 @@ private fun NoticeStrips(
                 label = stringResource(statusStrip(access, shizukuInstalled)),
                 icon = access.state.icon,
                 tone = Tone.SUCCESS,
+                lane = lane,
                 onDismiss = onHideReady,
             )
         }
@@ -528,11 +575,12 @@ private fun ScheduleItem(
     actions: ScheduleActions,
     onEdit: () -> Unit,
     onChoose: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = ScheduleStatus.of(schedule, now, isMissed)
     val action = cardAction(status, canCatchUp = isMissed && access.ready)
-    SwipeToDelete(onDelete = { actions.delete(schedule) }, modifier = modifier) {
+    SwipeToDelete(onDelete = onDelete, modifier = modifier) {
         ScheduleCard(
             schedule = schedule,
             endsIn = if (isActive) minutesLeft(schedule, now) else null,
@@ -543,6 +591,7 @@ private fun ScheduleItem(
             today = now.toLocalDate(),
             format = format,
             onClick = onEdit,
+            onLongClick = actions::longPress,
             onAction = { status?.let { actions.act(schedule, it, action, postponeMinutes, onChoose) } },
             onToggle = { enabled -> actions.setEnabled(schedule, enabled) },
         )
@@ -618,6 +667,7 @@ private fun Strip(
     label: String,
     icon: Int,
     tone: Tone,
+    lane: Dp,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
@@ -639,7 +689,7 @@ private fun Strip(
         // The close button's touch target pads its icon by 15 dp, so both trailing icons end 16 dp in.
         val end = if (onDismiss != null) 1.dp else 16.dp
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp + LIST_PADDING, end = end + LIST_PADDING),
+            modifier = Modifier.column(lane).heightIn(min = 48.dp).padding(start = 16.dp, end = end),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -684,42 +734,49 @@ private fun EmptyState(modifier: Modifier = Modifier) {
     }
 }
 
+// A swipe far enough asks to delete, and the card springs back into view while the dialog asks.
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    // Not saveable. Undo and app restarts can reuse an id, and a saved dismissed state then deletes the next
-    // schedule with that id.
-    val threshold = SwipeToDismissBoxDefaults.positionalThreshold
-    val state = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, threshold) }
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        onDismiss = { onDelete() },
-        backgroundContent = {
-            val direction = state.dismissDirection
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
-                    Alignment.CenterStart
-                } else {
-                    Alignment.CenterEnd
+    val scope = rememberCoroutineScope()
+    var offset by remember { mutableFloatStateOf(0f) }
+    var settling by remember { mutableStateOf<Job?>(null) }
+    var width by remember { mutableIntStateOf(0) }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val maxReach = with(LocalDensity.current) { SWIPE_MAX_REACH.toPx() }
+    val drag = rememberDraggableState { delta -> offset = (offset + delta).coerceIn(-width.toFloat(), width.toFloat()) }
+    Box(
+        modifier
+            .onSizeChanged { width = it.width }
+            .draggable(
+                drag,
+                Orientation.Horizontal,
+                reverseDirection = rtl,
+                onDragStarted = { settling?.cancel() },
+                onDragStopped = {
+                    if (abs(offset) >= minOf(width * SWIPE_DELETE, maxReach)) onDelete()
+                    settling = scope.launch { animate(offset, 0f) { value, _ -> offset = value } }
                 },
+            ),
+    ) {
+        if (offset != 0f) {
+            Box(
+                Modifier.matchParentSize(),
+                contentAlignment = if (offset > 0) Alignment.CenterStart else Alignment.CenterEnd,
             ) {
-                if (direction != SwipeToDismissBoxValue.Settled) {
-                    val width = with(LocalDensity.current) { abs(state.requireOffset()).toDp() - 8.dp }
-                    Surface(
-                        shape = RoundedCornerShape(CARD_CORNER),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.fillMaxHeight().width(width.coerceAtLeast(0.dp)),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(painterResource(R.drawable.ic_delete), contentDescription = null)
-                        }
+                val fill = with(LocalDensity.current) { abs(offset).toDp() - 8.dp }
+                Surface(
+                    shape = RoundedCornerShape(CARD_CORNER),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxHeight().width(fill.coerceAtLeast(0.dp)),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(painterResource(R.drawable.ic_delete), contentDescription = null)
                     }
                 }
             }
-        },
-        content = { content() },
-    )
+        }
+        Box(Modifier.offset { IntOffset((if (rtl) -offset else offset).roundToInt(), 0) }) { content() }
+    }
 }
 
 @Composable
@@ -735,6 +792,7 @@ private fun ScheduleCard(
     today: LocalDate,
     format: Format,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onAction: () -> Unit,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -744,53 +802,92 @@ private fun ScheduleCard(
     val container by animateColorAsState(if (on) colors.primaryContainer else colors.surfaceContainer)
     val content by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurfaceVariant)
     val time by animateColorAsState(if (on) colors.onPrimaryContainer else colors.onSurface)
-    val weight by animateIntAsState(if (on) ON_WEIGHT else 200)
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(CARD_CORNER),
-        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
-    ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.heightIn(min = 48.dp)) {
-                Column(
-                    Modifier.weight(1f).then(
-                        if (action != null) Modifier.alignByBaseline() else Modifier.align(Alignment.CenterVertically),
-                    ),
-                ) {
-                    DaysAndName(format.repeats(schedule, today), schedule.name)
-                    when {
-                        missed != null -> Missed(missed, shizukuInstalled)
-                        endsIn != null -> EndsIn(format.duration(endsIn))
-                        note != null -> Status(note.first, note.second)
+    val shape = RoundedCornerShape(CARD_CORNER)
+    // Long enough that a long-press is deliberate, since it only shows a joke.
+    val config = LocalViewConfiguration.current
+    val slow = remember(config) {
+        object : ViewConfiguration by config {
+            override val longPressTimeoutMillis = 1500L
+        }
+    }
+    CompositionLocalProvider(LocalViewConfiguration provides slow) {
+        Card(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            shape = shape,
+            colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.heightIn(min = 48.dp)) {
+                    Column(
+                        Modifier.weight(1f).then(
+                            if (action != null) {
+                                Modifier.alignByBaseline()
+                            } else {
+                                Modifier.align(Alignment.CenterVertically)
+                            },
+                        ),
+                    ) {
+                        DaysAndName(format.repeats(schedule, today), schedule.name)
+                        when {
+                            missed != null -> Missed(missed, shizukuInstalled)
+                            endsIn != null -> EndsIn(format.duration(endsIn))
+                            note != null -> Status(note.first, note.second)
+                        }
+                    }
+                    if (action != null) {
+                        Spacer(Modifier.width(8.dp))
+                        ActionButton(stringResource(action.label), onAction, Modifier.alignByBaseline())
                     }
                 }
-                if (action != null) {
-                    Spacer(Modifier.width(8.dp))
-                    ActionButton(stringResource(action.label), onAction, Modifier.alignByBaseline())
+                Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Window(schedule, format, time, on, Modifier.weight(1f))
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = schedule.enabled,
+                        onCheckedChange = onToggle,
+                        modifier = Modifier.semantics {
+                            contentDescription = "${format.window(schedule)}, ${format.repeats(schedule, today)}"
+                        },
+                    )
                 }
             }
-            Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    // The marker keeps its weight, so only the digits look lighter while off.
-                    format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
-                    style = MaterialTheme.typography.displayMedium,
-                    color = time,
-                    fontWeight = FontWeight((weight + 25) / 50 * 50),
-                    maxLines = 1,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = TIME_SIZE),
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(12.dp))
-                Switch(
-                    checked = schedule.enabled,
-                    onCheckedChange = onToggle,
-                    modifier = Modifier.semantics {
-                        contentDescription = "${format.window(schedule)}, ${format.repeats(schedule, today)}"
-                    },
-                )
-            }
         }
+    }
+}
+
+// Shrinks to fit one line. When the start and the end do not fit on one line even at the smallest
+// size, they go on two lines that share one size.
+@Composable
+private fun Window(schedule: Schedule, format: Format, color: Color, on: Boolean, modifier: Modifier = Modifier) {
+    // The marker keeps its weight, so only the digits look lighter while off.
+    val weight = FontWeight(ON_WEIGHT)
+    val style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight(if (on) ON_WEIGHT else 200))
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier) {
+        val line = format.window(schedule, Format.MARKER, weight)
+        val oneLine = remember(line, style, constraints.maxWidth) {
+            val smallest = measurer.measure(line, style.copy(fontSize = MIN_TIME_SIZE), maxLines = 1, softWrap = false)
+            smallest.size.width <= constraints.maxWidth
+        }
+        val lines = buildAnnotatedString {
+            append(format.time(schedule.start, Format.MARKER, weight))
+            append("\n")
+            append(format.time(schedule.end, Format.MARKER, weight))
+        }
+        Text(
+            if (oneLine) line else lines,
+            // The theme sets the line height in sp, which leaves gaps between the lines once the size steps down.
+            style = if (oneLine) style else style.copy(lineHeight = 1.15.em),
+            color = color,
+            maxLines = if (oneLine) 1 else 2,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = if (oneLine) MIN_TIME_SIZE else 12.sp,
+                maxFontSize = TIME_SIZE,
+            ),
+        )
     }
 }
 
@@ -810,8 +907,12 @@ private fun DaysAndName(days: String, name: String) {
 }
 
 private val TIME_SIZE = 46.sp
+private val MIN_TIME_SIZE = 20.sp
 
 private val CARD_CORNER = 24.dp
+
+private const val SWIPE_DELETE = 0.4f
+private val SWIPE_MAX_REACH = 160.dp
 
 private const val NAME_ALPHA = 0.84f
 
@@ -819,12 +920,12 @@ private const val ON_WEIGHT = 500
 
 private val LIST_PADDING = 16.dp
 
-// Widens the content past the list's side padding, so it reaches the screen edges.
-private fun Modifier.bleed(horizontal: Dp) = layout { measurable, constraints ->
-    val extra = horizontal.roundToPx()
-    val placeable = measurable.measure(constraints.offset(horizontal = 2 * extra))
-    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra, 0) }
-}
+private val ADD_LANE = 96.dp
+
+private fun Modifier.column(lane: Dp) = fillMaxWidth()
+    .wrapContentWidth()
+    .widthIn(max = ContentWidth)
+    .padding(start = LIST_PADDING, end = LIST_PADDING + lane)
 
 @Composable
 private fun EndsIn(duration: String) = Status(

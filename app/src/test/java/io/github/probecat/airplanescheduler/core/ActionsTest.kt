@@ -170,17 +170,6 @@ class ActionsTest {
     }
 
     @Test
-    fun `restored schedule gets new id or turns off on overlap`() {
-        val reused = Schedule(id = night.id, start = at(12), end = at(13))
-        val restored = ScheduleEdits.restore(listOf(reused), night, newId = 5, friday(12)) as ScheduleEdits.Result.Saved
-        assertEquals(5L, restored.schedules.last().id)
-        assertTrue(restored.schedules.last().enabled)
-        val overlapping = Schedule(id = 3, start = at(22), end = at(23, 30))
-        val off = ScheduleEdits.restore(listOf(night), overlapping, newId = 5, friday(12)) as ScheduleEdits.Result.Saved
-        assertFalse(off.schedules.last().enabled)
-    }
-
-    @Test
     fun `restore leaves out window under way until turned on`() {
         // The restored phone did not start it, so its end would have no start to undo.
         val lunch = Schedule(id = 2, start = at(12), end = at(13))

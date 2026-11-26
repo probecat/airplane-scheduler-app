@@ -10,7 +10,7 @@ import java.time.LocalDateTime
 // while its start is still switching.
 object Engine {
     // [started] is the window that the app started. [wifiKeptUntil] is the time until which Wi-Fi stays on after the
-    // user turned it on against a start. [owed] is a switch that the app still owes with Safe mode off.
+    // user turned it on against a start. [owed] is a switch that the app still owes with Strict behavior.
     data class State(
         val started: Started? = null,
         val wifiKeptUntil: LocalDateTime? = null,
@@ -58,6 +58,7 @@ object Engine {
 
     data class Result(val state: State, val effects: List<Effect> = emptyList())
 
+    // [safe] is the Behavior setting: true is Conservative, false is Strict. See [Settings.safeMode].
     fun on(state: State, event: Event, device: Device, safe: Boolean = true): Result {
         if (!safe) return Reconcile.on(state, event, device)
         return conservative(state, event, device)

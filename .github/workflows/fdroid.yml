@@ -7,7 +7,7 @@ on:
       signed-artifact:
         description: Artifact with a signed APK to check against F-Droid's build
         type: string
-        default: ''
+        default: ""
 
 permissions:
   contents: read

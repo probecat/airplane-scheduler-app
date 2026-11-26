@@ -21,12 +21,12 @@ cd "$work/fdroiddata"
 
 printf 'sdk_path: %s\n' "$ANDROID_HOME" > config.yml
 # Listing categories by name skips loading their icons.
-curl -fsSL https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml |
-    python3 -c 'import sys, yaml; print(yaml.safe_dump({"categories": list(yaml.safe_load(sys.stdin))}))' >> config.yml
+curl -fsSL https://gitlab.com/fdroid/fdroiddata/-/raw/master/config/categories.yml \
+    | python3 -c 'import sys, yaml; print(yaml.safe_dump({"categories": list(yaml.safe_load(sys.stdin))}))' >> config.yml
 chmod 600 config.yml
 
 recipe=metadata/$appid.yml
-cat > "$recipe" <<RECIPE
+cat > "$recipe" << RECIPE
 Categories:
   - Connectivity
   - System

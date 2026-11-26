@@ -65,7 +65,7 @@ private fun schedules(format: Format) = listOf(
     topic(R.string.help_pause_q, R.string.help_pause_a),
     topic(R.string.help_change_active_q, R.string.help_change_active_a),
     topic(R.string.help_overlap_q, R.string.help_overlap_a),
-    topic(R.string.help_safe_mode_q, R.string.help_safe_mode_a),
+    topic(R.string.help_behavior_q, R.string.help_behavior_a),
 )
 
 @Composable

@@ -1,0 +1,7 @@
+Mostly cosmetic changes with v4.0 non-safe mode ("Strict mode") promoted from experimental to stable after extensive dogfooding.
+
+• Safe mode switch is replaced by a Behavior choice: Conservative (default) or Strict.
+• "Permission mode" is renamed to "Access provider".
+• Deleting a schedule now asks for confirmation.
+• Fixed clipped or hidden content in short, wide and landscape windows and with large text.
+• Added hint to touch grass (see if you can find it).

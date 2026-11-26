@@ -3,8 +3,10 @@ name: Release
 # Releases when main gets a new version. The release step also creates the tag.
 on:
   push:
-    branches: [main]
-    paths: [app/build.gradle]
+    branches:
+      - main
+    paths:
+      - app/build.gradle
   workflow_dispatch:
 
 permissions:
@@ -38,7 +40,9 @@ jobs:
     uses: $/.github/workflows/ci.yml
 
   build:
-    needs: [check, ci]
+    needs:
+      - check
+      - ci
     if: needs.check.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: release
@@ -75,7 +79,10 @@ jobs:
       signed-artifact: signed
 
   release:
-    needs: [check, build, fdroid]
+    needs:
+      - check
+      - build
+      - fdroid
     runs-on: ubuntu-latest
     permissions:
       contents: write

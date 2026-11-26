@@ -52,7 +52,7 @@ object AirplaneController {
         }
     }
 
-    // Whether the app owes a switch with Safe mode off, and can make it now. While a switch runs, that switch settles
+    // Whether the app owes a switch with Strict behavior, and can make it now. While a switch runs, that switch settles
     // what is owed or owes anew.
     fun owes(app: App): Boolean =
         !app.settings.current.safeMode && app.engine.state.owed != null && !switching && app.access.value.ready
@@ -73,9 +73,10 @@ object AirplaneController {
         app.launch { dispatch(app, Engine.Event.Touched) }
     }
 
-    // Turning Safe mode on drops what the app owes, and turning it off does not catch up what it missed before.
+    // Switching to Conservative drops what the app owes, and switching to Strict does not catch up what it missed
+    // before.
     fun safeModeChanged(app: App, on: Boolean) {
-        app.log.add("Safe mode ${Events.onOff(on)}")
+        app.log.add("Behavior ${if (on) "CONSERVATIVE" else "STRICT"}")
         if (on) app.engine.state = app.engine.state.copy(owed = null)
         Notifier.refresh(app)
     }

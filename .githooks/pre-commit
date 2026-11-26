@@ -4,8 +4,10 @@ set -euo pipefail
 git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.kts?$|^\.editorconfig$' || exit 0
 
 eval "$(mise env -s bash)"
+# Lints the staged files, not the working tree.
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git checkout-index -a --prefix="$tmp/"
 cd "$tmp"
-ktlint --relative
+echo "pre-commit: running ktlint..." >&2
+ktlint --relative --log-level=warn
