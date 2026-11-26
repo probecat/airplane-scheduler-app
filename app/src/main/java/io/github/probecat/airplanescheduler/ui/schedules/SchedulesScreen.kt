@@ -911,8 +911,8 @@ private val MIN_TIME_SIZE = 20.sp
 
 private val CARD_CORNER = 24.dp
 
-private const val SWIPE_DELETE = 0.3f
-private val SWIPE_MAX_REACH = 120.dp
+private const val SWIPE_DELETE = 0.4f
+private val SWIPE_MAX_REACH = 160.dp
 
 private const val NAME_ALPHA = 0.84f
 
