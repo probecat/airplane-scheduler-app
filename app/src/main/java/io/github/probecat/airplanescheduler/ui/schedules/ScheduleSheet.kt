@@ -62,6 +62,7 @@ import androidx.compose.material3.TimePickerLayoutType
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -567,6 +568,7 @@ private fun TimeDialog(title: String, minute: Int, is24Hour: Boolean, onDismiss:
 // leaves a mostly empty dialog on landscape tablets. Null means no clock fits, so the time is typed.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@ReadOnlyComposable
 private fun timeLayout(): TimePickerLayoutType? {
     val density = LocalDensity.current
     val window = LocalWindowInfo.current.containerSize

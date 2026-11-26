@@ -73,7 +73,8 @@ object AirplaneController {
         app.launch { dispatch(app, Engine.Event.Touched) }
     }
 
-    // Switching to Conservative drops what the app owes, and switching to Strict does not catch up what it missed before.
+    // Switching to Conservative drops what the app owes, and switching to Strict does not catch up what it missed
+    // before.
     fun safeModeChanged(app: App, on: Boolean) {
         app.log.add("Behavior ${if (on) "CONSERVATIVE" else "STRICT"}")
         if (on) app.engine.state = app.engine.state.copy(owed = null)
