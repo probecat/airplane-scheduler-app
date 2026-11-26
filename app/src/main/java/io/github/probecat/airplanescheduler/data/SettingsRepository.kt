@@ -10,13 +10,10 @@ data class Settings(
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
     val hideShizukuReady: Boolean = false,
-    // How long Postpone and Pause wait. 0 turns them off.
     val postponeMinutes: Int = 30,
-    // How long before a start its notification shows. 0 turns it off.
     val alertMinutes: Int = 60,
     val askedNotifications: Boolean = false,
     val backend: Backend = Backend.SHIZUKU,
-    // When off, ends switch to what the schedule asks for, and missed starts and ends are caught up.
     val safeMode: Boolean = true,
 )
 

@@ -26,7 +26,7 @@ F-Droid may lag behind new releases. See [Releases][release-url] for the latest 
 
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="30%">&nbsp;<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="30%">&nbsp;<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Choosing Shizuku or root permission mode" width="30%">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Schedules" width="30%">&nbsp;<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Editing a schedule" width="30%">&nbsp;<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Choosing Shizuku or root as access provider" width="30%">
 
 </div>
 
