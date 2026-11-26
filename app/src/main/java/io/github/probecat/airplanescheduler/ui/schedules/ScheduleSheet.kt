@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -96,6 +99,7 @@ import androidx.compose.ui.unit.sp
 import io.github.probecat.airplanescheduler.R
 import io.github.probecat.airplanescheduler.core.ScheduleTime
 import io.github.probecat.airplanescheduler.data.Schedule
+import io.github.probecat.airplanescheduler.ui.CompactHeight
 import io.github.probecat.airplanescheduler.ui.ErrorText
 import io.github.probecat.airplanescheduler.ui.Format
 import io.github.probecat.airplanescheduler.ui.SwitchRow
@@ -166,25 +170,28 @@ fun ScheduleSheet(
         },
     ) {
         BackHandler(enabled = dirty && !closing) { discarding = true }
-        Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
-            TimesRow(schedule, format, onChange = { draft = it }, Modifier.padding(horizontal = 16.dp))
-            TimesNote(
-                schedule,
-                conflict,
-                format,
-                now.toLocalDate(),
-                Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            OptionFields(schedule, format, onChange = { draft = it })
-
-            SheetButtons(
-                canDelete = !isNew,
-                canSave = !sameTimes && conflict == null && changed,
-                onDelete = { close { onDelete(initial) } },
-                onSave = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
-                Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp),
-            )
-        }
+        SheetLayout(
+            fields = {
+                TimesRow(schedule, format, onChange = { draft = it }, Modifier.padding(horizontal = 16.dp))
+                TimesNote(
+                    schedule,
+                    conflict,
+                    format,
+                    now.toLocalDate(),
+                    Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+                OptionFields(schedule, format, onChange = { draft = it })
+            },
+            buttons = {
+                SheetButtons(
+                    canDelete = !isNew,
+                    canSave = !sameTimes && conflict == null && changed,
+                    onDelete = { close { onDelete(initial) } },
+                    onSave = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+                )
+            },
+        )
     }
 
     if (discarding) {
@@ -195,6 +202,18 @@ fun ScheduleSheet(
             },
             onKeep = { discarding = false },
         )
+    }
+}
+
+// The buttons stay below the scrolling fields, so Save is reachable in a short window and above the keyboard.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SheetLayout(fields: @Composable ColumnScope.() -> Unit, buttons: @Composable () -> Unit) {
+    val height = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val showButtons = height >= CompactHeight || !WindowInsets.isImeVisible
+    Column(Modifier.imePadding()) {
+        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), content = fields)
+        if (showButtons) buttons()
     }
 }
 
