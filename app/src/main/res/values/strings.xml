@@ -4,7 +4,6 @@
 
     <string name="action_allow">Allow</string>
     <string name="action_cancel">Cancel</string>
-    <string name="action_change">Change</string>
     <string name="action_delete">Delete</string>
     <string name="action_discard">Discard</string>
     <string name="action_dismiss">Dismiss</string>

@@ -160,7 +160,7 @@ private fun SchedulesSection(
         icon = R.drawable.ic_asterisk,
         title = stringResource(R.string.settings_behavior),
         text = stringResource(behaviorLabel(settings.safeMode)),
-        trailing = { TextButton(onClick = onBehavior) { Text(stringResource(R.string.action_change)) } },
+        onClick = onBehavior,
     )
 }
 
@@ -189,7 +189,7 @@ private fun PermissionsSection(
             icon = R.drawable.ic_shield,
             title = stringResource(R.string.settings_backend),
             text = stringResource(backendLabel(settings.backend)),
-            trailing = { TextButton(onClick = onBackend) { Text(stringResource(R.string.action_change)) } },
+            onClick = onBackend,
         )
         AccessRow(access, shizukuApp, onRequestAccess)
         SettingRow(
