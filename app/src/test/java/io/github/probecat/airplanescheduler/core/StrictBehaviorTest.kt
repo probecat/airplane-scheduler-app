@@ -9,9 +9,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-// With Safe mode off, an end switches to what the schedule asks for, and the app catches up what it missed once it
+// With Strict behavior, an end switches to what the schedule asks for, and the app catches up what it missed once it
 // can. A radio that the user switched since stays as the user left it.
-class SafeModeOffTest {
+class StrictBehaviorTest {
     private fun phone(
         vararg schedules: Schedule,
         now: LocalDateTime = friday(22),
@@ -121,7 +121,7 @@ class SafeModeOffTest {
     }
 
     @Test
-    fun `turning off Safe mode mid-window applies at end`() {
+    fun `switching to Strict mid-window applies at end`() {
         val phone = Phone(night, now = friday(22), airplaneOn = true)
         phone.passTo(friday(23, 30))
         phone.safe = false
@@ -130,7 +130,7 @@ class SafeModeOffTest {
     }
 
     @Test
-    fun `turning off Safe mode does not catch up what it missed`() {
+    fun `switching to Strict does not catch up what it missed`() {
         val phone = Phone(night, now = friday(22))
         phone.shizukuWorks = false
         phone.passTo(friday(23))

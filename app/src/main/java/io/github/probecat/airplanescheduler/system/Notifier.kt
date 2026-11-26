@@ -157,7 +157,7 @@ object Notifier {
         active.filter { it.tag == tag }.associate { it.id.toLong() to it.notification.extras } +
             latest.filterValues { SystemClock.elapsedRealtime() - it.at < LATEST_MILLIS }.mapValues { it.value.extras }
 
-    // A problem stops promising a catch-up once the app owes nothing, for example after Safe mode was turned on or a
+    // A problem stops promising a catch-up once the app owes nothing, for example after switching to Conservative or a
     // new window replaced what the app owed.
     private fun dropCatchUp(app: App, active: List<StatusBarNotification>, now: LocalDateTime) {
         if (owes(app)) return
@@ -374,7 +374,7 @@ object Notifier {
         )
     }
 
-    // With Safe mode off, the app switches what it owes once it can.
+    // With Strict behavior, the app switches what it owes once it can.
     private fun catchesUp(app: App, text: String): String =
         sentences(app, text, app.getString(R.string.notification_catches_up).takeIf { owes(app) })
 

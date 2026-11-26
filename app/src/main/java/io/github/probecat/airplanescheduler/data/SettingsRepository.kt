@@ -14,6 +14,7 @@ data class Settings(
     val alertMinutes: Int = 60,
     val askedNotifications: Boolean = false,
     val backend: Backend = Backend.SHIZUKU,
+    // Behavior in Settings: true is Conservative, false is Strict.
     val safeMode: Boolean = true,
 )
 
