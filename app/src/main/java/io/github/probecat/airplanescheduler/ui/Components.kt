@@ -33,6 +33,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +47,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -57,8 +60,20 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.probecat.airplanescheduler.R
 
-// Content stays readable on tablets and in landscape.
 val ContentWidth = 600.dp
+val CompactHeight = 480.dp
+
+// In short windows the top bar scrolls away with the content, and comes back when scrolling up.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rememberTopBarScroll(): TopAppBarScrollBehavior {
+    val height = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    return if (height < CompactHeight) {
+        TopAppBarDefaults.enterAlwaysScrollBehavior()
+    } else {
+        TopAppBarDefaults.pinnedScrollBehavior()
+    }
+}
 
 const val SOURCE_URL = "https://github.com/probecat/airplane-scheduler-app"
 const val ISSUES_URL = "$SOURCE_URL/issues"
@@ -255,7 +270,7 @@ fun Subpage(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberTopBarScroll()
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {

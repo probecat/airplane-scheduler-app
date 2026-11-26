@@ -119,6 +119,7 @@ import io.github.probecat.airplanescheduler.system.exactAlarmSettings
 import io.github.probecat.airplanescheduler.system.exactAlarmsAllowed
 import io.github.probecat.airplanescheduler.system.stopBatteryOptimization
 import io.github.probecat.airplanescheduler.ui.AppViewModel
+import io.github.probecat.airplanescheduler.ui.CompactHeight
 import io.github.probecat.airplanescheduler.ui.ContentWidth
 import io.github.probecat.airplanescheduler.ui.DismissibleSnackbarHost
 import io.github.probecat.airplanescheduler.ui.Format
@@ -126,6 +127,7 @@ import io.github.probecat.airplanescheduler.ui.icon
 import io.github.probecat.airplanescheduler.ui.rememberAccessRequest
 import io.github.probecat.airplanescheduler.ui.rememberFormat
 import io.github.probecat.airplanescheduler.ui.rememberNotificationRequest
+import io.github.probecat.airplanescheduler.ui.rememberTopBarScroll
 import io.github.probecat.airplanescheduler.ui.theme.AddButton
 import io.github.probecat.airplanescheduler.ui.theme.LocalSuccessColors
 import io.github.probecat.airplanescheduler.ui.theme.LocalWarningColors
@@ -157,7 +159,7 @@ fun SchedulesScreen(
     val missed by viewModel.missed.collectAsStateWithLifecycle()
     val format = rememberFormat()
     val snackbar = remember { SnackbarHostState() }
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberTopBarScroll()
     var editing by rememberEditing(opening, schedules, onOpen)
     val requestAccess = rememberAccessRequest(viewModel, onHelp)
     // The schedule whose Skip or End asks whether to postpone instead.
@@ -254,7 +256,7 @@ private fun SchedulesList(
         contentAlignment = Alignment.TopCenter,
     ) {
         val margin = (maxWidth - ContentWidth).coerceAtLeast(0.dp) / 2
-        val lane = if (maxHeight < COMPACT_HEIGHT && margin < ADD_LANE) ADD_LANE - margin else 0.dp
+        val lane = if (maxHeight < CompactHeight && margin < ADD_LANE) ADD_LANE - margin else 0.dp
         val column = Modifier.column(lane)
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -903,7 +905,6 @@ private const val ON_WEIGHT = 500
 private val LIST_PADDING = 16.dp
 
 private val ADD_LANE = 96.dp
-private val COMPACT_HEIGHT = 480.dp
 
 private fun Modifier.column(lane: Dp) = fillMaxWidth()
     .wrapContentWidth()
