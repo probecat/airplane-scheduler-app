@@ -45,6 +45,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDialog
 import androidx.compose.material3.TimePickerDialogDefaults
 import androidx.compose.material3.TimePickerDisplayMode
+import androidx.compose.material3.TimePickerLayoutType
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -66,7 +67,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -102,6 +105,13 @@ val ScheduleSaver: Saver<Schedule?, String> = Saver(
 )
 
 private const val NAME_LENGTH = 40
+
+// The smallest windows that fit each clock layout at font scale 1, plus the extra height per 1.0 of font scale.
+private val VERTICAL_HEIGHT = 550.dp
+private val VERTICAL_TEXT = 40.dp
+private val HORIZONTAL_WIDTH = 600.dp
+private val HORIZONTAL_HEIGHT = 340.dp
+private val HORIZONTAL_TEXT = 40.dp
 
 // Edits apply only on Save. Closing the sheet with unsaved edits asks to discard them first.
 @OptIn(ExperimentalMaterial3Api::class)
@@ -424,7 +434,18 @@ private fun DayChips(
 @Composable
 private fun TimeDialog(title: String, minute: Int, is24Hour: Boolean, onDismiss: () -> Unit, onConfirm: (Int) -> Unit) {
     val state = rememberTimePickerState(minute / 60, minute % 60, is24Hour)
-    var mode by remember { mutableStateOf(TimePickerDisplayMode.Picker) }
+    val layout = timeLayout()
+    var mode by remember {
+        mutableStateOf(
+            if (layout ==
+                null
+            ) {
+                TimePickerDisplayMode.Input
+            } else {
+                TimePickerDisplayMode.Picker
+            },
+        )
+    }
     TimePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
@@ -437,18 +458,46 @@ private fun TimeDialog(title: String, minute: Int, is24Hour: Boolean, onDismiss:
             Text(title, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = 20.dp))
         },
         modeToggleButton = {
-            TimePickerDialogDefaults.DisplayModeToggle(
-                onDisplayModeChange = {
-                    mode = when (mode) {
-                        TimePickerDisplayMode.Picker -> TimePickerDisplayMode.Input
-                        else -> TimePickerDisplayMode.Picker
-                    }
-                },
-                displayMode = mode,
-            )
+            // Without a clock that fits there is nothing to switch to.
+            if (layout != null) {
+                TimePickerDialogDefaults.DisplayModeToggle(
+                    onDisplayModeChange = {
+                        mode = when (mode) {
+                            TimePickerDisplayMode.Picker -> TimePickerDisplayMode.Input
+                            else -> TimePickerDisplayMode.Picker
+                        }
+                    },
+                    displayMode = mode,
+                )
+            }
         },
     ) {
-        if (mode == TimePickerDisplayMode.Picker) TimePicker(state) else TimeInput(state)
+        if (mode == TimePickerDisplayMode.Picker &&
+            layout != null
+        ) {
+            TimePicker(state, layoutType = layout)
+        } else {
+            TimeInput(state)
+        }
+    }
+}
+
+// The default layout follows the orientation, which pushes the buttons out of short portrait windows and
+// leaves a mostly empty dialog on landscape tablets. Null means no clock fits, so the time is typed.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun timeLayout(): TimePickerLayoutType? {
+    val density = LocalDensity.current
+    val window = LocalWindowInfo.current.containerSize
+    val width = with(density) { window.width.toDp() }
+    val height = with(density) { window.height.toDp() }
+    // The clock has a fixed size, but the title and the buttons grow with the font scale.
+    val text = (density.fontScale - 1).coerceAtLeast(0f)
+    return when {
+        height >= VERTICAL_HEIGHT + VERTICAL_TEXT * text -> TimePickerLayoutType.Vertical
+        width >= HORIZONTAL_WIDTH && height >= HORIZONTAL_HEIGHT + HORIZONTAL_TEXT * text ->
+            TimePickerLayoutType.Horizontal
+        else -> null
     }
 }
 
