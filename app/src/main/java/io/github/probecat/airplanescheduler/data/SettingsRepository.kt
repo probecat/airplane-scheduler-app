@@ -13,8 +13,11 @@ data class Settings(
     val postponeMinutes: Int = 30,
     val alertMinutes: Int = 60,
     val askedNotifications: Boolean = false,
+    // The access provider in Settings. The field and its saved key keep the old name, as renaming the key would reset
+    // the saved choice.
     val backend: Backend = Backend.SHIZUKU,
-    // Behavior in Settings: true is Conservative, false is Strict.
+    // Behavior in Settings: true is Conservative, false is Strict. The field and its saved key keep the old Safe mode
+    // name, as renaming the key would reset saved settings and backups.
     val safeMode: Boolean = true,
 )
 
