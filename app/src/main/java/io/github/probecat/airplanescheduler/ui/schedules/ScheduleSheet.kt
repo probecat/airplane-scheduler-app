@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,9 +22,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -36,6 +39,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +82,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -165,9 +170,7 @@ fun ScheduleSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        contentWindowInsets = {
-            WindowInsets.navigationBars.union(WindowInsets.statusBars).union(WindowInsets.displayCutout)
-        },
+        contentWindowInsets = { sheetInsets() },
     ) {
         BackHandler(enabled = dirty && !closing) { discarding = true }
         SheetLayout(
@@ -203,6 +206,20 @@ fun ScheduleSheet(
             onKeep = { discarding = false },
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun sheetInsets(): WindowInsets {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val sides = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+    val window = LocalWindowInfo.current.containerSize.width
+    val margin = (window - with(density) { BottomSheetDefaults.SheetMaxWidth.roundToPx() }).coerceAtLeast(0) / 2
+    val left = (sides.getLeft(density, direction) - margin).coerceAtLeast(0)
+    val right = (sides.getRight(density, direction) - margin).coerceAtLeast(0)
+    return WindowInsets.navigationBars.union(WindowInsets.statusBars).only(WindowInsetsSides.Vertical)
+        .union(WindowInsets(left = left, right = right))
 }
 
 // The buttons stay below the scrolling fields, so Save is reachable in a short window and above the keyboard.
