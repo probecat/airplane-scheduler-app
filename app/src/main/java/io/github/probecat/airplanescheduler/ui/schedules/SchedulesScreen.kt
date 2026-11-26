@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -88,10 +89,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -806,16 +810,7 @@ private fun ScheduleCard(
                     }
                 }
                 Row(Modifier.heightIn(min = 59.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        // The marker keeps its weight, so only the digits look lighter while off.
-                        format.window(schedule, Format.MARKER, FontWeight(ON_WEIGHT)),
-                        style = MaterialTheme.typography.displayMedium,
-                        color = time,
-                        fontWeight = FontWeight(if (on) ON_WEIGHT else 200),
-                        maxLines = 1,
-                        autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = TIME_SIZE),
-                        modifier = Modifier.weight(1f),
-                    )
+                    Window(schedule, format, time, on, Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         checked = schedule.enabled,
@@ -827,6 +822,39 @@ private fun ScheduleCard(
                 }
             }
         }
+    }
+}
+
+// Shrinks to fit one line. When the start and the end do not fit on one line even at the smallest
+// size, they go on two lines that share one size.
+@Composable
+private fun Window(schedule: Schedule, format: Format, color: Color, on: Boolean, modifier: Modifier = Modifier) {
+    // The marker keeps its weight, so only the digits look lighter while off.
+    val weight = FontWeight(ON_WEIGHT)
+    val style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight(if (on) ON_WEIGHT else 200))
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints(modifier) {
+        val line = format.window(schedule, Format.MARKER, weight)
+        val oneLine = remember(line, style, constraints.maxWidth) {
+            val smallest = measurer.measure(line, style.copy(fontSize = MIN_TIME_SIZE), maxLines = 1, softWrap = false)
+            smallest.size.width <= constraints.maxWidth
+        }
+        val lines = buildAnnotatedString {
+            append(format.time(schedule.start, Format.MARKER, weight))
+            append("\n")
+            append(format.time(schedule.end, Format.MARKER, weight))
+        }
+        Text(
+            if (oneLine) line else lines,
+            // The theme sets the line height in sp, which leaves gaps between the lines once the size steps down.
+            style = if (oneLine) style else style.copy(lineHeight = 1.15.em),
+            color = color,
+            maxLines = if (oneLine) 1 else 2,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = if (oneLine) MIN_TIME_SIZE else 12.sp,
+                maxFontSize = TIME_SIZE,
+            ),
+        )
     }
 }
 
@@ -846,6 +874,7 @@ private fun DaysAndName(days: String, name: String) {
 }
 
 private val TIME_SIZE = 46.sp
+private val MIN_TIME_SIZE = 20.sp
 
 private val CARD_CORNER = 24.dp
 
