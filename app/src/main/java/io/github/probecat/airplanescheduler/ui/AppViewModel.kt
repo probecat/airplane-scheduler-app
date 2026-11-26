@@ -166,11 +166,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         commit(ScheduleEdits.delete(app.schedules.all, schedule.id))
     }
 
-    fun restore(schedule: Schedule) {
-        app.log.add("Schedule #${schedule.id} restored")
-        commit(ScheduleEdits.restore(app.schedules.all, schedule, app.schedules.nextId(), LocalDateTime.now()))
-    }
-
     fun updateSettings(transform: (Settings) -> Settings) {
         val before = app.settings.current
         app.settings.update(transform)

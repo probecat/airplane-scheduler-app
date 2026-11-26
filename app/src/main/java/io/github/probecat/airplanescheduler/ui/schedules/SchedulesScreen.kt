@@ -5,8 +5,12 @@ import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -48,14 +52,8 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxDefaults
-import androidx.compose.material3.SwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +66,7 @@ import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +80,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -98,6 +98,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.offset
@@ -139,7 +141,9 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -231,6 +235,18 @@ private fun rememberEditing(opening: Long?, schedules: List<Schedule>, onOpen: (
 }
 
 @Composable
+private fun rememberDeleteAsk(schedules: List<Schedule>, onDelete: (Schedule) -> Unit): MutableState<Long?> {
+    val deleting = rememberSaveable { mutableStateOf<Long?>(null) }
+    deleting.value?.let { id ->
+        DeleteDialog(
+            onClose = { deleting.value = null },
+            onDelete = { schedules.find { it.id == id }?.let(onDelete) },
+        )
+    }
+    return deleting
+}
+
+@Composable
 private fun SchedulesList(
     padding: PaddingValues,
     schedules: List<Schedule>,
@@ -247,6 +263,7 @@ private fun SchedulesList(
     onChoose: (Long) -> Unit,
 ) {
     val active = ScheduleResolver.activeSchedule(schedules, now)
+    var deleting by rememberDeleteAsk(schedules, actions::delete)
     val strips = Strips.of(phone, access, settings, schedules)
     val direction = LocalLayoutDirection.current
     BoxWithConstraints(
@@ -296,6 +313,7 @@ private fun SchedulesList(
                     actions = actions,
                     onEdit = { onEdit(schedule) },
                     onChoose = { onChoose(schedule.id) },
+                    onDelete = { deleting = schedule.id },
                     modifier = Modifier.animateItem().then(column),
                 )
             }
@@ -410,6 +428,8 @@ private class ScheduleActions(
         return saved
     }
 
+    fun delete(schedule: Schedule) = viewModel.delete(schedule)
+
     fun longPress() {
         val count = ++longPresses.intValue
         val jokes = resources.getStringArray(R.array.schedules_long_press)
@@ -420,21 +440,6 @@ private class ScheduleActions(
                 jokes[minOf(count, jokes.size) - 1]
             },
         )
-    }
-
-    fun delete(schedule: Schedule) {
-        viewModel.delete(schedule)
-        scope.launch {
-            snackbar.currentSnackbarData?.dismiss()
-            val result = snackbar.showSnackbar(
-                resources.getString(R.string.schedules_deleted),
-                resources.getString(R.string.action_undo),
-                duration = SnackbarDuration.Long,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.restore(schedule)
-            }
-        }
     }
 }
 
@@ -570,11 +575,12 @@ private fun ScheduleItem(
     actions: ScheduleActions,
     onEdit: () -> Unit,
     onChoose: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = ScheduleStatus.of(schedule, now, isMissed)
     val action = cardAction(status, canCatchUp = isMissed && access.ready)
-    SwipeToDelete(onDelete = { actions.delete(schedule) }, modifier = modifier) {
+    SwipeToDelete(onDelete = onDelete, modifier = modifier) {
         ScheduleCard(
             schedule = schedule,
             endsIn = if (isActive) minutesLeft(schedule, now) else null,
@@ -728,42 +734,49 @@ private fun EmptyState(modifier: Modifier = Modifier) {
     }
 }
 
+// A swipe far enough asks to delete, and the card springs back into view while the dialog asks.
 @Composable
 private fun SwipeToDelete(onDelete: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    // Not saveable. Undo and app restarts can reuse an id, and a saved dismissed state then deletes the next
-    // schedule with that id.
-    val threshold = SwipeToDismissBoxDefaults.positionalThreshold
-    val state = remember { SwipeToDismissBoxState(SwipeToDismissBoxValue.Settled, threshold) }
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        onDismiss = { onDelete() },
-        backgroundContent = {
-            val direction = state.dismissDirection
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd) {
-                    Alignment.CenterStart
-                } else {
-                    Alignment.CenterEnd
+    val scope = rememberCoroutineScope()
+    var offset by remember { mutableFloatStateOf(0f) }
+    var settling by remember { mutableStateOf<Job?>(null) }
+    var width by remember { mutableIntStateOf(0) }
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val maxReach = with(LocalDensity.current) { SWIPE_MAX_REACH.toPx() }
+    val drag = rememberDraggableState { delta -> offset = (offset + delta).coerceIn(-width.toFloat(), width.toFloat()) }
+    Box(
+        modifier
+            .onSizeChanged { width = it.width }
+            .draggable(
+                drag,
+                Orientation.Horizontal,
+                reverseDirection = rtl,
+                onDragStarted = { settling?.cancel() },
+                onDragStopped = {
+                    if (abs(offset) >= minOf(width * SWIPE_DELETE, maxReach)) onDelete()
+                    settling = scope.launch { animate(offset, 0f) { value, _ -> offset = value } }
                 },
+            ),
+    ) {
+        if (offset != 0f) {
+            Box(
+                Modifier.matchParentSize(),
+                contentAlignment = if (offset > 0) Alignment.CenterStart else Alignment.CenterEnd,
             ) {
-                if (direction != SwipeToDismissBoxValue.Settled) {
-                    val width = with(LocalDensity.current) { abs(state.requireOffset()).toDp() - 8.dp }
-                    Surface(
-                        shape = RoundedCornerShape(CARD_CORNER),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.fillMaxHeight().width(width.coerceAtLeast(0.dp)),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(painterResource(R.drawable.ic_delete), contentDescription = null)
-                        }
+                val fill = with(LocalDensity.current) { abs(offset).toDp() - 8.dp }
+                Surface(
+                    shape = RoundedCornerShape(CARD_CORNER),
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxHeight().width(fill.coerceAtLeast(0.dp)),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(painterResource(R.drawable.ic_delete), contentDescription = null)
                     }
                 }
             }
-        },
-        content = { content() },
-    )
+        }
+        Box(Modifier.offset { IntOffset((if (rtl) -offset else offset).roundToInt(), 0) }) { content() }
+    }
 }
 
 @Composable
@@ -897,6 +910,9 @@ private val TIME_SIZE = 46.sp
 private val MIN_TIME_SIZE = 20.sp
 
 private val CARD_CORNER = 24.dp
+
+private const val SWIPE_DELETE = 0.3f
+private val SWIPE_MAX_REACH = 120.dp
 
 private const val NAME_ALPHA = 0.84f
 

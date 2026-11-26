@@ -26,7 +26,6 @@
     <string name="action_save">Save</string>
     <string name="action_skip">Skip</string>
     <string name="action_turn_on">Turn on</string>
-    <string name="action_undo">Undo</string>
     <string name="action_unskip">Unskip</string>
     <string name="back">Back</string>
     <string name="more_options">More options</string>
@@ -87,7 +86,6 @@
     <string name="schedules_postponed">Schedule postponed</string>
     <string name="schedules_paused">Schedule paused</string>
     <string name="schedules_turn_on_failed">Failed to turn on airplane mode</string>
-    <string name="schedules_deleted">Schedule deleted</string>
     <string-array name="schedules_long_press">
         <item>Maybe you should touch grass instead?</item>
         <item>Didst thou drink water?</item>
@@ -126,6 +124,8 @@
     <string name="sheet_end_time">End time</string>
     <string name="sheet_discard_title">Discard changes?</string>
     <string name="sheet_discard_text">Your changes won\'t be saved.</string>
+    <string name="delete_title">Delete schedule?</string>
+    <string name="delete_text">This can\'t be undone.</string>
     <string name="sheet_same_times">Start and end can\'t be the same time</string>
     <!-- %1$s is a length, as in "Duration: 8 h". -->
     <string name="sheet_lasts">Duration: %1$s</string>

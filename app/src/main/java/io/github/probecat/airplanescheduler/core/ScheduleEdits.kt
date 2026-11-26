@@ -76,13 +76,4 @@ object ScheduleEdits {
     }
 
     fun delete(all: List<Schedule>, id: Long): Result = Result.Saved(all.filterNot { it.id == id })
-
-    // Undoes a delete. The schedule takes [newId] if another schedule now uses its old id. It comes back switched off
-    // if it now overlaps another schedule.
-    fun restore(all: List<Schedule>, schedule: Schedule, newId: Long, now: LocalDateTime): Result {
-        val id = if (all.none { it.id == schedule.id }) schedule.id else newId
-        val restored = schedule.copy(id = id)
-        val overlaps = conflict(all, restored, now) != null
-        return Result.Saved(all + if (overlaps) restored.copy(enabled = false) else restored)
-    }
 }

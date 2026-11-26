@@ -130,7 +130,8 @@ private val HORIZONTAL_WIDTH = 600.dp
 private val HORIZONTAL_HEIGHT = 340.dp
 private val HORIZONTAL_TEXT = 40.dp
 
-// Edits apply only on Save. Closing the sheet with unsaved edits asks to discard them first.
+// Edits apply only on Save. Closing the sheet with unsaved edits asks to discard them first, and Delete asks to
+// confirm.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleSheet(
@@ -146,6 +147,7 @@ fun ScheduleSheet(
     val scope = rememberCoroutineScope()
     var draft by rememberSaveable(initial.id, stateSaver = ScheduleSaver) { mutableStateOf(initial) }
     var discarding by rememberSaveable { mutableStateOf(false) }
+    var deleting by rememberSaveable { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
     val schedule = draft ?: initial
     val dirty = schedule.copy(name = schedule.name.trim()) != initial
@@ -189,7 +191,7 @@ fun ScheduleSheet(
                 SheetButtons(
                     canDelete = !isNew,
                     canSave = !sameTimes && conflict == null && changed,
-                    onDelete = { close { onDelete(initial) } },
+                    onDelete = { deleting = true },
                     onSave = { if (onSave(schedule.copy(name = schedule.name.trim()))) close() },
                     Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
                 )
@@ -206,6 +208,8 @@ fun ScheduleSheet(
             onKeep = { discarding = false },
         )
     }
+
+    if (deleting) DeleteDialog(onClose = { deleting = false }, onDelete = { close { onDelete(initial) } })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -347,7 +351,7 @@ private fun SheetButtons(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        // Delete sits at the start, away from Save, as it acts without a confirmation.
+        // Delete sits at the start, away from Save.
         if (canDelete) {
             FilledTonalIconButton(
                 onClick = onDelete,
@@ -380,6 +384,27 @@ private fun DiscardDialog(onDiscard: () -> Unit, onKeep: () -> Unit) {
         },
         dismissButton = {
             TextButton(onClick = onKeep) { Text(stringResource(R.string.action_keep_editing)) }
+        },
+    )
+}
+
+@Composable
+fun DeleteDialog(onClose: () -> Unit, onDelete: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(stringResource(R.string.delete_title)) },
+        text = { Text(stringResource(R.string.delete_text)) },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onClose()
+                    onDelete()
+                },
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) { Text(stringResource(R.string.action_delete)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onClose) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
