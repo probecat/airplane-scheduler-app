@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,6 +82,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
@@ -242,12 +245,20 @@ private fun SchedulesList(
 ) {
     val active = ScheduleResolver.activeSchedule(schedules, now)
     val strips = Strips.of(phone, access, settings, schedules)
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    val direction = LocalLayoutDirection.current
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .padding(start = padding.calculateStartPadding(direction), end = padding.calculateEndPadding(direction)),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        val margin = (maxWidth - ContentWidth).coerceAtLeast(0.dp) / 2
+        val lane = if (maxHeight < COMPACT_HEIGHT && margin < ADD_LANE) ADD_LANE - margin else 0.dp
         LazyColumn(
             modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
             contentPadding = PaddingValues(
                 start = LIST_PADDING,
-                end = LIST_PADDING,
+                end = LIST_PADDING + lane,
                 top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
@@ -261,7 +272,10 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().bleed(LIST_PADDING).animateContentSize().padding(bottom = 18.dp),
+                        Modifier.animateItem().bleed(
+                            LIST_PADDING,
+                            LIST_PADDING + lane,
+                        ).animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
@@ -884,11 +898,13 @@ private const val ON_WEIGHT = 500
 
 private val LIST_PADDING = 16.dp
 
-// Widens the content past the list's side padding, so it reaches the screen edges.
-private fun Modifier.bleed(horizontal: Dp) = layout { measurable, constraints ->
-    val extra = horizontal.roundToPx()
-    val placeable = measurable.measure(constraints.offset(horizontal = 2 * extra))
-    layout(constraints.maxWidth, placeable.height) { placeable.place(-extra, 0) }
+private val ADD_LANE = 96.dp
+private val COMPACT_HEIGHT = 480.dp
+
+private fun Modifier.bleed(start: Dp, end: Dp) = layout { measurable, constraints ->
+    val before = start.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = before + end.roundToPx()))
+    layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(-before, 0) }
 }
 
 @Composable
