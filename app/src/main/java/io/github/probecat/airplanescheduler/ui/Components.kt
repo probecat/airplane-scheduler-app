@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -50,6 +52,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.probecat.airplanescheduler.R
@@ -119,11 +122,61 @@ fun SettingRow(
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    // Material's disabled content color.
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.bodyLarge
+    SubcomposeLayout(modifier) { constraints ->
+        val actionWidth = trailing?.let { action ->
+            subcompose("action", action).maxOfOrNull { it.maxIntrinsicWidth(constraints.maxHeight) }
+        } ?: 0
+        val fixed = (ROW_PADDING * 2 + ITEM_PADDING * 2 + (if (icon != null) ICON_SPACE else 0.dp) + ITEM_PADDING)
+            .roundToPx()
+        val room = constraints.maxWidth - fixed - actionWidth
+        val word = title.split(' ').maxOfOrNull { measurer.measure(it, style, softWrap = false).size.width } ?: 0
+        val below = trailing != null && room < word
+        val row = subcompose("row") {
+            SettingItem(
+                icon,
+                title,
+                text,
+                enabled,
+                tint,
+                if (below) null else trailing,
+                below = if (below) trailing else null,
+                onClick,
+            )
+        }.map { it.measure(constraints) }
+        layout(constraints.maxWidth, row.sumOf { it.height }) { row.forEach { it.place(0, 0) } }
+    }
+}
+
+@Composable
+private fun SettingItem(
+    icon: Int?,
+    title: String,
+    text: String?,
+    enabled: Boolean,
+    tint: Color?,
+    trailing: (@Composable () -> Unit)?,
+    below: (@Composable () -> Unit)?,
+    onClick: (() -> Unit)?,
+) {
     val disabled = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
     ListItem(
         headlineContent = { Text(title) },
-        supportingContent = text?.let { { Text(it) } },
+        supportingContent = when {
+            below != null -> {
+                {
+                    Column {
+                        text?.let { Text(it) }
+                        Box(Modifier.offset(x = (-12).dp)) { below() }
+                    }
+                }
+            }
+            text != null -> {
+                { Text(text) }
+            }
+            else -> null
+        },
         leadingContent = icon?.let { { Icon(painterResource(it), contentDescription = null) } },
         trailingContent = trailing,
         colors = when {
@@ -140,11 +193,15 @@ fun SettingRow(
             )
             else -> ListItemDefaults.colors(containerColor = Color.Transparent)
         },
-        modifier = modifier
+        modifier = Modifier
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = ROW_PADDING),
     )
 }
+
+private val ROW_PADDING = 8.dp
+private val ITEM_PADDING = 16.dp
+private val ICON_SPACE = 40.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
