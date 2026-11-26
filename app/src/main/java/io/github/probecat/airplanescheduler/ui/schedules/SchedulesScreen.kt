@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -254,11 +255,10 @@ private fun SchedulesList(
     ) {
         val margin = (maxWidth - ContentWidth).coerceAtLeast(0.dp) / 2
         val lane = if (maxHeight < COMPACT_HEIGHT && margin < ADD_LANE) ADD_LANE - margin else 0.dp
+        val column = Modifier.column(lane)
         LazyColumn(
-            modifier = Modifier.widthIn(max = ContentWidth).fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = LIST_PADDING,
-                end = LIST_PADDING + lane,
                 top = padding.calculateTopPadding() + 16.dp,
                 bottom = padding.calculateBottomPadding() + 112.dp,
             ),
@@ -272,15 +272,13 @@ private fun SchedulesList(
                         phone.shizukuInstalled,
                         onAccess = onAccess,
                         onHideReady = onHideReady,
-                        Modifier.animateItem().bleed(
-                            LIST_PADDING,
-                            LIST_PADDING + lane,
-                        ).animateContentSize().padding(bottom = 18.dp),
+                        lane,
+                        Modifier.animateItem().animateContentSize().padding(bottom = 18.dp),
                     )
                 }
             }
             if (schedules.isEmpty()) {
-                item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f)) }
+                item(key = "empty") { EmptyState(Modifier.fillParentMaxHeight(0.6f).then(column)) }
             }
             items(schedules, key = { it.id }) { schedule ->
                 val isActive = schedule.id == active?.id
@@ -296,7 +294,7 @@ private fun SchedulesList(
                     actions = actions,
                     onEdit = { onEdit(schedule) },
                     onChoose = { onChoose(schedule.id) },
-                    modifier = Modifier.animateItem(),
+                    modifier = Modifier.animateItem().then(column),
                 )
             }
         }
@@ -513,6 +511,7 @@ private fun NoticeStrips(
     shizukuInstalled: Boolean,
     onAccess: () -> Unit,
     onHideReady: () -> Unit,
+    lane: Dp,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -522,6 +521,7 @@ private fun NoticeStrips(
                 label = stringResource(R.string.strip_alarms),
                 icon = R.drawable.ic_error,
                 tone = Tone.ERROR,
+                lane = lane,
                 onClick = { context.startActivity(exactAlarmSettings(context)) },
             )
         }
@@ -530,6 +530,7 @@ private fun NoticeStrips(
                 label = stringResource(statusStrip(access, shizukuInstalled)),
                 icon = access.state.icon,
                 tone = Tone.ERROR,
+                lane = lane,
                 onClick = onAccess,
             )
         }
@@ -538,6 +539,7 @@ private fun NoticeStrips(
                 label = stringResource(R.string.strip_battery),
                 icon = R.drawable.ic_warning,
                 tone = Tone.WARNING,
+                lane = lane,
                 onClick = { stopBatteryOptimization(context) },
             )
         }
@@ -546,6 +548,7 @@ private fun NoticeStrips(
                 label = stringResource(statusStrip(access, shizukuInstalled)),
                 icon = access.state.icon,
                 tone = Tone.SUCCESS,
+                lane = lane,
                 onDismiss = onHideReady,
             )
         }
@@ -656,6 +659,7 @@ private fun Strip(
     label: String,
     icon: Int,
     tone: Tone,
+    lane: Dp,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
@@ -677,7 +681,7 @@ private fun Strip(
         // The close button's touch target pads its icon by 15 dp, so both trailing icons end 16 dp in.
         val end = if (onDismiss != null) 1.dp else 16.dp
         Row(
-            modifier = Modifier.heightIn(min = 48.dp).padding(start = 16.dp + LIST_PADDING, end = end + LIST_PADDING),
+            modifier = Modifier.column(lane).heightIn(min = 48.dp).padding(start = 16.dp, end = end),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(18.dp))
@@ -901,11 +905,10 @@ private val LIST_PADDING = 16.dp
 private val ADD_LANE = 96.dp
 private val COMPACT_HEIGHT = 480.dp
 
-private fun Modifier.bleed(start: Dp, end: Dp) = layout { measurable, constraints ->
-    val before = start.roundToPx()
-    val placeable = measurable.measure(constraints.offset(horizontal = before + end.roundToPx()))
-    layout(constraints.maxWidth, placeable.height) { placeable.placeRelative(-before, 0) }
-}
+private fun Modifier.column(lane: Dp) = fillMaxWidth()
+    .wrapContentWidth()
+    .widthIn(max = ContentWidth)
+    .padding(start = LIST_PADDING, end = LIST_PADDING + lane)
 
 @Composable
 private fun EndsIn(duration: String) = Status(
