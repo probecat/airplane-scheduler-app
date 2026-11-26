@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +64,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -395,23 +397,18 @@ private fun DayChips(
     onToggle: (DayOfWeek) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (day in format.week) {
+    Row(modifier.fillMaxWidth()) {
+        format.week.forEachIndexed { index, day ->
             val selected = day in days
             val colors = MaterialTheme.colorScheme
             val corner by animateIntAsState(if (selected) 50 else 25)
             val shape = RoundedCornerShape(percent = corner)
             val state = stringResource(if (selected) R.string.sheet_day_repeats else R.string.sheet_day_doesnt_repeat)
-            Surface(
-                shape = shape,
-                color = animateColorAsState(
-                    if (selected) colors.primaryContainer else colors.surfaceContainerLowest,
-                ).value,
-                contentColor = animateColorAsState(if (selected) colors.onPrimaryContainer else colors.onSurface).value,
+            Box(
+                contentAlignment = BiasAlignment(-1f + 2f * index / (format.week.size - 1), 0f),
                 modifier = Modifier
                     .weight(1f)
-                    .aspectRatio(1f)
-                    .clip(shape)
+                    .heightIn(min = 48.dp)
                     .semantics {
                         contentDescription = format.dayName(day)
                         stateDescription = state
@@ -423,17 +420,34 @@ private fun DayChips(
                         role = Role.Checkbox,
                     ) { onToggle(day) },
             ) {
-                Column(
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.clearAndSetSemantics {},
+                Surface(
+                    shape = shape,
+                    color = animateColorAsState(
+                        if (selected) colors.primaryContainer else colors.surfaceContainerLowest,
+                    ).value,
+                    contentColor = animateColorAsState(
+                        if (selected) colors.onPrimaryContainer else colors.onSurface,
+                    ).value,
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp)
+                        .widthIn(max = CHIP_SIZE)
+                        .fillMaxWidth()
+                        .aspectRatio(1f),
                 ) {
-                    Text(format.dayLetter(day), style = MaterialTheme.typography.labelLarge)
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clearAndSetSemantics {},
+                    ) {
+                        Text(format.dayLetter(day), style = MaterialTheme.typography.labelLarge)
+                    }
                 }
             }
         }
     }
 }
+
+private val CHIP_SIZE = 48.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
