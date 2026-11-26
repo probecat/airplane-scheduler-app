@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -83,6 +84,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,6 +107,7 @@ val ScheduleSaver: Saver<Schedule?, String> = Saver(
 )
 
 private const val NAME_LENGTH = 40
+private val NAME_MIN_WIDTH = 72.dp
 
 // The smallest windows that fit each clock layout at font scale 1, plus the extra height per 1.0 of font scale.
 private val VERTICAL_HEIGHT = 550.dp
@@ -522,19 +525,31 @@ private fun NameRow(name: String, onChange: (String) -> Unit) {
         )
         Spacer(Modifier.width(16.dp))
         val label = stringResource(R.string.sheet_name)
-        Text(label, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.width(16.dp))
-        NameField(
-            field,
-            label,
-            focus,
-            onChange = {
-                field = it.copy(text = it.text.take(NAME_LENGTH))
-                onChange(field.text)
-            },
-            onFocus = { field = field.copy(selection = TextRange(0, field.text.length)) },
-            Modifier.weight(1f),
-        )
+        val style = MaterialTheme.typography.bodyLarge
+        val measurer = rememberTextMeasurer()
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val room = constraints.maxWidth - with(LocalDensity.current) { (16.dp + NAME_MIN_WIDTH).roundToPx() }
+            val showLabel = remember(label, style, room) {
+                measurer.measure(label, style, maxLines = 1, softWrap = false).size.width <= room
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (showLabel) {
+                    Text(label, style = style, maxLines = 1)
+                    Spacer(Modifier.width(16.dp))
+                }
+                NameField(
+                    field,
+                    label,
+                    focus,
+                    onChange = {
+                        field = it.copy(text = it.text.take(NAME_LENGTH))
+                        onChange(field.text)
+                    },
+                    onFocus = { field = field.copy(selection = TextRange(0, field.text.length)) },
+                    Modifier.weight(1f),
+                )
+            }
+        }
     }
 }
 
