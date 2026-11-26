@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -153,14 +156,13 @@ fun ScheduleSheet(
         }
     }
 
-    // The keyboard lifts the content with imePadding instead of resizing the sheet's window, which
-    // made the sheet jump to the top and settle back.
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        contentWindowInsets = { WindowInsets.navigationBars },
+        contentWindowInsets = {
+            WindowInsets.navigationBars.union(WindowInsets.statusBars).union(WindowInsets.displayCutout)
+        },
     ) {
-        // The sheet handles back itself and hides without asking its state, so this handler takes back first.
         BackHandler(enabled = dirty && !closing) { discarding = true }
         Column(Modifier.verticalScroll(rememberScrollState()).imePadding().padding(bottom = 16.dp)) {
             TimesRow(schedule, format, onChange = { draft = it }, Modifier.padding(horizontal = 16.dp))
